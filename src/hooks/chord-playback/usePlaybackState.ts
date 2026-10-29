@@ -138,7 +138,7 @@ export const usePlaybackState = ({
 
     // P0 FIX: When pitch-shift is active, clamp the click timestamp to the
     // actually-loaded audio buffer duration BEFORE any publisher writes. The
-    // Firebase audio buffer can be 100-300 ms shorter than the YouTube video's
+    // Persistence audio buffer can be 100-300 ms shorter than the YouTube video's
     // reported duration; an un-clamped click near the end would cause
     // GrainPlayer.seek() to clamp internally to `_duration`, and the clamped
     // value then propagates to all three surfaces, which users perceive as
@@ -162,11 +162,11 @@ export const usePlaybackState = ({
     // P0 FIX: Re-anchor the master clock with the EFFECTIVE (potentially
     // clamped) timestamp. The store's `onBeatClick` already called
     // `youtubeMasterClock.onUserSeek(timestamp)` with the RAW timestamp,
-    // but if we clamped `effectiveTimestamp` (because the Firebase audio
+    // but if we clamped `effectiveTimestamp` (because the Persistence audio
     // buffer is shorter than the YouTube video), the master clock anchor
     // is now past the buffer boundary while the GrainPlayer (sought below)
     // is at the clamped position. Re-anchoring here keeps all three
-    // surfaces — master clock, GrainPlayer, YouTube — pointing at the
+    // surfaces â€” master clock, GrainPlayer, YouTube â€” pointing at the
     // same safe target. In the non-clamping case this call is idempotent.
     if (effectiveTimestamp !== timestamp) {
       youtubeMasterClock.onUserSeek(effectiveTimestamp);
@@ -175,10 +175,10 @@ export const usePlaybackState = ({
     // R2 + R3 FIX: This path was missing a `noteUserSeek()` call, which meant
     // the drift-correction loop in usePitchShiftAudio didn't know a user seek
     // had just happened. The loop would then fire a correction immediately
-    // after the click — fighting the user's target. Calling this FIRST bumps
+    // after the click â€” fighting the user's target. Calling this FIRST bumps
     // `seekToken` (aborts any in-flight async coordination work) and stamps
     // `lastUserSeekAt` so the 500 ms user-seek fence kicks in. Without this,
-    // beat clicks at non-1× playback rates cause the "YouTube keeps
+    // beat clicks at non-1Ã— playback rates cause the "YouTube keeps
     // refreshing to catch up" flicker the user reported.
     const playbackStore = usePlaybackStore.getState();
     playbackStore.noteUserSeek();
@@ -216,10 +216,10 @@ export const usePlaybackState = ({
           // RATE RE-APPLY AFTER SEEK: the YouTube iframe silently resets its
           // effective playback rate during the seekTo round-trip (the rate
           // value reported by getPlaybackRate stays correct, but the rendered
-          // frames for ~200–500 ms after seek are paced at ~1× until the
-          // buffer catches up). At non-1× rates this produces: GrainPlayer
-          // audio racing ahead at 2×, YouTube frames crawling at ~1.6×, drift
-          // accumulates fast, drift-loop seeks again, cycle repeats — exactly
+          // frames for ~200â€“500 ms after seek are paced at ~1Ã— until the
+          // buffer catches up). At non-1Ã— rates this produces: GrainPlayer
+          // audio racing ahead at 2Ã—, YouTube frames crawling at ~1.6Ã—, drift
+          // accumulates fast, drift-loop seeks again, cycle repeats â€” exactly
           // the "keeps refreshing like crazy" symptom. Re-push the rate ~250 ms
           // after the seek settles so the iframe picks up the intended tempo.
           if (
@@ -306,11 +306,11 @@ export const usePlaybackState = ({
   const handleYouTubeProgress = useCallback((state: { played: number; playedSeconds: number }) => {
     // CLOCK AUTHORITY (post-unification): the YouTube iframe is the primary
     // controller and feeds its reported position into the master clock. The
-    // master applies hysteresis (drift > 0.08 × rate or age > 400 ms) before
+    // master applies hysteresis (drift > 0.08 Ã— rate or age > 400 ms) before
     // re-anchoring, so calling this on every onProgress tick is cheap and
     // correct. The master's `getLivePosition()` is the single source of
     // truth read by the beat animation rAF loop; we do NOT write to the
-    // store here — that would compete with the master clock publish.
+    // store here â€” that would compete with the master clock publish.
     youtubeMasterClock.onYoutubeProgress(state.playedSeconds);
   }, []);
 
@@ -346,11 +346,11 @@ export const usePlaybackState = ({
     };
 
     const handlePlay = () => {
-      // console.log(`🎵 AUDIO PLAY EVENT: Setting isPlaying=true`);
+      // console.log(`ðŸŽµ AUDIO PLAY EVENT: Setting isPlaying=true`);
       setIsPlaying(true);
     };
     const handlePause = () => {
-      // console.log(`⏸️ AUDIO PAUSE EVENT: Setting isPlaying=false`);
+      // console.log(`â¸ï¸ AUDIO PAUSE EVENT: Setting isPlaying=false`);
       setIsPlaying(false);
     };
     const handleTimeUpdate = () => {

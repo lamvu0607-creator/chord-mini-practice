@@ -1,4 +1,4 @@
-# Performance Optimization
+﻿# Performance Optimization
 
 <cite>
 **Referenced Files in This Document**
@@ -99,7 +99,7 @@ PERF_UI --> DESKTOP_OPT
 - Compatibility patches: monkey-patching and shim layers to bridge library version differences.
 - Orchestration services: beat detection and chord recognition services that select optimal detectors based on file size and availability.
 - Thin runtime adapters: SongFormer service wrapper with controlled initialization and thread-safe access.
-- Frontend performance monitoring: metrics collection and alerting for cache performance, error reduction, and Firebase query efficiency.
+- Frontend performance monitoring: metrics collection and alerting for cache performance, error reduction, and Local persistence query efficiency.
 
 **Section sources**
 - [audio_utils.py:12-131](file://python_backend/services/audio/audio_utils.py#L12-L131)
@@ -291,7 +291,7 @@ SF-->>Caller : "segments + model/device"
 - [songformer_service.py:21-140](file://python_backend/services/audio/songformer_service.py#L21-L140)
 
 ### Frontend Performance Monitoring
-- Metrics tracking: cache hit rate, error reduction, filename matching accuracy, and Firebase query statistics.
+- Metrics tracking: cache hit rate, error reduction, filename matching accuracy, and Local persistence query statistics.
 - Alerts and summaries: periodic evaluation yields status and actionable alerts.
 - Core Web Vitals: optional LCP tracking in development for UI responsiveness.
 
@@ -407,7 +407,7 @@ By combining early compatibility patching, runtime model/device checks, file-siz
   - Compare CPU vs. GPU runs using device info from model_utils.py.
 
 - Profiling and bottleneck identification
-  - Use Python’s cProfile or similar profilers around detector calls to identify hotspots.
+  - Use Pythonâ€™s cProfile or similar profilers around detector calls to identify hotspots.
   - Monitor frontend metrics via performanceMonitor.ts to correlate UI responsiveness with backend throughput.
 
 - Performance regression testing

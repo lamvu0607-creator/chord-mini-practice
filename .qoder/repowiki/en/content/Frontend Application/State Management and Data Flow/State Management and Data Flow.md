@@ -129,7 +129,7 @@ AAS --> CRS
 ## Architecture Overview
 The architecture follows a unidirectional data flow:
 - Services orchestrate analysis and audio operations and update Zustand stores.
-- Query hooks fetch and cache read-oriented server state; mutations and Firestore writes invalidate relevant query keys.
+- Query hooks fetch and cache read-oriented server state; mutations and SQLite writes invalidate relevant query keys.
 - Hooks subscribe to stores and expose typed selectors/actions to components.
 - Context providers supply runtime state (processing stage, theme) to the component tree.
 - Master clock and coordinated rate management ensure synchronization across YouTube iframe, HTML5 audio, and pitch-shifted audio.
@@ -287,7 +287,7 @@ class UIStore {
 +pitchShiftSemitones
 +isProcessingPitchShift
 +pitchShiftError
-+isFirebaseAudioAvailable
++isLocal persistenceAudioAvailable
 +originalKey
 +targetKey
 +guitarCapoFret
@@ -317,7 +317,7 @@ class UIStore {
 +resetPitchShift()
 +setIsProcessingPitchShift(processing)
 +setPitchShiftError(error)
-+setIsFirebaseAudioAvailable(available)
++setIsLocal persistenceAudioAvailable(available)
 +setOriginalKey(key)
 +setGuitarCapoFret(fret)
 +setGuitarSelectedPosition(shapeChordName, positionIndex)
@@ -325,7 +325,7 @@ class UIStore {
 +resetAnalysisUtilityBarState()
 +initializeVideoTitle(title)
 +initializeOriginalKey(key)
-+initializeFirebaseAudioAvailable(available)
++initializeLocal persistenceAudioAvailable(available)
 }
 ```
 
@@ -443,7 +443,7 @@ Play --> Stop["softStopInstruments on miss grace period"]
   - PlaybackStore depends on UIStore for pitch shift and follow mode.
   - UIStore depends on AnalysisStore for key and chord data.
 - Services depend on each other:
-  - AudioProcessingService uses AudioAnalysisService and Firestore services.
+  - AudioProcessingService uses AudioAnalysisService and SQLite services.
   - AudioAnalysisService uses beat detection, chord recognition, and offload services.
 
 ```mermaid
@@ -484,7 +484,7 @@ HCI["useChordInteractions"] --> AS
 [No sources needed since this section provides general guidance]
 
 ## Troubleshooting Guide
-- Playback rate mismatch: playbackStore logs and mirrors YouTube’s actual rate to maintain lockstep across surfaces.
+- Playback rate mismatch: playbackStore logs and mirrors YouTubeâ€™s actual rate to maintain lockstep across surfaces.
 - Drift correction fighting user seeks: noteUserSeek bumps seekToken and stamps lastUserSeekAt to abort stale work within the user-seek fence.
 - Hidden tab playback: useChordPlayback uses a background poller and recovery routine to resume playback when the tab becomes visible.
 - Audio extraction errors: AudioProcessingService attaches suggestions to errors to guide users.

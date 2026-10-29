@@ -1,4 +1,4 @@
-# Text Processing Pipeline
+﻿# Text Processing Pipeline
 
 <cite>
 **Referenced Files in This Document**
@@ -45,7 +45,7 @@ This document describes the text processing pipeline responsible for lyrics form
 ## Project Structure
 The text processing pipeline spans frontend services, Next.js API routes, and Python backend services:
 - Frontend translation orchestration and UI integration
-- Next.js API routes implementing cache-first translation with Firestore caching
+- Next.js API routes implementing cache-first translation with SQLite caching
 - Python backend lyrics orchestrator coordinating Genius and LRClib providers
 - Utilities for lyrics timing, segmentation, and chord synchronization
 - Audio timing synchronization service for cross-modal alignment
@@ -143,7 +143,7 @@ sequenceDiagram
 participant FE as "Frontend UI"
 participant TS as "TranslationService"
 participant API as "Next.js API"
-participant DB as "Firestore"
+participant DB as "SQLite"
 participant GEM as "Gemini API"
 FE->>TS : Request translation (cache-first)
 TS->>API : POST /api/translate-lyrics-cached
@@ -209,7 +209,7 @@ Two complementary APIs implement translation logic:
 
 Key features:
 - Deterministic cache key generation using lyrics content and parameters
-- Firestore caching with server timestamps and videoId requirement
+- SQLite caching with server timestamps and videoId requirement
 - Language detection using Gemini with Chinese character heuristic
 - Translation cleanup preserving structure and vocal expressions
 - Background update tracking and completion notifications
@@ -217,7 +217,7 @@ Key features:
 ```mermaid
 flowchart TD
 Start(["POST /api/translate-lyrics-cached"]) --> GenKey["Generate cache key"]
-GenKey --> CheckCache["Check Firestore cache"]
+GenKey --> CheckCache["Check SQLite cache"]
 CheckCache --> CacheHit{"Cache hit?"}
 CacheHit --> |Yes| ReturnCached["Return cached translation<br/>fromCache=true"]
 ReturnCached --> BGUpdate{"Background update<br/>in progress?"}
@@ -386,7 +386,7 @@ UI-->>UI : Render synchronized lyrics and chords
 ## Dependency Analysis
 The pipeline exhibits clear separation of concerns:
 - Frontend services depend on Next.js API routes for translation
-- Next.js API routes depend on Gemini and Firestore
+- Next.js API routes depend on Gemini and SQLite
 - Python backend orchestrates external APIs (Genius, LRClib)
 - UI components depend on timing and synchronization utilities
 
@@ -394,7 +394,7 @@ The pipeline exhibits clear separation of concerns:
 graph TB
 TS["TranslationService"] --> RTC["translate-lyrics-cached"]
 TS --> RTL["translate-lyrics"]
-RTC --> DB["Firestore"]
+RTC --> DB["SQLite"]
 RTC --> GEM["Gemini"]
 RTL --> DB
 RTL --> GEM
@@ -436,7 +436,7 @@ SS["SongSegmentationService"] --> LSX
 ## Performance Considerations
 - Translation caching minimizes API calls and reduces latency via immediate cache returns
 - Background updates keep cached content fresh without blocking user experience
-- Firestore caching is performed asynchronously to avoid delaying response delivery
+- SQLite caching is performed asynchronously to avoid delaying response delivery
 - Lyrics timing computation uses weighted distribution based on linguistic features to maintain responsiveness
 - UI rendering leverages memoization and efficient DOM updates for synchronized lyrics and chords
 - Segmentation normalization merges adjacent segments and fills gaps to reduce rendering overhead
@@ -460,7 +460,7 @@ Common issues and resolutions:
 - [ProcessingContext.tsx:130-143](file://src/contexts/ProcessingContext.tsx#L130-L143)
 
 ## Conclusion
-The text processing pipeline integrates translation, lyrics retrieval, timing, and synchronization across frontend, backend, and audio domains. Its cache-first design, robust fallbacks, and modular components enable responsive, accurate, and scalable lyrics experiences. The system’s separation of concerns and explicit error handling facilitate maintainability and reliability.
+The text processing pipeline integrates translation, lyrics retrieval, timing, and synchronization across frontend, backend, and audio domains. Its cache-first design, robust fallbacks, and modular components enable responsive, accurate, and scalable lyrics experiences. The systemâ€™s separation of concerns and explicit error handling facilitate maintainability and reliability.
 
 [No sources needed since this section summarizes without analyzing specific files]
 

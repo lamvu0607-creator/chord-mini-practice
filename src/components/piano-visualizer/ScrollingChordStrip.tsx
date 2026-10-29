@@ -3,9 +3,7 @@
 import React, { useRef, useMemo, useState, useEffect, useCallback } from 'react';
 import type { ChordEvent } from '@/utils/chordToMidi';
 import { ChordCell, type ChordCellProps } from '@/components/chord-analysis/ChordCell';
-import { useRomanNumerals, useShowSegmentation } from '@/stores/uiStore';
-import type { SegmentationResult } from '@/types/chatbotTypes';
-import { getSegmentationColorForBeatIndex } from '@/utils/chordFormatting';
+import { useRomanNumerals } from '@/stores/uiStore';
 
 import { GridLyricText, type BeatGridTimedLyrics } from '@/components/chord-analysis/GridLyricsRow';
 
@@ -35,8 +33,6 @@ interface ScrollingChordStripProps {
   beatModulations?: Map<number, ChordCellProps['modulationInfo']>;
   /** Original (uncorrected, transposed) chords array for wasCorrected detection */
   uncorrectedChords?: string[];
-  /** Optional segmentation result used for section coloring */
-  segmentationData?: SegmentationResult | null;
   /** Timed lyrics synced with the chord grid */
   gridLyrics?: BeatGridTimedLyrics | null;
 }
@@ -168,7 +164,6 @@ export const ScrollingChordStrip = React.memo<ScrollingChordStripProps>(({
   beatRomanNumerals,
   beatModulations,
   uncorrectedChords,
-  segmentationData,
   gridLyrics = null,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -187,7 +182,6 @@ export const ScrollingChordStrip = React.memo<ScrollingChordStripProps>(({
 
   // Read roman numeral toggle from UI store
   const { showRomanNumerals } = useRomanNumerals();
-  const showSegmentation = useShowSegmentation();
 
   // Measure container width
   useEffect(() => {
@@ -521,21 +515,13 @@ export const ScrollingChordStrip = React.memo<ScrollingChordStripProps>(({
             !!uncorrectedChords &&
             box.beatIndex < uncorrectedChords.length &&
             uncorrectedChords[box.beatIndex] !== box.chordName;
-          const segmentationColor = showSegmentation && segmentationData && !isPast && !isEmpty
-            ? getSegmentationColorForBeatIndex(box.beatIndex, [], segmentationData, true, undefined, box.startTime)
-            : undefined;
-          const hasSegmentationOverlay = Boolean(segmentationColor);
           const containerClass = `${isActive
-            ? showSegmentation && segmentationData && !isEmpty
-              ? 'border-blue-400 dark:border-blue-500 text-blue-800 dark:text-blue-100'
-              : 'bg-blue-50 dark:bg-blue-900/50 border-blue-400 dark:border-blue-500 text-blue-800 dark:text-blue-100'
+            ? 'bg-blue-50 dark:bg-blue-900/50 border-blue-400 dark:border-blue-500 text-blue-800 dark:text-blue-100'
             : isPast
               ? 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-400 dark:text-gray-500'
               : isEmpty
                 ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-600/40'
-                : showSegmentation && segmentationData
-                  ? 'border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100'
-                  : 'bg-white dark:bg-content-bg border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100'}`;
+                : 'bg-white dark:bg-content-bg border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100'}`;
 
           return (
             <div
@@ -547,17 +533,6 @@ export const ScrollingChordStrip = React.memo<ScrollingChordStripProps>(({
                 height: height - 2,
               }}
             >
-              {hasSegmentationOverlay && (
-                <>
-                  <div className="absolute inset-0 pointer-events-none bg-slate-950/50 dark:bg-black/60" />
-                  <div
-                     className="absolute inset-0 pointer-events-none"
-                     style={{ backgroundColor: segmentationColor }}
-                  />
-                  <div className="absolute inset-0 pointer-events-none ring-1 ring-inset ring-black/20 dark:ring-white/10" />
-                </>
-              )}
-
               <div className="relative z-[1] h-full">
                 <ChordCell
                   compact
@@ -576,7 +551,6 @@ export const ScrollingChordStrip = React.memo<ScrollingChordStripProps>(({
                   romanNumeral={romanNumeral}
                   modulationInfo={modulationInfo}
                   accidentalPreference={accidentalPreference ?? undefined}
-                  segmentationClassName={undefined}
                   labelOverflowCells={compactLabelOverflowCells}
                   labelOverflowGapPx={compactLabelOverflowCells * CELL_GAP}
                 />

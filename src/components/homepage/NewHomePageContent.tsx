@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import Navigation from '@/components/common/Navigation';
+import PageBackdrop from '@/components/ui/PageBackdrop';
 import AnimatedTitle from '@/components/homepage/AnimatedTitle';
 import HeroChordGridLyricsMock from '@/components/homepage/HeroChordGridLyricsMock';
 import HeroPianoVisualizerMock from '@/components/homepage/HeroPianoVisualizerMock';
@@ -22,8 +23,6 @@ import { isDevelopmentEnvironment } from '@/utils/modelFiltering';
 import SupportChordMini from '@/components/homepage/SupportChordMini'
 import FeaturesTabSection from '@/components/homepage/FeaturesTabSection';
 
-// Dynamic import for LightRays WebGL background
-const LightRays = dynamic(() => import('@/components/ui/LightRays'), { ssr: false });
 
 // Dynamic imports for heavy components
 const RecentVideos = dynamic(() => import('@/components/homepage/LazyRecentVideos'), {
@@ -111,43 +110,7 @@ function NewHomePageContentInner() {
 
   return (
     <div className="relative flex flex-col min-h-screen transition-colors duration-300">
-      <div className="fixed inset-0 z-0 h-screen pointer-events-none overflow-hidden">
-        {theme === 'dark' ? (
-          <div className="h-full w-full bg-black relative">
-            {mounted && (
-              <div className="absolute inset-0 z-0">
-                <LightRays
-                  lightSpread={0.1}
-                  saturation={0}
-                  mouseInfluence={0}
-                  pulsating={true}
-                  noiseAmount={0.1}
-                  raysColor="#f1ebe6"
-                  raysSpeed={0.5}
-                  fadeDistance={2}
-                />
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="h-full w-full relative bg-[#faf6ee] overflow-hidden">
-            {mounted && (
-              <div className="absolute inset-0 z-0">
-                <LightRays
-                  lightSpread={0.1}
-                  saturation={0}
-                  mouseInfluence={0}
-                  pulsating={true}
-                  noiseAmount={0.1}
-                  raysColor="#ffe082"
-                  raysSpeed={0.5}
-                  fadeDistance={2}
-                />
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      <PageBackdrop />
 
       {/* Navigation */}
       <Navigation showStickySearch={shouldShowStickySearch} overlay />

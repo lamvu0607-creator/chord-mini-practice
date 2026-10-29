@@ -454,7 +454,7 @@ The lyrics service exhibits clear dependency relationships:
 
 - Frontend dependencies:
   - Next.js routes depend on translation service
-  - Translation service uses Gemini client and Firebase
+  - Translation service uses Gemini client and Local persistence
   - All components use standardized response formats
 
 ```mermaid
@@ -504,7 +504,7 @@ The lyrics service incorporates several performance optimizations:
 
 - Caching strategies:
   - Translation service implements cache-first with background updates
-  - Firestore caching reduces repeated API calls
+  - SQLite caching reduces repeated API calls
   - Polling with exponential backoff prevents excessive requests
 
 - Memory management:
@@ -527,7 +527,7 @@ Common issues and their resolutions:
 
 - Translation failures:
   - Verify Gemini API key configuration
-  - Check Firestore connectivity for caching
+  - Check SQLite connectivity for caching
   - Review language detection accuracy
 
 - Rate limiting:

@@ -111,6 +111,15 @@ def is_local_development():
               f"is_google_cloud_run={is_google_cloud_run}, is_vercel={is_vercel}, is_local={is_local}")
     return is_local
 
+
+def gpu_enabled():
+    """
+    GPU is used in local development, or when ENABLE_GPU=true is set explicitly
+    (self-hosted production with a GPU, e.g. Docker Compose with `gpus: all`).
+    """
+    explicit = os.environ.get('ENABLE_GPU', '').strip().lower() in ('1', 'true', 'yes', 'on')
+    return explicit or is_local_development()
+
 """
 Simple Beat Transformer handler for the minimal deployment
 """
@@ -271,15 +280,15 @@ class BeatTransformerDetector:
             from ChordMini.modules.utils.device import get_device_manager
 
             # Determine if GPU acceleration should be enabled
-            enable_gpu = is_local_development()
+            enable_gpu = gpu_enabled()
 
             if enable_gpu:
-                # Use DeviceManager for local development (CUDA > MPS > CPU)
+                # Use DeviceManager when GPU is enabled (CUDA > MPS > CPU)
                 device_manager = get_device_manager(verbose=DEBUG)
                 self.device = device_manager.device
                 self.device_manager = device_manager
                 if DEBUG:
-                    print(f"GPU acceleration enabled for local development. Using device: {self.device}")
+                    print(f"GPU acceleration enabled. Using device: {self.device}")
             else:
                 # Force CPU for production deployments
                 self.device = torch.device("cpu")
@@ -291,7 +300,7 @@ class BeatTransformerDetector:
             if DEBUG:
                 print(f"Warning: DeviceManager not available: {e}. Falling back to basic device detection.")
             # Fallback to basic device detection if DeviceManager is not available
-            if is_local_development():
+            if gpu_enabled():
                 self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
             else:
                 self.device = torch.device("cpu")
@@ -364,15 +373,13 @@ class BeatTransformerDetector:
 
     def _configure_processing_modes(self):
         """Configure processing modes based on environment detection"""
-        is_local = is_local_development()
-
-        if is_local:
-            # Local development: Enable all GPU optimizations
+        if gpu_enabled():
+            # Local development or ENABLE_GPU=true: Enable all GPU optimizations
             self.use_real_spleeter = True
             self.enable_spleeter_gpu = True
             self.use_gpu_audio_processing = True
             if DEBUG:
-                print("🚀 Local development mode: GPU optimizations enabled")
+                print("🚀 GPU mode: GPU optimizations enabled")
         else:
             # Production (Google Cloud Run): Use Spleeter with CPU
             # CHANGED: Now using Spleeter for production instead of librosa fallback
@@ -384,7 +391,7 @@ class BeatTransformerDetector:
 
     def _configure_spleeter_gpu(self):
         """Configure Spleeter GPU usage based on environment"""
-        if self.enable_spleeter_gpu and is_local_development():
+        if self.enable_spleeter_gpu and gpu_enabled():
             try:
                 # Remove CUDA_VISIBLE_DEVICES restriction for local development
                 if 'CUDA_VISIBLE_DEVICES' in os.environ:

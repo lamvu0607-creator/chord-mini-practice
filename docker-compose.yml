@@ -1,0 +1,240 @@
+# ChordMiniApp Full Docker Compose Configuration
+# Orchestrates: Frontend (Next.js & SQLite), Python Backend (Flask ML), SheetSage, Redis, and Nginx.
+#
+# Quick Start:
+#   1. Copy .env.docker.example to .env.docker (if not already done)
+#   2. Run: docker compose --env-file .env.docker up --build
+#   3. Access the application: http://localhost:3000
+#
+# Stop:
+#   docker compose down
+
+name: chordminiapp
+
+services:
+  # 1. Frontend - Next.js Application & BFF (Host for SQLite database & audio storage)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+      args:
+        - NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
+        - NEXT_PUBLIC_ENABLE_EXPERIMENTAL_MODELS=${NEXT_PUBLIC_ENABLE_EXPERIMENTAL_MODELS:-true}
+        - NEXT_PUBLIC_DEFAULT_CHORD_MODEL=${NEXT_PUBLIC_DEFAULT_CHORD_MODEL:-btc-sl}
+        - NEXT_PUBLIC_UNDEPLOYED_CHORD_MODELS=${NEXT_PUBLIC_UNDEPLOYED_CHORD_MODELS:-chord-cnn-lstm}
+    container_name: chordmini-frontend
+    expose:
+      - "3000"
+    volumes:
+      # Persistent SQLite Database & Shared Audio Storage
+      - frontend-db:/app/storage/db
+      - frontend-audio:/app/storage/audio
+      # Optional YouTube cookies mount
+      - ./youtube_cookies.txt:/app/youtube_cookies.txt:ro
+    environment:
+      # System Configuration
+      - NODE_ENV=${NODE_ENV:-production}
+      - NEXT_TELEMETRY_DISABLED=${NEXT_TELEMETRY_DISABLED:-1}
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+
+      # Base App Configuration
+      - NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
+      - NEXT_PUBLIC_YOUTUBE_API_KEY=${NEXT_PUBLIC_YOUTUBE_API_KEY:-}
+
+      # Audio & SQLite Persistence Configuration
+      - NEXT_PUBLIC_AUDIO_STRATEGY=${NEXT_PUBLIC_AUDIO_STRATEGY:-auto}
+      - NEXT_PUBLIC_AUDIO_STORAGE_PROVIDER=${NEXT_PUBLIC_AUDIO_STORAGE_PROVIDER:-local}
+      - LOCAL_AUDIO_STORAGE_DIR=${LOCAL_AUDIO_STORAGE_DIR:-/app/storage/audio}
+      - LOCAL_AUDIO_MAX_UPLOAD_MB=${LOCAL_AUDIO_MAX_UPLOAD_MB:-50}
+      - LOCAL_AUDIO_QUOTA_GB=${LOCAL_AUDIO_QUOTA_GB:-2}
+      - SQLITE_DATABASE_PATH=${SQLITE_DATABASE_PATH:-/app/storage/db/chordmini.sqlite}
+
+      # Background Workers & Internal URLs
+      - INTERNAL_FRONTEND_URL=http://frontend:3000
+
+      # Backend Microservices URLs (Docker Internal DNS)
+      - PYTHON_API_URL=${PYTHON_API_URL:-http://backend:8080}
+      - NEXT_PUBLIC_PYTHON_API_URL=${NEXT_PUBLIC_PYTHON_API_URL:-http://backend:8080}
+      - SHEETSAGE_API_URL=${SHEETSAGE_API_URL:-http://sheetsage:8082}
+      - SHEETSAGE_BACKEND_TIMEOUT_MS=${SHEETSAGE_BACKEND_TIMEOUT_MS:-600000}
+      - STEMS_API_URL=${STEMS_API_URL:-http://stems:8083}
+      - STEMS_BACKEND_TIMEOUT_MS=${STEMS_BACKEND_TIMEOUT_MS:-1800000}
+      - STEMS_QUOTA_GB=${STEMS_QUOTA_GB:-10}
+
+      # External APIs & Secrets
+      - MUSIC_AI_API_KEY=${MUSIC_AI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GENIUS_API_KEY=${GENIUS_API_KEY:-}
+      - CRON_SECRET=${CRON_SECRET:-replace_with_random_secret}
+
+      # Feature Flags
+      - NEXT_PUBLIC_ENABLE_SERVICE_WORKER=${NEXT_PUBLIC_ENABLE_SERVICE_WORKER:-false}
+      - NEXT_PUBLIC_ENABLE_TRUE_STREAMING=${NEXT_PUBLIC_ENABLE_TRUE_STREAMING:-false}
+      - NEXT_DISABLE_DEV_OVERLAY=${NEXT_DISABLE_DEV_OVERLAY:-true}
+      - USE_MOCK_MUSIC_AI=${USE_MOCK_MUSIC_AI:-false}
+    depends_on:
+      backend:
+        condition: service_healthy
+      sheetsage:
+        condition: service_healthy
+      stems:
+        condition: service_healthy
+    networks:
+      - chordmini-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/persistence/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 2. Python Backend - Flask ML Service (Beats & Chords Recognition)
+  backend:
+    build:
+      context: ./python_backend
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: chordmini-backend
+    # Single worker, no --preload: CUDA cannot be shared across forked workers,
+    # and one copy of each model is all an 8GB GPU should hold.
+    command: ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "--threads", "4", "--timeout", "600", "--max-requests", "1000", "--max-requests-jitter", "100", "app:app"]
+    gpus: all
+    expose:
+      - "8080"
+    environment:
+      - FLASK_ENV=production
+      - FLASK_DEBUG=False
+      - FLASK_APP=app.py
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - PRODUCTION_MODE=true
+      - DEFAULT_BEAT_MODEL=beat-transformer
+      - DEFAULT_CHORD_MODEL=${NEXT_PUBLIC_DEFAULT_CHORD_MODEL:-btc-sl}
+      - MAX_CONTENT_LENGTH=104857600
+      - UPLOAD_TIMEOUT=600
+      - STORAGE_AUDIO_DIR=/app/storage/audio
+      - USE_BEAT_TRANSFORMER=true
+      - USE_CHORD_CNN_LSTM=false
+      - USE_BTC_SL=true
+      - USE_BTC_PL=true
+      # All traffic arrives from the frontend container, so per-IP limits here would be
+      # global; nginx enforces the real per-client limit.
+      - RATE_LIMIT_HEAVY_PROCESSING=${RATE_LIMIT_HEAVY_PROCESSING:-30 per minute}
+      - RATE_LIMIT_MODERATE_PROCESSING=${RATE_LIMIT_MODERATE_PROCESSING:-60 per minute}
+      - RATE_LIMIT_LIGHT_PROCESSING=${RATE_LIMIT_LIGHT_PROCESSING:-300 per minute}
+      # GPU (requires NVIDIA driver + Docker Desktop WSL2 GPU support)
+      - ENABLE_GPU=${ENABLE_GPU:-true}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+    volumes:
+      # Mount shared audio directory for zero-copy local reading
+      - frontend-audio:/app/storage/audio
+      - backend-cache:/tmp/model_cache
+      - backend-logs:/app/logs
+    networks:
+      - chordmini-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 90s
+
+  # 3. SheetSage Backend - Melody & Pitch Transcription Service
+  sheetsage:
+    build:
+      context: ./sheetsage
+      dockerfile: Dockerfile
+    container_name: chordmini-sheetsage
+    expose:
+      - "8082"
+    environment:
+      - PORT=8082
+      - STORAGE_AUDIO_DIR=/app/storage/audio
+      - SHEETSAGE_INTERNAL_AUDIO_HOSTS=frontend,localhost,127.0.0.1
+      - SHEETSAGE_CACHE_DIR=/app/cache
+      - SHEETSAGE_PRELOAD=false
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - frontend-audio:/app/storage/audio:ro
+      - sheetsage-cache:/app/cache
+    networks:
+      - chordmini-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # 4. Stems - SCNet music source separation (vocals / drums / bass / other)
+  stems:
+    build:
+      context: ./stems
+      dockerfile: Dockerfile
+    container_name: chordmini-stems
+    gpus: all
+    expose:
+      - "8083"
+    environment:
+      - PORT=8083
+      - STORAGE_AUDIO_DIR=/app/storage/audio
+      - STEMS_CKPT_DIR=/app/ckpts
+      - STEMS_MODEL=${STEMS_MODEL:-scnet_xl_ihf}
+      - STEMS_DEVICE=${STEMS_DEVICE:-cuda}
+      - STEMS_OVERLAP=${STEMS_OVERLAP:-2}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Reads source audio and writes stems/<sourceId>/*.flac into the shared audio volume
+      - frontend-audio:/app/storage/audio
+      - ./stems/ckpts:/app/ckpts:ro
+    networks:
+      - chordmini-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # 5. Nginx - Reverse Proxy, Rate Limiting & Host Gateway
+  nginx:
+    image: nginx:alpine
+    container_name: chordmini-nginx
+    ports:
+      - "3000:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      frontend:
+        condition: service_healthy
+    networks:
+      - chordmini-network
+    restart: unless-stopped
+
+networks:
+  chordmini-network:
+    driver: bridge
+
+volumes:
+  # Persistent volume for SQLite database
+  frontend-db:
+    name: chordmini-frontend-db
+  # Shared zero-copy volume for audio files
+  frontend-audio:
+    name: chordmini-frontend-audio
+  # Model and runtime caches
+  backend-cache:
+    name: chordmini-backend-cache
+  backend-logs:
+    name: chordmini-backend-logs
+  sheetsage-cache:
+    name: chordmini-sheetsage-cache

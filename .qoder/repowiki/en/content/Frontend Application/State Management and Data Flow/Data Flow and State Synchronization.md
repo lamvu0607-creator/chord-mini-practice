@@ -1,4 +1,4 @@
-# Data Flow and State Synchronization
+﻿# Data Flow and State Synchronization
 
 <cite>
 **Referenced Files in This Document**
@@ -313,7 +313,7 @@ UIStore --> ChordPlaybackManager : "provides pitch shift state"
 - [ChordPlaybackManager.tsx:55-123](file://src/components/chord-playback/ChordPlaybackManager.tsx#L55-L123)
 
 ### State Persistence Strategies
-- Cache availability and cache checks are tracked in the analysis store and orchestrated by the orchestrator hook. The hook loads transcription snapshots from Firestore and merges sequence corrections and roman numeral data.
+- Cache availability and cache checks are tracked in the analysis store and orchestrated by the orchestrator hook. The hook loads transcription snapshots from SQLite and merges sequence corrections and roman numeral data.
 - Offload uploads are used for large files, with automatic cleanup and robust error handling.
 
 ```mermaid
@@ -446,7 +446,7 @@ GPS["grainPlayerPitchShiftService.ts"] --> YMC
 
 - Parallel processing: Beat detection and chord recognition run concurrently to reduce total latency.
 - Worker offloading: Synchronization and meter selection leverage a dedicated worker when available, falling back to main thread logic otherwise.
-- Offload uploads: Large files are uploaded to Firebase and processed remotely, avoiding serverless payload limits.
+- Offload uploads: Large files are uploaded to Local persistence and processed remotely, avoiding serverless payload limits.
 - Optimized synchronization: Two-pointer algorithm reduces chord-to-beat alignment complexity from O(n*m) to O(n+m).
 - Master clock efficiency: Single source of truth eliminates redundant drift calculations and reduces computational overhead.
 - Seek token coordination: Prevents wasted computation from in-flight drift correction loops after user seeks.
@@ -485,4 +485,4 @@ Common issues and their handling:
 - [usePitchShiftAudio.ts:611-613](file://src/hooks/chord-playback/usePitchShiftAudio.ts#L611-L613)
 
 ## Conclusion
-**Updated** The system enforces a strict unidirectional data flow with unified master clock architecture: services produce results, stores centralize state, and components subscribe and act upon changes. The new master clock integration replaces the previous three-independent-time-source approach with a single YouTube master clock that coordinates seek tokens, user-seek fences, and re-anchor listeners. Robust synchronization is achieved through the master clock, worker-based computations, and selector-driven re-renders. Persistence is handled via cache checks and Firestore snapshots, while performance is optimized through parallelization, offloading, efficient algorithms, and master clock efficiency. Error propagation is explicit and user-friendly, ensuring reliable real-time updates across analysis results, playback controls, and UI components with unified time management across all surfaces.
+**Updated** The system enforces a strict unidirectional data flow with unified master clock architecture: services produce results, stores centralize state, and components subscribe and act upon changes. The new master clock integration replaces the previous three-independent-time-source approach with a single YouTube master clock that coordinates seek tokens, user-seek fences, and re-anchor listeners. Robust synchronization is achieved through the master clock, worker-based computations, and selector-driven re-renders. Persistence is handled via cache checks and SQLite snapshots, while performance is optimized through parallelization, offloading, efficient algorithms, and master clock efficiency. Error propagation is explicit and user-friendly, ensuring reliable real-time updates across analysis results, playback controls, and UI components with unified time management across all surfaces.

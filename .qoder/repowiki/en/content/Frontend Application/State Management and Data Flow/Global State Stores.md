@@ -1,4 +1,4 @@
-# Global State Stores
+﻿# Global State Stores
 
 <cite>
 **Referenced Files in This Document**
@@ -324,7 +324,7 @@ class UIStore {
 +number pitchShiftSemitones
 +boolean isProcessingPitchShift
 +string pitchShiftError
-+boolean isFirebaseAudioAvailable
++boolean isLocal persistenceAudioAvailable
 +string originalKey
 +string targetKey
 +number guitarCapoFret
@@ -364,7 +364,7 @@ class UIStore {
 +resetPitchShift()
 +setIsProcessingPitchShift(processing)
 +setPitchShiftError(error)
-+setIsFirebaseAudioAvailable(available)
++setIsLocal persistenceAudioAvailable(available)
 +setOriginalKey(key)
 +setGuitarCapoFret(fret)
 +setGuitarSelectedPosition(shapeChordName,positionIndex)
@@ -372,7 +372,7 @@ class UIStore {
 +resetAnalysisUtilityBarState()
 +initializeVideoTitle(title)
 +initializeOriginalKey(key)
-+initializeFirebaseAudioAvailable(available)
++initializeLocal persistenceAudioAvailable(available)
 }
 ```
 

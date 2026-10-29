@@ -12,7 +12,7 @@ jest.mock('@/utils/apiKeyUtils', () => ({
   getMusicAiApiKeyWithValidation: jest.fn(),
 }));
 
-jest.mock('@/services/firebase/firestoreService', () => ({
+jest.mock('@/services/persistence/transcriptionService', () => ({
   getTranscription: jest.fn(),
 }));
 
@@ -64,7 +64,7 @@ const createDeps = (
     videoUrl: null,
     youtubeEmbedUrl: null,
     fromCache: false,
-    fromFirestoreCache: false,
+    fromPersistentCache: false,
     error: null,
   },
   beatDetector: 'madmom',

@@ -8,7 +8,6 @@ import { Tooltip } from '@heroui/react';
 import { AnalysisResult } from '@/services/chord-analysis/chordRecognitionService';
 import { useChordPlayback } from '@/hooks/chord-playback/useChordPlayback';
 import { useShowRomanNumerals, useToggleRomanNumerals } from '@/stores/uiStore';
-import type { SegmentationResult } from '@/types/chatbotTypes';
 
 // Dynamic imports for heavy components
 const MetronomeControls = dynamic(() => import('@/components/chord-playback/MetronomeControls'), {
@@ -55,7 +54,6 @@ interface FloatingVideoDockProps {
   currentBeatIndex: number;
   chords: string[];
   beats: (number | null)[];
-  segmentationData?: SegmentationResult | null;
 
   // Handlers
   toggleVideoMinimization: () => void;
@@ -85,6 +83,8 @@ interface FloatingVideoDockProps {
   videoTitle?: string;
   channelName?: string;
   thumbnailUrl?: string;
+  /** Uploaded audio: no YouTube video, play `audioUrl` instead. */
+  audioOnly?: boolean;
 
   // YouTube player for volume control
   youtubePlayer?: {
@@ -137,7 +137,6 @@ const FloatingVideoDock: React.FC<FloatingVideoDockProps> = ({
   currentBeatIndex,
   chords,
   beats,
-  segmentationData,
   toggleVideoMinimization,
   toggleFollowMode,
   toggleMetronomeWithSync,
@@ -161,6 +160,7 @@ const FloatingVideoDock: React.FC<FloatingVideoDockProps> = ({
   videoTitle,
   channelName,
   thumbnailUrl,
+  audioOnly = false,
   youtubePlayer,
   showTopToggles = true,
   melodicTranscriptionPlayback,
@@ -185,12 +185,13 @@ const FloatingVideoDock: React.FC<FloatingVideoDockProps> = ({
     beats,
     isPlaying,
     currentTime,
-    segmentationData,
     timeSignature,
   });
 
-  // Don't render if no video URLs are available
-  if (!youtubeEmbedUrl && !videoUrl) {
+  const hasPlayableSource = Boolean(youtubeEmbedUrl || videoUrl || (audioOnly && audioUrl));
+
+  // Don't render if there is nothing to play
+  if (!hasPlayableSource) {
     return null;
   }
 
@@ -366,7 +367,7 @@ const FloatingVideoDock: React.FC<FloatingVideoDockProps> = ({
         )}
 
         {/* Video player with mobile collapsible functionality */}
-        {(youtubeEmbedUrl || videoUrl) && (
+        {hasPlayableSource && (
           <div className="relative">
 
 
@@ -388,6 +389,7 @@ const FloatingVideoDock: React.FC<FloatingVideoDockProps> = ({
               onEnded={onEnded}
               muted={youtubeMuted}
               onPlaybackRateChange={onPlaybackRateChange}
+              audioOnly={audioOnly}
             />
           </div>
         )}

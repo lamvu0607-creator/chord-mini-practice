@@ -16,7 +16,6 @@ export function generateNotesForInstrument(
     beatDuration,
     startTime,
     totalDuration,
-    segmentationData,
     signalDynamics,
     simpleBlockChord,
     timeSignature = 4,
@@ -54,7 +53,6 @@ export function generateNotesForInstrument(
         startTime,
         totalDuration,
         timeSignature,
-        segmentationData,
         signalDynamics,
         simpleBlockChord,
       );

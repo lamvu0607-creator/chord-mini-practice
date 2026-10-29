@@ -33,8 +33,7 @@ describe('useProcessedLyrics (beat-aligned)', () => {
 
     const { result } = renderHook(() => useProcessedLyrics({
       lyrics: lyrics as any,
-      beatAlignedChords: chords,
-      segmentationData: null
+      beatAlignedChords: chords
     }));
 
     // Find chord-only placeholder (isChordOnly)
@@ -55,8 +54,7 @@ describe('useProcessedLyrics (beat-aligned)', () => {
 
     const { result } = renderHook(() => useProcessedLyrics({
       lyrics: lyrics as any,
-      beatAlignedChords: chords,
-      segmentationData: null
+      beatAlignedChords: chords
     }));
 
     // The hook itself does not snap; LyricsSection does snapping. This test ensures
@@ -71,8 +69,7 @@ describe('useProcessedLyrics (beat-aligned)', () => {
     const lyrics = mkLyrics([{ startTime: 0, endTime: 2, text: 'hello world' }]);
     const { result } = renderHook(() => useProcessedLyrics({
       lyrics: lyrics as any,
-      beatAlignedChords: [],
-      segmentationData: null
+      beatAlignedChords: []
     }));
     expect(result.current.length).toBe(1);
     expect(result.current[0].text).toBe('hello world');
@@ -95,8 +92,7 @@ describe('useProcessedLyrics (beat-aligned)', () => {
 
     const { result } = renderHook(() => useProcessedLyrics({
       lyrics: lyrics as any,
-      beatAlignedChords: chords,
-      segmentationData: null
+      beatAlignedChords: chords
     }));
 
     const [line] = result.current;
@@ -118,7 +114,6 @@ describe('useProcessedLyrics (beat-aligned)', () => {
     const { result } = renderHook(() => useProcessedLyrics({
       lyrics: lyrics as any,
       beatAlignedChords: chords,
-      segmentationData: null,
       downbeatsOnly: true,
       downbeatTimes
     }));

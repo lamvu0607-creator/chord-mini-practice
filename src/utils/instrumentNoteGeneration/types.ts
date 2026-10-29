@@ -1,5 +1,4 @@
 import type { ChordSignalDynamics } from '@/services/audio/audioDynamicsTypes';
-import type { SegmentationResult } from '@/types/chatbotTypes';
 import type { MidiNote } from '@/utils/chordToMidi';
 import type { GuitarVoicingSelection } from '@/utils/guitarVoicing';
 
@@ -52,8 +51,6 @@ export interface NoteGenerationParams {
   totalDuration?: number;
   /** Time signature (beats per measure, e.g. 3 for 3/4, default 4) */
   timeSignature?: number;
-  /** Optional song segmentation for section-aware pattern shaping */
-  segmentationData?: SegmentationResult | null;
   /** Optional signal-derived intensity snapshot for this chord window */
   signalDynamics?: ChordSignalDynamics | null;
   /** Render piano as one block chord instead of generated accompaniment patterns */

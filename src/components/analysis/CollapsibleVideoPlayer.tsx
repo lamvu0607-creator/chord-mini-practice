@@ -43,6 +43,8 @@ interface CollapsibleVideoPlayerProps {
   muted?: boolean;
   /** Fired when the user changes rate via YouTube's native gear-menu. */
   onPlaybackRateChange?: (rate: number) => void;
+  /** No YouTube video (uploaded audio): always use the <audio> player. */
+  audioOnly?: boolean;
 }
 
 export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
@@ -62,7 +64,8 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
   onSeek,
   onEnded,
   muted = false,
-  onPlaybackRateChange
+  onPlaybackRateChange,
+  audioOnly = false
 }) => {
   const getInitialIsMobile = () => (
     typeof window !== 'undefined' ? window.innerWidth < 768 : false
@@ -74,30 +77,25 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
   const playerRef = useRef<ReactPlayer>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   
-  const thumbnailUrl = propThumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+  const thumbnailUrl = propThumbnailUrl || (audioOnly ? '' : `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`);
+  const thumbnailStyle = thumbnailUrl ? { backgroundImage: `url("${thumbnailUrl}")` } : undefined;
   const isPlayerReady = readyVideoId === videoId;
+  // Audio mode: uploaded audio, or YouTube failed and we fall back to the extracted audio.
+  const isAudioMode = audioOnly || hasVideoError;
 
   // Reset video error state when videoId changes, or when transitioning to fallback audio mode (hasVideoError becomes true)
   const [prevVideoId, setPrevVideoId] = useState(videoId);
-  const [prevHasVideoError, setPrevHasVideoError] = useState(hasVideoError);
+  const [prevHasVideoError, setPrevHasVideoError] = useState(isAudioMode);
   if (videoId !== prevVideoId) {
     setPrevVideoId(videoId);
     setPrevHasVideoError(false);
     setHasVideoError(false);
     setReadyVideoId(null);
-  } else if (hasVideoError && !prevHasVideoError) {
+  } else if (isAudioMode && !prevHasVideoError) {
     setPrevHasVideoError(true);
     setReadyVideoId(null);
   }
 
-  // Reset ready state when collapsed/expanded state changes to force re-initialization of the audio element
-  const [prevIsCollapsed, setPrevIsCollapsed] = useState(isCollapsed);
-  if (isCollapsed !== prevIsCollapsed) {
-    setPrevIsCollapsed(isCollapsed);
-    if (hasVideoError) {
-      setReadyVideoId(null);
-    }
-  }
 
   // Construct a mock YouTube player interface using HTML5 Audio element
   const createMockPlayer = useCallback((audio: HTMLAudioElement) => {
@@ -168,36 +166,36 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
 
   // Sync isPlaying with audio element in fallback mode
   useEffect(() => {
-    if (!hasVideoError || !audioElRef.current || !isPlayerReady) return;
+    if (!isAudioMode || !audioElRef.current || !isPlayerReady) return;
     const audio = audioElRef.current;
     if (isPlaying) {
       audio.play().catch(err => console.warn("Autoplay block or error playing audio fallback:", err));
     } else {
       audio.pause();
     }
-  }, [isPlaying, hasVideoError, isPlayerReady]);
+  }, [isPlaying, isAudioMode, isPlayerReady]);
 
   // Sync playbackRate with audio element in fallback mode
   useEffect(() => {
-    if (!hasVideoError || !audioElRef.current) return;
+    if (!isAudioMode || !audioElRef.current) return;
     audioElRef.current.playbackRate = playbackRate;
-  }, [playbackRate, hasVideoError]);
+  }, [playbackRate, isAudioMode]);
 
   // Sync muted with audio element in fallback mode
   useEffect(() => {
-    if (!hasVideoError || !audioElRef.current) return;
+    if (!isAudioMode || !audioElRef.current) return;
     audioElRef.current.muted = muted;
-  }, [muted, hasVideoError]);
+  }, [muted, isAudioMode]);
 
   // Trigger onReady immediately if the audio element is already loaded when fallback starts
   useEffect(() => {
-    if (hasVideoError && audioElRef.current && audioElRef.current.readyState >= 1) {
+    if (isAudioMode && audioElRef.current && audioElRef.current.readyState >= 1) {
       onReady?.(createMockPlayer(audioElRef.current));
       setTimeout(() => {
         setReadyVideoId(videoId);
       }, 0);
     }
-  }, [hasVideoError, videoId, onReady, createMockPlayer]);
+  }, [isAudioMode, videoId, onReady, createMockPlayer]);
 
 
   const formatTime = (t: number) => {
@@ -381,9 +379,26 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
     }
   };
 
+  // One <audio> element shared by the collapsed and full views, so toggling keeps the position.
+  const audioElement = isAudioMode && audioUrl ? (
+    <audio
+      ref={audioElRef}
+      src={audioUrl}
+      preload="auto"
+      onPlay={handleAudioPlay}
+      onPause={handleAudioPause}
+      onEnded={handleAudioEnded}
+      onTimeUpdate={handleAudioTimeUpdate}
+      onLoadedMetadata={handleAudioLoadedMetadata}
+      className="hidden"
+    />
+  ) : null;
+
   // Collapsed mobile view - enhanced bar with video frame
   if (isMobile && isCollapsed) {
     return (
+      <>
+      {audioElement}
       <div className="rounded-[22px] border border-white/15 bg-slate-950/90 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.88)] backdrop-blur-md">
         <div className="flex items-center gap-2.5 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
           {/* Left side - Video frame and controls */}
@@ -392,29 +407,16 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
             <div className="relative h-10 w-16 flex-shrink-0 overflow-hidden rounded-md bg-slate-900 sm:h-12 sm:w-20">
               <div
                 aria-hidden
-                className={`absolute inset-0 bg-cover bg-center transition-opacity duration-300 ${(isPlayerReady && !hasVideoError) ? 'opacity-0' : 'opacity-100'}`}
-                style={{ backgroundImage: `url("${thumbnailUrl}")` }}
+                className={`absolute inset-0 bg-cover bg-center transition-opacity duration-300 ${(isPlayerReady && !isAudioMode) ? 'opacity-0' : 'opacity-100'}`}
+                style={thumbnailStyle}
               />
               <div
                 aria-hidden
-                className={`absolute inset-0 bg-gradient-to-br from-slate-900/30 via-slate-900/55 to-slate-950/85 transition-opacity duration-300 ${(isPlayerReady && !hasVideoError) ? 'opacity-0' : 'opacity-100'}`}
+                className={`absolute inset-0 bg-gradient-to-br from-slate-900/30 via-slate-900/55 to-slate-950/85 transition-opacity duration-300 ${(isPlayerReady && !isAudioMode) ? 'opacity-0' : 'opacity-100'}`}
               />
-              {hasVideoError ? (
+              {isAudioMode ? (
                 <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 backdrop-blur-[1px]">
                   <FaMusic className={`w-4 h-4 text-sky-400 ${isPlaying ? 'animate-pulse' : ''}`} />
-                  {audioUrl && (
-                    <audio
-                      ref={audioElRef}
-                      src={audioUrl}
-                      preload="auto"
-                      onPlay={handleAudioPlay}
-                      onPause={handleAudioPause}
-                      onEnded={handleAudioEnded}
-                      onTimeUpdate={handleAudioTimeUpdate}
-                      onLoadedMetadata={handleAudioLoadedMetadata}
-                      className="hidden"
-                    />
-                  )}
                 </div>
               ) : (
                 <DynamicReactPlayer
@@ -504,11 +506,14 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
           </div>
         </div>
       </div>
+      </>
     );
   }
 
   // Full video player view
   return (
+    <>
+    {audioElement}
     <div className="relative">
       {/* Mobile collapse button */}
       {isMobile && (
@@ -540,13 +545,13 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
           }
         `}</style>
 
-        {hasVideoError ? (
+        {isAudioMode ? (
           <div className="relative w-full h-full flex flex-col justify-end p-4 bg-gradient-to-br from-slate-955 via-slate-900 to-indigo-950 text-white overflow-hidden select-none">
             {/* Background unblurred thumbnail */}
             <div
               aria-hidden
               className="absolute inset-0 bg-cover bg-center opacity-85 transition-opacity duration-500 pointer-events-none"
-              style={{ backgroundImage: `url("${thumbnailUrl}")` }}
+              style={thumbnailStyle}
             />
             {/* Dark gradient overlay for control contrast */}
             <div
@@ -554,25 +559,13 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
               className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-black/10 pointer-events-none"
             />
             
-            {/* Hidden Audio Element / Loading Indicator */}
-            {audioUrl ? (
-              <audio
-                ref={audioElRef}
-                src={audioUrl}
-                preload="auto"
-                onPlay={handleAudioPlay}
-                onPause={handleAudioPause}
-                onEnded={handleAudioEnded}
-                onTimeUpdate={handleAudioTimeUpdate}
-                onLoadedMetadata={handleAudioLoadedMetadata}
-                className="hidden"
-              />
-            ) : (
+            {/* Loading indicator until the audio URL is known (the <audio> element lives at the top) */}
+            {audioUrl ? null : (
               <div className="relative z-10 flex flex-col items-center justify-center flex-1 my-1">
                 <div className="flex flex-col items-center gap-3">
                   <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
                   <span className="text-[10px] sm:text-xs text-white/40 font-medium">
-                    Loading audio fallback...
+                    {audioOnly ? 'Loading audio...' : 'Loading audio fallback...'}
                   </span>
                 </div>
               </div>
@@ -641,7 +634,7 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
             <div
               aria-hidden
               className={`absolute inset-0 bg-cover bg-center transition-opacity duration-300 ${isPlayerReady ? 'opacity-0' : 'opacity-100'}`}
-              style={{ backgroundImage: `url("${thumbnailUrl}")` }}
+              style={thumbnailStyle}
             />
             <div
               aria-hidden
@@ -686,6 +679,7 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
         )}
       </div>
     </div>
+    </>
   );
 }, (prevProps, nextProps) => {
   // Custom comparison function for React.memo optimization
@@ -697,6 +691,7 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
          prevProps.isPlaying === nextProps.isPlaying &&
          prevProps.playbackRate === nextProps.playbackRate &&
          prevProps.muted === nextProps.muted &&
+         prevProps.audioOnly === nextProps.audioOnly &&
          Math.abs(prevTime - nextTime) < 0.1 &&
          prevProps.duration === nextProps.duration;
 });

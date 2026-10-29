@@ -10,6 +10,7 @@ import { apiKeyStorage } from "@/services/cache/apiKeyStorageService";
 import type { LyricWordTiming } from "@/types/musicAiTypes";
 import path from 'path';
 import { tmpdir } from 'os';
+import { isLocalAudioUrl, toRelativeLocalAudioUrl } from '@/utils/localAudioUrl';
 
 // Define types for the Music.ai SDK responses
 interface ChordData {
@@ -98,6 +99,21 @@ const clamp = (value: number, min: number, max: number): number => Math.min(Math
 const isPathWithinRoot = (candidatePath: string, rootPath: string): boolean => {
   const relativePath = path.relative(rootPath, candidatePath);
   return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath));
+};
+
+/** Map /api/serve-local-audio and /api/audio/ URLs to the stored file, else fall back to path rules. */
+const resolveAudioInputPath = async (audioUrl: string): Promise<string> => {
+  if (isLocalAudioUrl(audioUrl)) {
+    const parsed = new URL(toRelativeLocalAudioUrl(audioUrl), 'http://local.invalid');
+    const storage = await import('@/services/storage/localAudioStorageService');
+    const filename = parsed.searchParams.get('filename');
+    const localAudio = parsed.pathname === '/api/serve-local-audio'
+      ? (filename ? await storage.findLocalAudioFileByFilename(filename) : null)
+      : await storage.findExistingLocalAudioFile(decodeURIComponent(parsed.pathname.replace(/^\/api\/audio\//, '')));
+    if (!localAudio) throw new Error('Local audio file does not exist');
+    return localAudio.filePath;
+  }
+  return resolveLocalAudioFilePath(audioUrl);
 };
 
 const resolveLocalAudioFilePath = (audioUrl: string): string => {
@@ -331,16 +347,16 @@ class MusicAiService {
       // Handle local file paths vs URLs
       let inputUrl = audioUrl;
 
-      // Check if the URL is a Firebase Storage URL or other HTTP URL
-      if (audioUrl.startsWith('https://') || audioUrl.startsWith('http://')) {
-        console.log(`✅ Using external URL directly: ${audioUrl}`);
+      // Check if the URL is a local audio cache URL or other HTTP URL
+      if (!isLocalAudioUrl(audioUrl) && (audioUrl.startsWith('https://') || audioUrl.startsWith('http://'))) {
+        console.log(`âœ… Using external URL directly: ${audioUrl}`);
         // URL is already ready for Music.ai API - no upload needed
-      } else if (audioUrl.startsWith('/') || audioUrl.startsWith('file://')) {
+      } else if (audioUrl.startsWith('/') || audioUrl.startsWith('file://') || isLocalAudioUrl(audioUrl)) {
         console.log('Local file path detected. Music.ai API requires file upload.');
 
         try {
           // Get the full path to the file
-          const filePath = resolveLocalAudioFilePath(audioUrl);
+          const filePath = await resolveAudioInputPath(audioUrl);
 
           console.log(`Using file path: ${filePath}`);
 
@@ -348,9 +364,9 @@ class MusicAiService {
           try {
             const fs = await import('fs/promises');
             await fs.access(filePath);
-            console.log(`✅ File exists: ${filePath}`);
+            console.log(`âœ… File exists: ${filePath}`);
           } catch {
-            console.error(`❌ File not found: ${filePath}`);
+            console.error(`âŒ File not found: ${filePath}`);
             throw new Error(`Audio file not found at path: ${filePath}. Please ensure the audio file exists.`);
           }
 
@@ -589,12 +605,12 @@ class MusicAiService {
       let inputUrl = audioUrl;
 
       // Check if the URL is a local path (starts with / or file://)
-      if (audioUrl.startsWith('/') || audioUrl.startsWith('file://')) {
+      if (audioUrl.startsWith('/') || audioUrl.startsWith('file://') || isLocalAudioUrl(audioUrl)) {
         console.log('Local file path detected. Music.ai API requires file upload.');
 
         try {
           // Get the full path to the file
-          const filePath = resolveLocalAudioFilePath(audioUrl);
+          const filePath = await resolveAudioInputPath(audioUrl);
 
           console.log(`Using file path: ${filePath}`);
 
@@ -602,9 +618,9 @@ class MusicAiService {
           try {
             const fs = await import('fs/promises');
             await fs.access(filePath);
-            console.log(`✅ File exists: ${filePath}`);
+            console.log(`âœ… File exists: ${filePath}`);
           } catch {
-            console.error(`❌ File not found: ${filePath}`);
+            console.error(`âŒ File not found: ${filePath}`);
             throw new Error(`Audio file not found at path: ${filePath}. Please ensure the audio file exists.`);
           }
 
@@ -829,7 +845,7 @@ class MusicAiService {
         };
       }
 
-      // Check if the result itself is a URL string (from Firestore cache)
+      // Check if the result itself is a URL string (from SQLite cache)
       let urlToFetch = '';
       if (typeof result === 'string' && result.startsWith('http')) {
         console.log("Result is a direct URL string:", result);

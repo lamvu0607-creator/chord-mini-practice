@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { SheetSageResult } from '@/types/sheetSage';
-import { getDocumentWithAdminAccess } from '@/services/firebase/firestoreAdminService';
+import { getDocument } from '@/server/persistence/documentService';
+import { isUploadSourceId } from '@/utils/uploadSourceId';
 
 interface MelodyCacheDocument extends SheetSageResult {
   videoId: string;
@@ -9,7 +10,7 @@ interface MelodyCacheDocument extends SheetSageResult {
 }
 
 function isValidVideoId(videoId: string): boolean {
-  return /^[a-zA-Z0-9_-]{11}$/.test(videoId);
+  return /^[a-zA-Z0-9_-]{11}$/.test(videoId) || isUploadSourceId(videoId);
 }
 
 function normalizeMelodyDocument(data: MelodyCacheDocument): MelodyCacheDocument {
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const melodyDoc = await getDocumentWithAdminAccess<MelodyCacheDocument>('melody', videoId);
+    const melodyDoc = await getDocument<MelodyCacheDocument>('melody', videoId);
     if (!melodyDoc) {
       console.log(`🎻 [API] No cached melody found for ${videoId}`);
       return NextResponse.json({ success: true, cached: false, data: null });

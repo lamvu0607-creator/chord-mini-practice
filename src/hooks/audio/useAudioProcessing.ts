@@ -76,9 +76,9 @@ export const useAudioProcessing = (videoId: string, options: UseAudioProcessingO
         videoTitle,
         options
       );
-      const fromFirestoreCache = false; // This would be determined by the service
+      const fromPersistentCache = false; // This would be determined by the service
 
-      setState(prev => service.updateStateForAnalysisSuccess(prev, fromFirestoreCache));
+      setState(prev => service.updateStateForAnalysisSuccess(prev, fromPersistentCache));
       setAnalysisResults(results);
       return results;
     } catch (error: unknown) {

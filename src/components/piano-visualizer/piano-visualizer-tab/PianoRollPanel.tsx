@@ -6,7 +6,6 @@ import { PianoKeyboard } from '@/components/piano-visualizer/PianoKeyboard';
 import type { DynamicsAnalyzer } from '@/services/audio/dynamicsAnalyzer';
 import type { GuitarVoicingSelection } from '@/utils/guitarVoicing';
 import type { ChordEvent } from '@/utils/chordToMidi';
-import type { SegmentationResult } from '@/types/chatbotTypes';
 import { PIANO_END_MIDI, PIANO_START_MIDI } from './constants';
 
 interface PianoRollPanelProps {
@@ -20,7 +19,6 @@ interface PianoRollPanelProps {
   effectiveActiveInstruments: ActiveInstrument[];
   detectedBpm?: number | null;
   timeSignature: number;
-  segmentationData?: SegmentationResult | null;
   guitarVoicing: Partial<GuitarVoicingSelection>;
   targetKey?: string | null;
   dynamicsAnalyzer: DynamicsAnalyzer;
@@ -44,7 +42,6 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
   effectiveActiveInstruments,
   detectedBpm,
   timeSignature,
-  segmentationData = null,
   guitarVoicing,
   targetKey,
   dynamicsAnalyzer,
@@ -94,7 +91,6 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
               activeInstruments={effectiveActiveInstruments}
               bpm={detectedBpm || undefined}
               timeSignature={timeSignature}
-              segmentationData={segmentationData}
               guitarVoicing={guitarVoicing}
               targetKey={targetKey ?? undefined}
               signalDynamicsSource={dynamicsAnalyzer}

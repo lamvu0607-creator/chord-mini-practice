@@ -1,4 +1,4 @@
-# Settings and Configuration Components
+﻿# Settings and Configuration Components
 
 <cite>
 **Referenced Files in This Document**
@@ -10,8 +10,8 @@
 - [apiKeyTypes.ts](file://src/types/apiKeyTypes.ts)
 - [apiKeyUtils.ts](file://src/utils/apiKeyUtils.ts)
 - [settings/page.tsx](file://src/app/settings/page.tsx)
-- [firebase.ts](file://src/config/firebase.ts)
-- [firebaseService.ts](file://src/services/firebase/firebaseService.ts)
+- [local-persistence.ts](file://src/config/local-persistence.ts)
+- [local-persistenceService.ts](file://src/services/local-persistence/local-persistenceService.ts)
 </cite>
 
 ## Table of Contents
@@ -26,7 +26,7 @@
 9. [Conclusion](#conclusion)
 
 ## Introduction
-This document provides comprehensive documentation for the settings and configuration components focused on API key management and secure credential storage. It covers the ApiKeyModal and ApiKeySettings components, their integration with Firebase authentication, configuration persistence, validation mechanisms, and error handling patterns. The documentation explains the component architecture for managing sensitive configuration data, including user interface patterns, validation workflows, and user experience considerations.
+This document provides comprehensive documentation for the settings and configuration components focused on API key management and secure credential storage. It covers the ApiKeyModal and ApiKeySettings components, their integration with Local persistence authentication, configuration persistence, validation mechanisms, and error handling patterns. The documentation explains the component architecture for managing sensitive configuration data, including user interface patterns, validation workflows, and user experience considerations.
 
 ## Project Structure
 The settings and configuration system is organized around three primary layers:
@@ -399,4 +399,4 @@ Common issues and resolutions:
 ## Conclusion
 The settings and configuration components provide a comprehensive, secure, and user-friendly solution for managing API keys and sensitive configuration data. The architecture balances security with usability through client-side encryption, clear validation feedback, and intuitive UI patterns. The modular design enables easy extension to additional services while maintaining consistent user experience and robust error handling.
 
-The system successfully integrates with Firebase for authentication and storage while keeping sensitive data encrypted and private. The use of hooks, services, and typed interfaces ensures maintainability and reliability across different deployment environments.
+The system successfully integrates with Local persistence for authentication and storage while keeping sensitive data encrypted and private. The use of hooks, services, and typed interfaces ensures maintainability and reliability across different deployment environments.

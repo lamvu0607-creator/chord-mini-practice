@@ -6,6 +6,8 @@ import { Card, CardBody, Button, Chip, Select, SelectItem, Skeleton } from '@her
 import { useIsVisible } from '@/hooks/scroll/useIntersectionObserver';
 import { useRecentVideosQuery } from '@/hooks/query/useRecentVideosQuery';
 import { buildAnalyzePageUrl } from '@/utils/analyzeRouteUtils';
+import { useAuthStore } from '@/stores/authStore';
+import RecentVideoDeleteButton from './RecentVideoDeleteButton';
 import {
   ALL_KEYS_VALUE,
   RECENT_VIDEOS_PAGE_SIZE,
@@ -62,6 +64,7 @@ export default function RecentVideos() {
     selectedKey,
     enabled: isVisible,
   });
+  const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
 
   const videos = useMemo(
     () => data?.pages.flatMap((page) => page.videos) ?? [],
@@ -201,8 +204,8 @@ export default function RecentVideos() {
       <div className={`${isExpanded ? 'max-h-[672px]' : 'max-h-96'} overflow-y-auto scrollbar-thin transition-all duration-300 ease-in-out`}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {videos.map((video) => (
+            <div key={video.videoId} className="group/recent relative">
             <Card
-              key={video.videoId}
               as={Link}
               href={buildAnalyzePageUrl(video.videoId, {
                 title: video.title && video.title !== `Video ${video.videoId}` ? video.title : null,
@@ -252,6 +255,8 @@ export default function RecentVideos() {
                 </div>
               </CardBody>
             </Card>
+            {isAdmin && <RecentVideoDeleteButton videoId={video.videoId} title={video.title} />}
+            </div>
           ))}
         </div>
 

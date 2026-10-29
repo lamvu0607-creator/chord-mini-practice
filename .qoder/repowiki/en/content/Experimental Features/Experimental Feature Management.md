@@ -1,4 +1,4 @@
-# Experimental Feature Management
+﻿# Experimental Feature Management
 
 <cite>
 **Referenced Files in This Document**
@@ -219,7 +219,7 @@ ProcessingBanners --> DevIndicatorHider : "complements UX"
 - [DevIndicatorHider.tsx:9-38](file://src/components/layout/DevIndicatorHider.tsx#L9-L38)
 
 ### Performance Impact Assessment and Monitoring
-- Metrics: Firebase query reduction, cache hit rate, error reduction percentage, Core Web Vitals (LCP, FID, CLS, TTFB, FCP).
+- Metrics: Local persistence query reduction, cache hit rate, error reduction percentage, Core Web Vitals (LCP, FID, CLS, TTFB, FCP).
 - Alerts: Threshold-based notifications for degradation.
 - CWV monitoring: Development-only Core Web Vitals observer.
 
@@ -280,7 +280,7 @@ Fallback --> Done
 ### Telemetry and Analytics Collection
 - Usage metrics: Track feature adoption via configuration flags and UI interactions.
 - Error rates: Monitor suppressed warnings and legacy error reductions.
-- Performance benchmarks: Firebase query reduction, cache hit rate, Core Web Vitals.
+- Performance benchmarks: Local persistence query reduction, cache hit rate, Core Web Vitals.
 - Export: Summarize metrics and alerts for diagnostics.
 
 **Section sources**
@@ -374,7 +374,7 @@ ConfigAPI --> PreDeploy["pre-deployment-checklist.sh"]
 - [pre-deployment-checklist.sh:212-237](file://scripts/pre-deployment-checklist.sh#L212-L237)
 
 ## Conclusion
-ChordMiniApp’s experimental feature management centers on a secure, runtime configuration system, robust performance monitoring, resilient UI feedback, and deployment verification. By leveraging feature flags, careful error suppression, and structured testing, teams can safely iterate on experimental capabilities while maintaining user trust and system reliability.
+ChordMiniAppâ€™s experimental feature management centers on a secure, runtime configuration system, robust performance monitoring, resilient UI feedback, and deployment verification. By leveraging feature flags, careful error suppression, and structured testing, teams can safely iterate on experimental capabilities while maintaining user trust and system reliability.
 
 [No sources needed since this section summarizes without analyzing specific files]
 

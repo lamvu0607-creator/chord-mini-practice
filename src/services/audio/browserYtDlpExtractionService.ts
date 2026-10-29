@@ -1,5 +1,5 @@
-import { getAppCheckTokenForApi, getCurrentAuthUser, ensureAuthReady, getStorageInstance } from '@/config/firebase';
 import { loadPublicConfig } from '@/config/publicConfig';
+import { buildLocalAudioServePath } from '@/utils/localAudioUrl';
 import {
   BROWSER_YTDLP_MAX_FINAL_BYTES,
   BROWSER_YTDLP_OUTPUT_FORMAT,
@@ -584,35 +584,21 @@ async function sha256Hex(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
 }
 
 async function uploadCandidate(videoId: string, mp3Bytes: Uint8Array<ArrayBuffer>, hash: string): Promise<{ candidatePath: string; idToken: string }> {
-  const { ref, uploadBytesResumable } = await import('firebase/storage');
+  const blob = new Blob([mp3Bytes], { type: 'audio/mpeg' });
+  const formData = new FormData();
+  formData.append('videoId', videoId);
+  formData.append('audio', blob, `${videoId}-${hash.slice(0, 12)}.mp3`);
 
-  const authReady = await ensureAuthReady(15000);
-  const user = getCurrentAuthUser();
-  if (!authReady || !user) {
-    throw new Error('Firebase authentication is required before uploading extracted audio.');
+  const response = await fetch('/api/serve-local-audio', {
+    method: 'POST',
+    body: formData,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.storagePath) {
+    throw new Error(data.error || `Local audio upload failed (${response.status})`);
   }
 
-  const idToken = await user.getIdToken();
-  const storage = await getStorageInstance();
-  const candidatePath = `audio-candidates/${user.uid}/${videoId}/${hash}.mp3`;
-  const storageRef = ref(storage, candidatePath);
-
-  const blob = new Blob([mp3Bytes], { type: 'audio/mpeg' });
-  const uploadTask = uploadBytesResumable(storageRef, blob, {
-    contentType: 'audio/mpeg',
-    customMetadata: {
-      source: 'browser-ytdlp',
-      videoId,
-      sha256: hash,
-      bitrate: '192k',
-    },
-  });
-
-  await new Promise<void>((resolve, reject) => {
-    uploadTask.on('state_changed', undefined, reject, () => resolve());
-  });
-
-  return { candidatePath, idToken };
+  return { candidatePath: data.storagePath, idToken: '' };
 }
 
 async function finalizeCandidate(params: {
@@ -622,13 +608,40 @@ async function finalizeCandidate(params: {
   fileSize: number;
   idToken: string;
 }): Promise<BrowserYtDlpExtractionResult> {
-  const appCheckToken = await getAppCheckTokenForApi();
+  if (params.candidatePath.startsWith('audio/')) {
+    const metadataResponse = await fetch('/api/serve-local-audio', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        videoId: params.metadata.videoId,
+        storagePath: params.candidatePath,
+        title: params.metadata.title,
+        duration: params.metadata.duration,
+        fileSize: params.fileSize,
+      }),
+    });
+    if (!metadataResponse.ok) {
+      const data = await metadataResponse.json().catch(() => ({}));
+      throw new Error(data.error || `Local audio finalization failed (${metadataResponse.status})`);
+    }
+
+    const filename = params.candidatePath.replace(/^audio\//, '');
+    return {
+      success: true,
+      audioUrl: buildLocalAudioServePath(filename),
+      title: params.metadata.title || `YouTube Video ${params.metadata.videoId}`,
+      duration: typeof params.metadata.duration === 'number' ? params.metadata.duration : 0,
+      fileSize: params.fileSize,
+      fromCache: false,
+      isStreamUrl: false,
+      method: 'browser-ytdlp',
+    };
+  }
+
   const response = await fetch('/api/audio/finalize-browser-extraction', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${params.idToken}`,
-      ...(appCheckToken ? { 'X-Firebase-AppCheck': appCheckToken } : {}),
     },
     body: JSON.stringify({
       videoId: params.metadata.videoId,
@@ -693,7 +706,7 @@ async function extractAudioWithDltkkTemporaryFallback(
     throw new Error('Temporary audio fallback returned an empty audio file.');
   }
   if (mp3Bytes.byteLength > BROWSER_YTDLP_MAX_FINAL_BYTES) {
-    throw new Error('Temporary audio fallback returned audio larger than the 50MB Firebase cache limit.');
+    throw new Error('Temporary audio fallback returned audio larger than the 50MB local cache limit.');
   }
 
   options.onProgress?.('uploading', 'Uploading fallback audio for validation...', 75);
@@ -739,23 +752,10 @@ export async function extractAudioWithNativeYtDlpFallback(
 
   options.onProgress?.('extracting', 'Retrying extraction with native yt-dlp fallback...', 20);
 
-  const authReady = await ensureAuthReady(15000);
-  const user = getCurrentAuthUser();
-  if (!authReady || !user) {
-    throw new Error('Firebase authentication is required before retrying native extraction.');
-  }
-
-  const [idToken, appCheckToken] = await Promise.all([
-    user.getIdToken(),
-    getAppCheckTokenForApi(),
-  ]);
-
   const response = await fetch('/api/audio/native-ytdlp-fallback', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${idToken}`,
-      ...(appCheckToken ? { 'X-Firebase-AppCheck': appCheckToken } : {}),
     },
     body: JSON.stringify({
       videoId: metadata.videoId,
@@ -828,7 +828,7 @@ export async function extractAudioWithBrowserYtDlp(
 
       const mp3Bytes = await convertToMediumMp3(sourceBytes, extracted.ext || 'm4a', options);
       if (mp3Bytes.byteLength > BROWSER_YTDLP_MAX_FINAL_BYTES) {
-        throw new Error('Extracted MP3 is larger than the 50MB Firebase cache limit.');
+        throw new Error('Extracted MP3 is larger than the 50MB local cache limit.');
       }
 
       options.onProgress?.('uploading', 'Uploading extracted audio for validation...');

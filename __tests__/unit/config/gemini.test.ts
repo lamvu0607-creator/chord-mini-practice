@@ -1,67 +1,55 @@
-const mockGoogleGenAIGemini = jest.fn();
-
-jest.mock('@google/genai', () => ({
-  GoogleGenAI: mockGoogleGenAIGemini,
-}));
-
 describe('config/gemini', () => {
   const originalEnv = process.env;
+  const originalFetch = global.fetch;
 
   beforeEach(() => {
     jest.resetModules();
     jest.clearAllMocks();
     process.env = { ...originalEnv };
-    mockGoogleGenAIGemini.mockImplementation((config) => ({ config, instanceId: Symbol('client') }));
+    global.fetch = jest.fn();
   });
 
   afterAll(() => {
     process.env = originalEnv;
+    global.fetch = originalFetch;
   });
 
   it('returns null when no API key is available', async () => {
     delete process.env.GEMINI_API_KEY;
-
     const { createGeminiClient } = await import('@/config/gemini');
-
     expect(createGeminiClient()).toBeNull();
-    expect(mockGoogleGenAIGemini).not.toHaveBeenCalled();
   });
 
-  it('caches the server client by timeout when using the env API key', async () => {
+  it('caches env-key clients by timeout but not explicit-key clients', async () => {
     process.env.GEMINI_API_KEY = 'env-key';
-
-    const { createGeminiClient, GEMINI_DEFAULT_TIMEOUT_MS } = await import('@/config/gemini');
-
-    const first = createGeminiClient();
-    const second = createGeminiClient();
-    const third = createGeminiClient({ timeoutMs: 5000 });
-
-    expect(first).toBe(second);
-    expect(third).not.toBe(first);
-    expect(mockGoogleGenAIGemini).toHaveBeenCalledTimes(2);
-    expect(mockGoogleGenAIGemini).toHaveBeenNthCalledWith(1, {
-      apiKey: 'env-key',
-      httpOptions: { timeout: GEMINI_DEFAULT_TIMEOUT_MS },
-    });
-    expect(mockGoogleGenAIGemini).toHaveBeenNthCalledWith(2, {
-      apiKey: 'env-key',
-      httpOptions: { timeout: 5000 },
-    });
-  });
-
-  it('creates uncached clients for explicit API keys', async () => {
-    process.env.GEMINI_API_KEY = 'env-key';
-
     const { createGeminiClient } = await import('@/config/gemini');
+    expect(createGeminiClient()).toBe(createGeminiClient());
+    expect(createGeminiClient({ timeoutMs: 5000 })).not.toBe(createGeminiClient());
+    expect(createGeminiClient({ apiKey: 'user-key' })).not.toBe(createGeminiClient({ apiKey: 'user-key' }));
+  });
 
-    const first = createGeminiClient({ apiKey: 'user-key', timeoutMs: 9000 });
-    const second = createGeminiClient({ apiKey: 'user-key', timeoutMs: 9000 });
-
-    expect(first).not.toBe(second);
-    expect(mockGoogleGenAIGemini).toHaveBeenCalledTimes(2);
-    expect(mockGoogleGenAIGemini).toHaveBeenNthCalledWith(1, {
-      apiKey: 'user-key',
-      httpOptions: { timeout: 9000 },
+  it('maps generateContent to REST without putting the API key in the URL', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ candidates: [{ content: { parts: [{ text: 'Db ' }, { text: 'major' }] } }] }),
     });
+    const { createGeminiClient } = await import('@/config/gemini');
+    const client = createGeminiClient({ apiKey: 'secret-key', timeoutMs: 9000 })!;
+    await expect(client.models.generateContent({
+      model: 'gemini-test', contents: 'Analyze', config: { thinkingConfig: { thinkingLevel: 'HIGH' } },
+    })).resolves.toEqual({ text: 'Db major' });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-test:generateContent',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ 'x-goog-api-key': 'secret-key' }),
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: 'Analyze' }] }],
+          generationConfig: { thinkingConfig: { thinkingLevel: 'HIGH' } },
+        }),
+      }),
+    );
+    expect((global.fetch as jest.Mock).mock.calls[0][0]).not.toContain('secret-key');
   });
 });

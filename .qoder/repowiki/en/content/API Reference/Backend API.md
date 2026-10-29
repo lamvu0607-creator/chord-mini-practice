@@ -28,7 +28,7 @@
 9. [Conclusion](#conclusion)
 
 ## Introduction
-This document describes the backend API for ChordMiniApp’s Flask microservices. It covers all HTTP endpoints under /api, including beat detection, chord recognition, lyrics services, audio processing, YouTube integration, and health checks. For each endpoint, you will find HTTP methods, URL patterns, request parameters, response schemas, error codes, authentication requirements, validation rules, and rate limiting policies. Practical examples are included via curl commands and JSON payloads. The document also explains the service architecture, error handling strategies, performance characteristics, and API versioning/backwards compatibility approaches.
+This document describes the backend API for ChordMiniAppâ€™s Flask microservices. It covers all HTTP endpoints under /api, including beat detection, chord recognition, lyrics services, audio processing, YouTube integration, and health checks. For each endpoint, you will find HTTP methods, URL patterns, request parameters, response schemas, error codes, authentication requirements, validation rules, and rate limiting policies. Practical examples are included via curl commands and JSON payloads. The document also explains the service architecture, error handling strategies, performance characteristics, and API versioning/backwards compatibility approaches.
 
 ## Project Structure
 The Flask application uses an application factory pattern and registers blueprints for modular routing. Configuration is environment-driven and includes CORS, rate limits, timeouts, and feature toggles. Error handling is centralized to return consistent JSON responses.
@@ -75,7 +75,7 @@ A --> J
 - [error_handlers.py:13-161](file://python_backend/error_handlers.py#L13-L161)
 
 ## Architecture Overview
-The backend is a Flask application with rate limiting, CORS, and modular blueprints. Services are injected via the app’s extensions registry. Validation utilities ensure request correctness before invoking services.
+The backend is a Flask application with rate limiting, CORS, and modular blueprints. Services are injected via the appâ€™s extensions registry. Validation utilities ensure request correctness before invoking services.
 
 ```mermaid
 sequenceDiagram
@@ -165,14 +165,14 @@ end
       -F detector=madmom
     ```
 
-- Endpoint: POST /api/detect-beats-firebase
+- Endpoint: POST /api/detect-beats-local-persistence
   - Method: POST
   - Content-Type: application/x-www-form-urlencoded
   - Parameters:
-    - firebase_url: Firebase Storage URL of audio file
+    - local-persistence_url: local audio storage URL of audio file
     - detector: One of beat-transformer, madmom, librosa, auto
   - Validation:
-    - firebase_url required and must contain a valid Firebase Storage domain.
+    - local-persistence_url required and must contain a valid local audio storage domain.
     - detector must be one of the allowed values.
   - Responses:
     - Success: JSON result from beat detection service.
@@ -180,8 +180,8 @@ end
   - Rate limit: moderate-heavy.
   - Example:
     ```bash
-    curl -X POST https://backend.example.com/api/detect-beats-firebase \
-      -F firebase_url="https://firebasestorage.googleapis.com/..." \
+    curl -X POST https://backend.example.com/api/detect-beats-local-persistence \
+      -F local-persistence_url="https://local-persistencestorage.googleapis.com/..." \
       -F detector=auto
     ```
 
@@ -288,15 +288,15 @@ end
       -d '{"audioUrl":"/audio/song.mp3","detector":"chord-cnn-lstm"}'
     ```
 
-- Endpoint: POST /api/recognize-chords-firebase
+- Endpoint: POST /api/recognize-chords-local-persistence
   - Method: POST
   - Content-Type: application/x-www-form-urlencoded
   - Parameters:
-    - firebase_url: Firebase Storage URL of audio file
+    - local-persistence_url: local audio storage URL of audio file
     - detector: One of chord-cnn-lstm, btc-sl, btc-pl, auto
     - chord_dict: Optional chord dictionary name
   - Validation:
-    - firebase_url required and must contain a valid Firebase Storage domain.
+    - local-persistence_url required and must contain a valid local audio storage domain.
     - detector and chord_dict validated similarly to POST /api/recognize-chords.
   - Responses:
     - Success: JSON result from chord recognition service.
@@ -304,8 +304,8 @@ end
   - Rate limit: moderate-heavy.
   - Example:
     ```bash
-    curl -X POST https://backend.example.com/api/recognize-chords-firebase \
-      -F firebase_url="https://firebasestorage.googleapis.com/..." \
+    curl -X POST https://backend.example.com/api/recognize-chords-local-persistence \
+      -F local-persistence_url="https://local-persistencestorage.googleapis.com/..." \
       -F detector=btc-pl
     ```
 
@@ -446,7 +446,7 @@ For the implementation checklist to add a new model and expose it through these 
 - [src/app/api/youtube/info/route.ts](file://src/app/api/youtube/info/route.ts)
 
 ## Dependency Analysis
-The Flask app depends on configuration, extensions (rate limiting, CORS), and blueprints. Each blueprint encapsulates routes and validators. Services are injected via the app’s extensions registry and invoked by routes after validation.
+The Flask app depends on configuration, extensions (rate limiting, CORS), and blueprints. Each blueprint encapsulates routes and validators. Services are injected via the appâ€™s extensions registry and invoked by routes after validation.
 
 ```mermaid
 graph TB

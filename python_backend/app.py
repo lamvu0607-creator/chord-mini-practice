@@ -172,10 +172,6 @@ USE_BTC_PL = BTC_AVAILABILITY['pl_available']
 
 # Audio extraction routes moved to audio blueprint
 
-# Detect beats Firebase route moved to beats blueprint
-
-# Firebase chord recognition route moved to chords blueprint
-
 
 if __name__ == '__main__':
     # Get port from environment variable or default to 5001 for localhost to avoid macOS AirTunes/AirPlay conflicts

@@ -2,7 +2,7 @@
 # Multi-stage build for optimized Flask ML service deployment
 
 # Stage 1: Builder
-FROM python:3.10-slim as builder
+FROM python:3.10-slim AS builder
 
 # Set working directory
 WORKDIR /app
@@ -37,7 +37,7 @@ RUN grep -v '^spleeter==' requirements.txt | grep -v '^typer==' > requirements_n
     && pip install --no-cache-dir --no-deps spleeter==2.3.2
 
 # Stage 2: Runtime
-FROM python:3.10-slim as runtime
+FROM python:3.10-slim AS runtime
 
 # Install only runtime system dependencies
 RUN apt-get update && apt-get install -y \

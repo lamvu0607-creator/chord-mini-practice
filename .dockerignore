@@ -21,6 +21,8 @@ build/
 
 # Python backend (deployed separately)
 python_backend/
+sheetsage/
+stems/
 *.py
 *.pyc
 __pycache__/
@@ -35,6 +37,9 @@ myenv/
 # IDE and editor files
 .vscode/
 .idea/
+.agents/
+.codex/
+.github/
 *.swp
 *.swo
 .DS_Store
@@ -57,6 +62,7 @@ jest.setup.js
 .cache/
 cache/
 temp/
+storage/
 tmp/
 *.tmp
 *.temp
@@ -99,11 +105,9 @@ docker-compose*.yml
 bundle-optimization.json
 advanced-optimization-report.json
 
-# Firebase and security files
-firebase.json
-firestore.rules
-firestore.indexes.json
-storage.rules
+# Local secrets and repository-only metadata
+youtube_cookies.txt
+.qoder/
 
 # Environment and config files that shouldn't be in container
 .env

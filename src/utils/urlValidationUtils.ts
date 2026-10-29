@@ -70,7 +70,7 @@ export function parseAndValidateAudioSourceUrl(
   options: SafeAudioSourceValidationOptions = {}
 ): URL {
   const {
-    allowDevelopmentLocalhost = false,
+    allowDevelopmentLocalhost = process.env.NODE_ENV === 'development',
     allowedDomains = getDefaultAllowedAudioDomains(),
   } = options;
 

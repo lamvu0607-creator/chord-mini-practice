@@ -54,12 +54,33 @@ export function filterChordModels(models: ChordDetectorType[]): ChordDetectorTyp
 }
 
 /**
- * Get available chord detector types based on environment
- * @returns Array of available chord detector types
+ * Check if a chord model is deployed on the backend.
+ * Models listed in NEXT_PUBLIC_UNDEPLOYED_CHORD_MODELS (comma-separated, build time)
+ * stay visible in the selector but cannot be selected.
  */
-export function getAvailableChordModels(): ChordDetectorType[] {
+export function isChordModelDeployed(model: ChordDetectorType): boolean {
+  const undeployed = (process.env.NEXT_PUBLIC_UNDEPLOYED_CHORD_MODELS || '')
+    .split(',')
+    .map(name => name.trim())
+    .filter(Boolean);
+  return !undeployed.includes(model);
+}
+
+/**
+ * Get chord detector types to list in the selector, including undeployed ones
+ * @returns Array of chord detector types shown in this environment
+ */
+export function getListedChordModels(): ChordDetectorType[] {
   const allModels: ChordDetectorType[] = ['chord-cnn-lstm', 'btc-sl', 'btc-pl'];
   return filterChordModels(allModels);
+}
+
+/**
+ * Get available chord detector types based on environment
+ * @returns Array of chord detector types that can actually be used
+ */
+export function getAvailableChordModels(): ChordDetectorType[] {
+  return getListedChordModels().filter(isChordModelDeployed);
 }
 
 export function filterBeatModels(models: BeatDetectorType[]): BeatDetectorType[] {
@@ -100,8 +121,21 @@ export function getSafeChordModel(requestedModel: ChordDetectorType): ChordDetec
     return requestedModel;
   }
 
-  // Fallback to chord-cnn-lstm (always available)
-  return 'chord-cnn-lstm';
+  // Fallback to the first usable model, or chord-cnn-lstm when nothing else is listed
+  return getAvailableChordModels()[0] ?? 'chord-cnn-lstm';
+}
+
+/**
+ * Get the default chord model for users with no saved selection.
+ * Set at build time via NEXT_PUBLIC_DEFAULT_CHORD_MODEL; falls back to chord-cnn-lstm
+ * when the configured model is unknown or unavailable in this environment.
+ */
+export function getDefaultChordModel(): ChordDetectorType {
+  const configured = process.env.NEXT_PUBLIC_DEFAULT_CHORD_MODEL as ChordDetectorType | undefined;
+  if (configured && ['chord-cnn-lstm', 'btc-sl', 'btc-pl'].includes(configured)) {
+    return getSafeChordModel(configured);
+  }
+  return getSafeChordModel('chord-cnn-lstm');
 }
 
 export function getSafeBeatModel(requestedModel: BeatDetectorType): BeatDetectorType {

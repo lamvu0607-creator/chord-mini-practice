@@ -14,10 +14,10 @@
 - [analysisStore.ts](file://src/stores/analysisStore.ts)
 - [playbackStore.ts](file://src/stores/playbackStore.ts)
 - [uiStore.ts](file://src/stores/uiStore.ts)
-- [firebaseService.ts](file://src/services/firebase/firebaseService.ts)
-- [firebase.ts](file://src/config/firebase.ts)
-- [useFirebaseReadiness.ts](file://src/hooks/firebase/useFirebaseReadiness.ts)
-- [FirebaseInitializer.tsx](file://src/components/layout/FirebaseInitializer.tsx)
+- [local-persistenceService.ts](file://src/services/local-persistence/local-persistenceService.ts)
+- [local-persistence.ts](file://src/config/local-persistence.ts)
+- [useLocal persistenceReadiness.ts](file://src/hooks/local-persistence/useLocal persistenceReadiness.ts)
+- [Local persistenceInitializer.tsx](file://src/components/layout/Local persistenceInitializer.tsx)
 - [ProcessingContext.tsx](file://src/contexts/ProcessingContext.tsx)
 </cite>
 
@@ -34,7 +34,7 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document describes the ChordMiniApp frontend application built with Next.js App Router. It explains the routing strategy, component architecture, state management with global stores and React hooks, service layer for API integration and caching, UI component library, styling architecture, Firebase integration for authentication and storage, performance optimizations, SEO configuration, and progressive web app features. It also covers responsive design and accessibility considerations, along with practical usage patterns for components and services.
+This document describes the ChordMiniApp frontend application built with Next.js App Router. It explains the routing strategy, component architecture, state management with global stores and React hooks, service layer for API integration and caching, UI component library, styling architecture, Local persistence integration for authentication and storage, performance optimizations, SEO configuration, and progressive web app features. It also covers responsive design and accessibility considerations, along with practical usage patterns for components and services.
 
 ## Project Structure
 The application follows Next.js App Router conventions with a strict separation of pages, layouts, and shared components. The root layout defines metadata, fonts, critical CSS, and providers for global state and UI. Providers wrap the app with theme, processing, and toast support. The app exposes a homepage, a standalone games page, and nested analysis routes with dedicated metadata and layout containers.
@@ -50,7 +50,7 @@ F --> G["Home Page<br/>src/app/page.tsx"]
 F --> H["Analyze Layout<br/>src/app/analyze/layout.tsx"]
 F --> GM["Games Page<br/>src/app/games/page.tsx"]
 A --> I["Shared Components"]
-I --> J["FirebaseInitializer<br/>src/components/layout/FirebaseInitializer.tsx"]
+I --> J["Local persistenceInitializer<br/>src/components/layout/Local persistenceInitializer.tsx"]
 I --> K["Performance & Layout Optimizers"]
 I --> MG["MiniGamesContainer<br/>src/components/games/MiniGamesContainer.tsx"]
 ```
@@ -60,7 +60,7 @@ I --> MG["MiniGamesContainer<br/>src/components/games/MiniGamesContainer.tsx"]
 - [providers.tsx:12-27](file://src/app/providers.tsx#L12-L27)
 - [page.tsx:1-6](file://src/app/page.tsx#L1-L6)
 - [analyze/layout.tsx:6-16](file://src/app/analyze/layout.tsx#L6-L16)
-- [FirebaseInitializer.tsx:12-61](file://src/components/layout/FirebaseInitializer.tsx#L12-L61)
+- [Local persistenceInitializer.tsx:12-61](file://src/components/layout/Local persistenceInitializer.tsx#L12-L61)
 
 **Section sources**
 - [layout.tsx:143-228](file://src/app/layout.tsx#L143-L228)
@@ -72,7 +72,7 @@ I --> MG["MiniGamesContainer<br/>src/components/games/MiniGamesContainer.tsx"]
 - Root layout and metadata: Defines Open Graph, Twitter, icons, robots directives, and critical CSS injection for performance and hydration safety.
 - Providers: Compose UI framework provider, toast notifications, processing context, and theme context.
 - Stores: Global state via Zustand for analysis, playback, and UI features with selector hooks for optimized re-renders.
-- Firebase integration: Runtime configuration loader, lazy initialization, anonymous auth with retries, and storage APIs for audio and lyrics caching.
+- Local persistence integration: Runtime configuration loader, lazy initialization, anonymous auth with retries, and storage APIs for audio and lyrics caching.
 - Processing context: Centralized processing stages, progress, and elapsed time for long-running tasks.
 
 **Section sources**
@@ -81,16 +81,16 @@ I --> MG["MiniGamesContainer<br/>src/components/games/MiniGamesContainer.tsx"]
 - [analysisStore.ts:101-295](file://src/stores/analysisStore.ts#L101-L295)
 - [playbackStore.ts:101-451](file://src/stores/playbackStore.ts#L101-L451)
 - [uiStore.ts:127-433](file://src/stores/uiStore.ts#L127-L433)
-- [firebase.ts:43-115](file://src/config/firebase.ts#L43-L115)
+- [local-persistence.ts:43-115](file://src/config/local-persistence.ts#L43-L115)
 - [ProcessingContext.tsx:44-184](file://src/contexts/ProcessingContext.tsx#L44-L184)
 
 ## Architecture Overview
 The frontend uses a layered architecture:
 - Routing and Pages: Next.js App Router with metadata and layout composition.
 - State Management: Global stores (Zustand) for analysis, playback, and UI state; React Context for processing lifecycle; TanStack Query for shared server-state reads.
-- Services: API orchestration via services, query-backed read fetchers, and simplified Firebase helpers for caching and storage.
+- Services: API orchestration via services, query-backed read fetchers, and simplified Local persistence helpers for caching and storage.
 - UI Layer: HeroUI React components integrated with Tailwind-based theme.
-- Infrastructure: Firebase for anonymous auth, storage, and Firestore caching; runtime configuration for Docker compatibility.
+- Infrastructure: Local persistence for anonymous auth, storage, and SQLite caching; runtime configuration for Docker compatibility.
 
 ```mermaid
 graph TB
@@ -105,8 +105,8 @@ ZU["Zustand: UI Store"]
 PC["Processing Context"]
 end
 subgraph "Services"
-FS["Firebase Service"]
-FC["Firebase Config"]
+FS["Local persistence Service"]
+FC["Local persistence Config"]
 end
 subgraph "UI"
 TP["Theme Provider"]
@@ -133,8 +133,8 @@ FC --> FS
 - [analysisStore.ts:101-295](file://src/stores/analysisStore.ts#L101-L295)
 - [playbackStore.ts:101-451](file://src/stores/playbackStore.ts#L101-L451)
 - [uiStore.ts:127-433](file://src/stores/uiStore.ts#L127-L433)
-- [firebaseService.ts:34-153](file://src/services/firebase/firebaseService.ts#L34-L153)
-- [firebase.ts:43-115](file://src/config/firebase.ts#L43-L115)
+- [local-persistenceService.ts:34-153](file://src/services/local-persistence/local-persistenceService.ts#L34-L153)
+- [local-persistence.ts:43-115](file://src/config/local-persistence.ts#L43-L115)
 
 ## Detailed Component Analysis
 
@@ -254,43 +254,43 @@ ProcessingContext --> PlaybackStore : "updates"
 - [ProcessingContext.tsx:44-184](file://src/contexts/ProcessingContext.tsx#L44-L184)
 
 ### Service Layer Architecture for API Integration, Error Handling, and Caching
-- Firebase Service:
-  - Saves and retrieves lyrics from Firestore (public cache).
-  - Retrieves audio metadata and uploads audio blobs to Firebase Storage, returning download URLs and persisting metadata.
-- Firebase Config:
+- Local persistence Service:
+  - Saves and retrieves lyrics from SQLite (public cache).
+  - Retrieves audio metadata and uploads audio blobs to local audio storage, returning download URLs and persisting metadata.
+- Local persistence Config:
   - Loads runtime configuration from a backend endpoint for client-side or from environment variables for server-side.
-  - Initializes Firebase lazily, sets up App Check with reCAPTCHA v3, anonymous auth with retry logic, and persistence.
+  - Initializes Local persistence lazily, sets up IP rate limiting with reCAPTCHA v3, anonymous auth with retry logic, and persistence.
   - Provides helpers to ensure initialization and obtain tokens for API requests.
 - Hook and Component:
-  - useFirebaseReadiness monitors readiness and retries initialization.
-  - FirebaseInitializer preloads Firebase on mount and initializes non-critical collections.
+  - useLocal persistenceReadiness monitors readiness and retries initialization.
+  - Local persistenceInitializer preloads Local persistence on mount and initializes non-critical collections.
 
 ```mermaid
 sequenceDiagram
 participant UI as "UI Component"
 participant Store as "Global Store"
-participant Service as "Firebase Service"
-participant Config as "Firebase Config"
-participant Firestore as "Firestore"
-participant Storage as "Firebase Storage"
+participant Service as "Local persistence Service"
+participant Config as "Local persistence Config"
+participant SQLite as "SQLite"
+participant Storage as "local audio storage"
 UI->>Store : Trigger analysis
 Store->>Service : saveAudioToStorage(videoId, audioBlob, contentType)
 Service->>Storage : uploadBytes(ref, audioBlob)
 Storage-->>Service : downloadUrl
-Service->>Firestore : saveAudioFileMetadata(videoId, {filename, contentType, downloadUrl, size})
+Service->>SQLite : saveAudioFileMetadata(videoId, {filename, contentType, downloadUrl, size})
 Service-->>Store : downloadUrl
 Store-->>UI : Update UI with playable URL
 ```
 
 **Diagram sources**
-- [firebaseService.ts:132-153](file://src/services/firebase/firebaseService.ts#L132-L153)
-- [firebase.ts:43-115](file://src/config/firebase.ts#L43-L115)
+- [local-persistenceService.ts:132-153](file://src/services/local-persistence/local-persistenceService.ts#L132-L153)
+- [local-persistence.ts:43-115](file://src/config/local-persistence.ts#L43-L115)
 
 **Section sources**
-- [firebaseService.ts:34-153](file://src/services/firebase/firebaseService.ts#L34-L153)
-- [firebase.ts:43-115](file://src/config/firebase.ts#L43-L115)
-- [useFirebaseReadiness.ts:9-60](file://src/hooks/firebase/useFirebaseReadiness.ts#L9-L60)
-- [FirebaseInitializer.tsx:12-61](file://src/components/layout/FirebaseInitializer.tsx#L12-L61)
+- [local-persistenceService.ts:34-153](file://src/services/local-persistence/local-persistenceService.ts#L34-L153)
+- [local-persistence.ts:43-115](file://src/config/local-persistence.ts#L43-L115)
+- [useLocal persistenceReadiness.ts:9-60](file://src/hooks/local-persistence/useLocal persistenceReadiness.ts#L9-L60)
+- [Local persistenceInitializer.tsx:12-61](file://src/components/layout/Local persistenceInitializer.tsx#L12-L61)
 
 ### UI Component Library and Styling Architecture
 - HeroUI React: Provided via the UI provider for consistent components and theming.
@@ -317,36 +317,36 @@ G["Critical CSS Injection"] --> H["Above-the-fold Optimization"]
 - [providers.tsx:14-25](file://src/app/providers.tsx#L14-L25)
 - [layout.tsx:162-188](file://src/app/layout.tsx#L162-L188)
 
-### Integration with Firebase for Authentication and Data Storage
+### Integration with Local persistence for Authentication and Data Storage
 - Anonymous Authentication: Setup with persistence and retry logic to handle cold starts and network issues.
-- App Check: Optional reCAPTCHA v3 integration for client-side protection.
+- IP rate limiting: Optional reCAPTCHA v3 integration for client-side protection.
 - Storage and Caching: Public caching of lyrics and metadata for audio files; upload pipeline returns signed URLs for playback.
 
 ```mermaid
 sequenceDiagram
 participant Client as "Client"
-participant Auth as "Firebase Auth"
-participant AppCheck as "App Check"
-participant Storage as "Firebase Storage"
+participant Auth as "Local persistence Auth"
+participant RateLimit as "IP rate limiting"
+participant Storage as "local audio storage"
 Client->>Auth : onAuthStateChanged
 Auth-->>Client : user or null
 Client->>Auth : signInAnonymously (retry if needed)
 Auth-->>Client : user
-Client->>AppCheck : getToken(forceRefresh=false)
-AppCheck-->>Client : token (optional)
+Client->>RateLimit : getToken(forceRefresh=false)
+RateLimit-->>Client : token (optional)
 Client->>Storage : uploadBytes(blob)
 Storage-->>Client : downloadUrl
 ```
 
 **Diagram sources**
-- [firebase.ts:148-252](file://src/config/firebase.ts#L148-L252)
-- [firebase.ts:475-514](file://src/config/firebase.ts#L475-L514)
-- [firebaseService.ts:132-153](file://src/services/firebase/firebaseService.ts#L132-L153)
+- [local-persistence.ts:148-252](file://src/config/local-persistence.ts#L148-L252)
+- [local-persistence.ts:475-514](file://src/config/local-persistence.ts#L475-L514)
+- [local-persistenceService.ts:132-153](file://src/services/local-persistence/local-persistenceService.ts#L132-L153)
 
 **Section sources**
-- [firebase.ts:148-252](file://src/config/firebase.ts#L148-L252)
-- [firebase.ts:475-514](file://src/config/firebase.ts#L475-L514)
-- [firebaseService.ts:34-153](file://src/services/firebase/firebaseService.ts#L34-L153)
+- [local-persistence.ts:148-252](file://src/config/local-persistence.ts#L148-L252)
+- [local-persistence.ts:475-514](file://src/config/local-persistence.ts#L475-L514)
+- [local-persistenceService.ts:34-153](file://src/services/local-persistence/local-persistenceService.ts#L34-L153)
 
 ### Performance Optimization Techniques
 - Next.js configuration:
@@ -385,7 +385,7 @@ Storage-->>Client : downloadUrl
 [No sources needed since this section provides general guidance]
 
 ## Dependency Analysis
-- External dependencies include HeroUI, Firebase, Tone.js, Chart.js, and others for audio, visualization, and UI.
+- External dependencies include HeroUI, Local persistence, Tone.js, Chart.js, and others for audio, visualization, and UI.
 - Next.js configuration optimizes bundling and imports for modern browsers, with explicit rules for audio files and external packages.
 - Tailwind integrates with HeroUI themes for consistent design tokens across light/dark modes.
 
@@ -393,8 +393,8 @@ Storage-->>Client : downloadUrl
 graph TB
 N["Next.js App Router"] --> S["Zustand Stores"]
 N --> U["HeroUI + Tailwind"]
-N --> F["Firebase"]
-F --> FS["Firebase SDK"]
+N --> F["Local persistence"]
+F --> FS["Local persistence SDK"]
 U --> H["@heroui/react"]
 S --> A["Analysis Store"]
 S --> P["Playback Store"]
@@ -412,16 +412,16 @@ S --> UI["UI Store"]
 - [tailwind.config.js:83-192](file://tailwind.config.js#L83-L192)
 
 ## Performance Considerations
-- Bundle size: SplitChunks groups vendor libraries by domain (audio, UI, state) and consolidates Firebase and charting libraries.
+- Bundle size: SplitChunks groups vendor libraries by domain (audio, UI, state) and consolidates Local persistence and charting libraries.
 - Tree shaking: Side effects disabled and usedExports enabled to eliminate dead code.
 - Source maps: Hidden source maps in production to avoid exposing source while keeping debugging capability.
 - Critical rendering: Critical CSS and font-display swap reduce layout shifts and improve LCP/CLS.
-- Network: App Check and CORS headers support secure cross-origin requests to YouTube and external APIs.
+- Network: IP rate limiting and CORS headers support secure cross-origin requests to YouTube and external APIs.
 
 [No sources needed since this section provides general guidance]
 
 ## Troubleshooting Guide
-- Firebase initialization failures:
+- Local persistence initialization failures:
   - Ensure runtime configuration is available and required keys are present.
   - Use readiness hook to monitor and retry initialization.
 - Anonymous auth cold starts:
@@ -429,23 +429,23 @@ S --> UI["UI Store"]
 - Processing state not updating:
   - Confirm ProcessingContext is wrapped around the relevant components and stage transitions are invoked.
 - Playback rate mismatches:
-  - The store snaps requested rates to YouTube’s supported set and verifies the effective rate asynchronously.
+  - The store snaps requested rates to YouTubeâ€™s supported set and verifies the effective rate asynchronously.
 
 **Section sources**
-- [firebase.ts:43-115](file://src/config/firebase.ts#L43-L115)
-- [useFirebaseReadiness.ts:9-60](file://src/hooks/firebase/useFirebaseReadiness.ts#L9-L60)
-- [firebase.ts:148-252](file://src/config/firebase.ts#L148-L252)
+- [local-persistence.ts:43-115](file://src/config/local-persistence.ts#L43-L115)
+- [useLocal persistenceReadiness.ts:9-60](file://src/hooks/local-persistence/useLocal persistenceReadiness.ts#L9-L60)
+- [local-persistence.ts:148-252](file://src/config/local-persistence.ts#L148-L252)
 - [ProcessingContext.tsx:111-134](file://src/contexts/ProcessingContext.tsx#L111-L134)
 - [playbackStore.ts:216-350](file://src/stores/playbackStore.ts#L216-L350)
 
 ## Conclusion
-ChordMiniApp’s frontend leverages Next.js App Router for structured routing, global Zustand stores for state, HeroUI/Tailwind for UI and styling, and Firebase for authentication and caching. The architecture emphasizes performance (critical CSS, optimized bundles, App Check), robustness (retry logic, error boundaries), and user experience (responsive design, accessibility). The service layer cleanly abstracts API and storage concerns, while the layout and providers ensure consistent behavior across pages.
+ChordMiniAppâ€™s frontend leverages Next.js App Router for structured routing, global Zustand stores for state, HeroUI/Tailwind for UI and styling, and Local persistence for authentication and caching. The architecture emphasizes performance (critical CSS, optimized bundles, IP rate limiting), robustness (retry logic, error boundaries), and user experience (responsive design, accessibility). The service layer cleanly abstracts API and storage concerns, while the layout and providers ensure consistent behavior across pages.
 
 ## Appendices
 - Example usage patterns:
   - Use selector hooks from stores to subscribe to minimal state slices.
   - Wrap pages with Providers to ensure theme, toasts, and processing context are available.
-  - Initialize Firebase early via FirebaseInitializer and use readiness hooks for guarded rendering.
+  - Initialize Local persistence early via Local persistenceInitializer and use readiness hooks for guarded rendering.
   - Integrate playback controls with the Playback Store and coordinate with YouTube player and pitch shift services.
 
 [No sources needed since this section provides general guidance]

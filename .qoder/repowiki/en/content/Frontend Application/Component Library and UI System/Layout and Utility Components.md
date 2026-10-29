@@ -1,4 +1,4 @@
-# Layout and Utility Components
+﻿# Layout and Utility Components
 
 <cite>
 **Referenced Files in This Document**
@@ -9,7 +9,7 @@
 - [ServiceWorkerRegistration.tsx](file://src/components/layout/ServiceWorkerRegistration.tsx)
 - [CriticalPerformanceOptimizer.tsx](file://src/components/layout/CriticalPerformanceOptimizer.tsx)
 - [DesktopPerformanceOptimizer.tsx](file://src/components/layout/DesktopPerformanceOptimizer.tsx)
-- [FirebaseInitializer.tsx](file://src/components/layout/FirebaseInitializer.tsx)
+- [Local persistenceInitializer.tsx](file://src/components/layout/Local persistenceInitializer.tsx)
 - [CorsErrorSuppression.tsx](file://src/components/layout/CorsErrorSuppression.tsx)
 - [DevIndicatorHider.tsx](file://src/components/layout/DevIndicatorHider.tsx)
 - [layout.tsx](file://src/app/layout.tsx)
@@ -36,7 +36,7 @@ This document explains the layout and utility components that form the structura
 - PerformanceMonitor: runtime measurement of Core Web Vitals and related metrics
 - CriticalCSS, CriticalPerformanceOptimizer, DesktopPerformanceOptimizer: critical-path performance optimizations
 - ServiceWorkerRegistration and public/sw.js: service worker lifecycle and caching strategies
-- FirebaseInitializer, CorsErrorSuppression, DevIndicatorHider: cross-browser and environment-specific utilities
+- Local persistenceInitializer, CorsErrorSuppression, DevIndicatorHider: cross-browser and environment-specific utilities
 - Integration with Next.js app router and providers
 
 ## Project Structure
@@ -56,7 +56,7 @@ CCSS["CriticalCSS.tsx"]
 CPO["CriticalPerformanceOptimizer.tsx"]
 DPO["DesktopPerformanceOptimizer.tsx"]
 SWR["ServiceWorkerRegistration.tsx"]
-FI["FirebaseInitializer.tsx"]
+FI["Local persistenceInitializer.tsx"]
 CO["CorsErrorSuppression.tsx"]
 DIH["DevIndicatorHider.tsx"]
 end
@@ -85,7 +85,7 @@ SWR --> SW
 - [CriticalPerformanceOptimizer.tsx:12-53](file://src/components/layout/CriticalPerformanceOptimizer.tsx#L12-L53)
 - [DesktopPerformanceOptimizer.tsx:13-128](file://src/components/layout/DesktopPerformanceOptimizer.tsx#L13-L128)
 - [ServiceWorkerRegistration.tsx:9-99](file://src/components/layout/ServiceWorkerRegistration.tsx#L9-L99)
-- [FirebaseInitializer.tsx:12-61](file://src/components/layout/FirebaseInitializer.tsx#L12-L61)
+- [Local persistenceInitializer.tsx:12-61](file://src/components/layout/Local persistenceInitializer.tsx#L12-L61)
 - [CorsErrorSuppression.tsx:10-18](file://src/components/layout/CorsErrorSuppression.tsx#L10-L18)
 - [DevIndicatorHider.tsx:9-60](file://src/components/layout/DevIndicatorHider.tsx#L9-L60)
 - [sw.js:1-177](file://public/sw.js#L1-L177)
@@ -102,7 +102,7 @@ SWR --> SW
 - CriticalPerformanceOptimizer and DesktopPerformanceOptimizer: Apply targeted CSS and runtime optimizations for performance.
 - ServiceWorkerRegistration: Registers a service worker and listens for updates and cache events.
 - public/sw.js: Implements caching strategies for static assets, audio, API responses, and offline fallbacks.
-- FirebaseInitializer: Preloads Firebase early to avoid race conditions and initializes optional collections.
+- Local persistenceInitializer: Preloads Local persistence early to avoid race conditions and initializes optional collections.
 - CorsErrorSuppression: Initializes client-side CORS error suppression.
 - DevIndicatorHider: Hides Next.js development UI overlays in development.
 
@@ -115,7 +115,7 @@ SWR --> SW
 - [DesktopPerformanceOptimizer.tsx:13-128](file://src/components/layout/DesktopPerformanceOptimizer.tsx#L13-L128)
 - [ServiceWorkerRegistration.tsx:9-99](file://src/components/layout/ServiceWorkerRegistration.tsx#L9-L99)
 - [sw.js:1-177](file://public/sw.js#L1-L177)
-- [FirebaseInitializer.tsx:12-61](file://src/components/layout/FirebaseInitializer.tsx#L12-L61)
+- [Local persistenceInitializer.tsx:12-61](file://src/components/layout/Local persistenceInitializer.tsx#L12-L61)
 - [CorsErrorSuppression.tsx:10-18](file://src/components/layout/CorsErrorSuppression.tsx#L10-L18)
 - [DevIndicatorHider.tsx:9-60](file://src/components/layout/DevIndicatorHider.tsx#L9-L60)
 
@@ -123,7 +123,7 @@ SWR --> SW
 The layout utilities are mounted in the root layout and coordinate:
 - Critical CSS injection and performance CSS
 - Service worker lifecycle and caching
-- Firebase initialization and connection monitoring
+- Local persistence initialization and connection monitoring
 - Development-time UI cleanup
 - Cross-origin error suppression
 
@@ -138,14 +138,14 @@ participant CritPerf as "CriticalPerformanceOptimizer"
 participant DeskPerf as "DesktopPerformanceOptimizer"
 participant SWReg as "ServiceWorkerRegistration"
 participant SW as "Service Worker (sw.js)"
-participant Firebase as "FirebaseInitializer"
+participant Local persistence as "Local persistenceInitializer"
 Browser->>Layout : Request app shell
 Layout->>CritCSS : Inject critical above-the-fold CSS
 Layout->>CritPerf : Apply critical performance CSS
 Layout->>DeskPerf : Optimize critical rendering path
 Layout->>SWReg : Register service worker (production)
 SWReg->>SW : Register /sw.js with scope "/"
-Layout->>Firebase : Preload Firebase and init collections
+Layout->>Local persistence : Preload Local persistence and init collections
 Layout->>Providers : Wrap children with UI/Theme/Processing providers
 Layout->>Perf : Observe CWV metrics (development)
 Layout-->>Browser : Render app shell with providers and utilities
@@ -159,7 +159,7 @@ Layout-->>Browser : Render app shell with providers and utilities
 - [DesktopPerformanceOptimizer.tsx:13-128](file://src/components/layout/DesktopPerformanceOptimizer.tsx#L13-L128)
 - [ServiceWorkerRegistration.tsx:9-99](file://src/components/layout/ServiceWorkerRegistration.tsx#L9-L99)
 - [sw.js:1-177](file://public/sw.js#L1-L177)
-- [FirebaseInitializer.tsx:12-61](file://src/components/layout/FirebaseInitializer.tsx#L12-L61)
+- [Local persistenceInitializer.tsx:12-61](file://src/components/layout/Local persistenceInitializer.tsx#L12-L61)
 - [PerformanceMonitor.tsx:17-243](file://src/components/layout/PerformanceMonitor.tsx#L17-L243)
 
 ## Detailed Component Analysis
@@ -318,18 +318,18 @@ Reg->>Reg : Listen for "message" (CACHE_UPDATED)
 - [ServiceWorkerRegistration.tsx:9-99](file://src/components/layout/ServiceWorkerRegistration.tsx#L9-L99)
 - [sw.js:1-177](file://public/sw.js#L1-L177)
 
-### FirebaseInitializer, CorsErrorSuppression, DevIndicatorHider
+### Local persistenceInitializer, CorsErrorSuppression, DevIndicatorHider
 Responsibilities:
-- FirebaseInitializer: preloads Firebase early to avoid race conditions during audio extraction and initializes optional collections during idle time
+- Local persistenceInitializer: preloads Local persistence early to avoid race conditions during audio extraction and initializes optional collections during idle time
 - CorsErrorSuppression: initializes client-side CORS error suppression
 - DevIndicatorHider: aggressively hides Next.js development UI overlays in development
 
 Key behaviors:
-- FirebaseInitializer uses requestIdleCallback to defer non-critical collection initialization
+- Local persistenceInitializer uses requestIdleCallback to defer non-critical collection initialization
 - DevIndicatorHider uses MutationObserver to hide dev UI across the DOM and Shadow DOM
 
 **Section sources**
-- [FirebaseInitializer.tsx:12-61](file://src/components/layout/FirebaseInitializer.tsx#L12-L61)
+- [Local persistenceInitializer.tsx:12-61](file://src/components/layout/Local persistenceInitializer.tsx#L12-L61)
 - [CorsErrorSuppression.tsx:10-18](file://src/components/layout/CorsErrorSuppression.tsx#L10-L18)
 - [DevIndicatorHider.tsx:9-60](file://src/components/layout/DevIndicatorHider.tsx#L9-L60)
 
@@ -343,7 +343,7 @@ L --> CCSS["CriticalCSS.tsx"]
 L --> CPO["CriticalPerformanceOptimizer.tsx"]
 L --> DPO["DesktopPerformanceOptimizer.tsx"]
 L --> SWR["ServiceWorkerRegistration.tsx"]
-L --> FI["FirebaseInitializer.tsx"]
+L --> FI["Local persistenceInitializer.tsx"]
 L --> PM["PerformanceMonitor.tsx"]
 L --> CO["CorsErrorSuppression.tsx"]
 L --> DIH["DevIndicatorHider.tsx"]
@@ -357,7 +357,7 @@ SWR --> SW["public/sw.js"]
 - [CriticalPerformanceOptimizer.tsx:12-53](file://src/components/layout/CriticalPerformanceOptimizer.tsx#L12-L53)
 - [DesktopPerformanceOptimizer.tsx:13-128](file://src/components/layout/DesktopPerformanceOptimizer.tsx#L13-L128)
 - [ServiceWorkerRegistration.tsx:9-99](file://src/components/layout/ServiceWorkerRegistration.tsx#L9-L99)
-- [FirebaseInitializer.tsx:12-61](file://src/components/layout/FirebaseInitializer.tsx#L12-L61)
+- [Local persistenceInitializer.tsx:12-61](file://src/components/layout/Local persistenceInitializer.tsx#L12-L61)
 - [PerformanceMonitor.tsx:17-243](file://src/components/layout/PerformanceMonitor.tsx#L17-L243)
 - [CorsErrorSuppression.tsx:10-18](file://src/components/layout/CorsErrorSuppression.tsx#L10-L18)
 - [DevIndicatorHider.tsx:9-60](file://src/components/layout/DevIndicatorHider.tsx#L9-L60)
@@ -371,7 +371,7 @@ SWR --> SW["public/sw.js"]
 - Critical CSS: Inlined critical CSS reduces render-blocking and improves FCP/FCI.
 - Performance observers: Core Web Vitals are observed in development to guide optimization.
 - Service worker caching: Static assets, audio, and selected API responses are cached to improve reliability and speed.
-- Deferred initialization: Firebase and non-critical tasks are deferred to idle callbacks to minimize main-thread work.
+- Deferred initialization: Local persistence and non-critical tasks are deferred to idle callbacks to minimize main-thread work.
 - CSS and font optimizations: GPU acceleration hints and font-display swapping are applied to reduce layout shifts and improve perceived performance.
 
 [No sources needed since this section provides general guidance]
@@ -390,8 +390,8 @@ SWR --> SW["public/sw.js"]
 - Mobile dock misalignment:
   - Inspect computed video and layout heights
   - Confirm the CSS variable for mobile dock height is applied
-- Firebase race conditions:
-  - Ensure Firebase is preloaded before audio extraction
+- Local persistence race conditions:
+  - Ensure Local persistence is preloaded before audio extraction
   - Confirm optional collections are initialized during idle time
 
 **Section sources**
@@ -399,7 +399,7 @@ SWR --> SW["public/sw.js"]
 - [PerformanceMonitor.tsx:17-243](file://src/components/layout/PerformanceMonitor.tsx#L17-L243)
 - [AnalysisSplitLayout.tsx:24-111](file://src/components/layout/AnalysisSplitLayout.tsx#L24-L111)
 - [ResponsiveVideoUtilityLayout.tsx:13-151](file://src/components/layout/ResponsiveVideoUtilityLayout.tsx#L13-L151)
-- [FirebaseInitializer.tsx:12-61](file://src/components/layout/FirebaseInitializer.tsx#L12-L61)
+- [Local persistenceInitializer.tsx:12-61](file://src/components/layout/Local persistenceInitializer.tsx#L12-L61)
 
 ## Conclusion
 The layout and utility components establish a robust, performance-conscious foundation for the application. They combine responsive layouts, critical-path optimizations, service worker caching, and environment-specific utilities to deliver a smooth user experience across devices and browsers while integrating seamlessly with Next.js app router and providers.

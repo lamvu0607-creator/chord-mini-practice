@@ -26,8 +26,12 @@ BTC_SL_CHECKPOINTS_DIR = CHORDMINI_DIR / "checkpoints"
 BTC_PL_CONFIG_DIR = CHORDMINI_DIR / "config"
 BTC_PL_CHECKPOINTS_DIR = CHORDMINI_DIR / "checkpoints"
 
-# Audio directory
-AUDIO_DIR = PROJECT_ROOT / "public" / "audio"
+# Audio directory (prefers environment config or storage/audio)
+AUDIO_DIR = Path(
+    os.getenv("STORAGE_AUDIO_DIR")
+    or os.getenv("LOCAL_AUDIO_STORAGE_DIR")
+    or str(PROJECT_ROOT / "storage" / "audio")
+)
 
 # Model checkpoint paths
 BEAT_TRANSFORMER_CHECKPOINT = BEAT_TRANSFORMER_DIR / "checkpoint" / "fold_4_trf_param.pt"

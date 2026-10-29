@@ -5,9 +5,10 @@ import { Select, SelectItem, Chip } from '@heroui/react';
 import { useModelInfoQuery } from '@/hooks/query/useModelInfoQuery';
 import {
   ChordDetectorType,
-  getAvailableChordModels,
+  getListedChordModels,
   filterChordModels,
   getModelDescription,
+  isChordModelDeployed,
   isDevelopmentEnvironment
 } from '@/utils/modelFiltering';
 
@@ -76,14 +77,14 @@ const HeroUIChordModelSelector: React.FC<HeroUIChordModelSelectorProps> = ({
       id: 'btc-sl',
       name: 'BTC SL (Supervised Learning)',
       description: getModelDescription('btc-sl'),
-      performance: 'High accuracy with transformer architecture (auto-fallback to CNN-LSTM if needed)',
+      performance: 'High accuracy with transformer architecture',
       available: true
     },
     'btc-pl': {
       id: 'btc-pl',
       name: 'BTC PL (Pseudo-Label)',
       description: getModelDescription('btc-pl'),
-      performance: 'Moderate accuracy with pseudo-labeling training (auto-fallback to CNN-LSTM if needed)',
+      performance: 'Moderate accuracy with pseudo-labeling training',
       available: true
     }
   };
@@ -92,7 +93,7 @@ const HeroUIChordModelSelector: React.FC<HeroUIChordModelSelectorProps> = ({
     if (!data?.success || !data.chord_model_info) {
       return {
         modelInfo: {} as Record<string, ChordModelOption>,
-        availableModels: getAvailableChordModels(),
+        availableModels: getListedChordModels(),
       };
     }
 
@@ -117,9 +118,12 @@ const HeroUIChordModelSelector: React.FC<HeroUIChordModelSelectorProps> = ({
 
     return {
       modelInfo: modelInfoMap,
-      availableModels: filterChordModels(modelIds.length > 0 ? modelIds : getAvailableChordModels()),
+      availableModels: filterChordModels(modelIds.length > 0 ? modelIds : getListedChordModels()),
     };
   }, [data]);
+
+  // Undeployed models stay listed so users know they exist, but cannot be picked
+  const undeployedModels = availableModels.filter(model => !isChordModelDeployed(model));
 
   const selectedModelOption = modelInfo[selectedModel] || defaultModelOptions[selectedModel];
   const enhancedDescription = isFetching && !data
@@ -166,6 +170,7 @@ const HeroUIChordModelSelector: React.FC<HeroUIChordModelSelectorProps> = ({
 
       <Select
         selectedKeys={[selectedModel]}
+        disabledKeys={undeployedModels}
         onSelectionChange={handleSelectionChange}
         placeholder="Select a chord recognition model"
         className="w-full"
@@ -189,6 +194,11 @@ const HeroUIChordModelSelector: React.FC<HeroUIChordModelSelectorProps> = ({
             >
               <div className="flex items-center justify-between w-full">
                 <span className="font-medium">{modelOption.name}</span>
+                {undeployedModels.includes(model) && (
+                  <Chip size="sm" color="default" variant="flat">
+                    Not deployed
+                  </Chip>
+                )}
                 {model.startsWith('btc-') && isDevelopmentEnvironment() && (
                   <Chip size="sm" color="warning" variant="flat">
                     DEV

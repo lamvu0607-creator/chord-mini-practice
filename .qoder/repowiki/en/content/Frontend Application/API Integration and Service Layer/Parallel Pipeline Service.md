@@ -1,4 +1,4 @@
-# Parallel Pipeline Service
+﻿# Parallel Pipeline Service
 
 <cite>
 **Referenced Files in This Document**
@@ -80,7 +80,7 @@ CR --> CRS
 - [routes.py:43-144](file://python_backend/blueprints/chords/routes.py#L43-L144)
 
 ## Core Components
-- ParallelPipelineService: Orchestrates parallel processing by downloading complete audio files and starting both Google Cloud Run processing and Firebase uploads concurrently. It maintains caches and background results for efficient reuse and fallbacks.
+- ParallelPipelineService: Orchestrates parallel processing by downloading complete audio files and starting both Google Cloud Run processing and Local persistence uploads concurrently. It maintains caches and background results for efficient reuse and fallbacks.
 - SegmentationAsyncService: Manages long-running jobs that exceed platform timeouts. It creates jobs, polls for completion, and provides progress callbacks with status, progress percentage, elapsed time, and estimated remaining time.
 - SegmentationAsyncService: Handles SongFormer segmentation jobs with adaptive polling strategies based on song duration and caching behavior. It supports browser-side worker execution and job patching.
 
@@ -129,13 +129,13 @@ CR-->>Client : Chord results
 ### Parallel Pipeline Service
 The parallel pipeline downloads a complete audio file and initiates two concurrent operations:
 - Immediate processing via Google Cloud Run using a cached audio blob
-- Background Firebase upload with retry and result caching
+- Background Local persistence upload with retry and result caching
 
 Key behaviors:
 - Caching: Stores audio blobs with timestamps and content types for up to 10 minutes
-- Background uploads: Tracks success/failure and Firebase URLs in a result map
+- Background uploads: Tracks success/failure and Local persistence URLs in a result map
 - Fallback: If download fails, falls back to direct URL processing and background upload
-- URL compatibility: Validates HTTP/HTTPS URLs and excludes Firebase Storage URLs for direct processing
+- URL compatibility: Validates HTTP/HTTPS URLs and excludes local audio storage URLs for direct processing
 
 ```mermaid
 flowchart TD
@@ -146,7 +146,7 @@ DLSuccess --> |No| Fallback["Fallback to direct URL"]
 Cache --> Parallel["Start parallel operations"]
 Fallback --> Parallel
 Parallel --> GCRun["Immediate Google Cloud Run processing"]
-Parallel --> FBUpload["Background Firebase upload"]
+Parallel --> FBUpload["Background Local persistence upload"]
 FBUpload --> ResultCache["Store upload result"]
 GCRun --> Ready["Pipeline ready with complete file"]
 ResultCache --> Ready
@@ -300,7 +300,7 @@ CR --> CRS["ChordRecognitionService"]
 - [routes.py:43-144](file://python_backend/blueprints/chords/routes.py#L43-L144)
 
 ## Performance Considerations
-- Parallel processing: The pipeline downloads the complete audio file once and reuses it for immediate processing while uploading to Firebase in the background, reducing total latency.
+- Parallel processing: The pipeline downloads the complete audio file once and reuses it for immediate processing while uploading to Local persistence in the background, reducing total latency.
 - Caching: Audio blobs are cached for up to 10 minutes, and background upload results are tracked for up to 5 minutes, minimizing redundant work.
 - Adaptive polling: SegmentationAsyncService adjusts polling intervals based on song duration, reducing unnecessary requests for short tracks and optimizing long-track processing.
 - Model selection: Backend services choose detectors based on file size and availability, ensuring optimal performance and avoiding oversized file errors.

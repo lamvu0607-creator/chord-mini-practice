@@ -1,4 +1,4 @@
-# Audio Playback System
+﻿# Audio Playback System
 
 <cite>
 **Referenced Files in This Document**
@@ -44,7 +44,7 @@
 
 ## Introduction
 
-The ChordMiniApp audio playback system is a sophisticated Web Audio API-based solution designed for synchronized musical analysis and playback. The system integrates multiple audio sources including YouTube video playback, pitch-shifted audio from Firebase Storage, synthesized chord playback, and metronome clicks. It provides precise timing control, seamless synchronization between visual and audio elements, and comprehensive volume management across all audio components.
+The ChordMiniApp audio playback system is a sophisticated Web Audio API-based solution designed for synchronized musical analysis and playback. The system integrates multiple audio sources including YouTube video playback, pitch-shifted audio from local audio storage, synthesized chord playback, and metronome clicks. It provides precise timing control, seamless synchronization between visual and audio elements, and comprehensive volume management across all audio components.
 
 **Updated** The system now features a revolutionary unified master clock architecture that replaces the previous fragmented approach with three independent time sources. This new architecture ensures perfect synchronization through a single source of truth with slave re-anchor functionality and enhanced scrub detection mechanisms.
 
@@ -77,7 +77,7 @@ subgraph "External Dependencies"
 YouTube[YouTube Player API]
 Tone[Tone.js Library]
 WebAudio[Web Audio API]
-Firebase[Firebase Storage]
+Local persistence[local audio storage]
 end
 UI --> Hooks
 Hooks --> Store
@@ -97,7 +97,7 @@ Soundfont --> WebAudio
 LightWeight --> WebAudio
 Metronome --> WebAudio
 YouTube --> MasterClock
-Firebase --> PitchShift
+Local persistence --> PitchShift
 Debug --> MasterClock
 Debug --> PitchShift
 ```
@@ -256,7 +256,7 @@ participant Store as PlaybackStore
 participant YouTube as YouTube Player
 UI->>Hook : Toggle Pitch Shift
 Hook->>Service : initializePitchShift()
-Service->>Service : loadAudio(firebaseAudioUrl)
+Service->>Service : loadAudio(local-persistenceAudioUrl)
 Service->>Service : setPitch(semitones)
 Service->>Service : setPlaybackRate(rate)
 Hook->>Master : setReAnchorListener()
@@ -451,7 +451,7 @@ The previous system had three competing time sources that fought each other:
 2. GrainPlayer's 50ms setInterval counter
 3. A drift-correction loop that sought one from the other
 
-At non-1× rates this created a positive feedback loop leading to "keeps refreshing like crazy" and "beat click jumps to wrong position at 2×".
+At non-1Ã— rates this created a positive feedback loop leading to "keeps refreshing like crazy" and "beat click jumps to wrong position at 2Ã—".
 
 ### Master Clock Design
 
@@ -698,7 +698,7 @@ The audio playback system is designed with mobile device constraints in mind, im
 
 - **Touch-Friendly Controls**: Optimized for touch interaction
 - **Reduced Latency**: Minimizes audio processing delays
-- **Network Optimization**: Efficient audio loading from Firebase Storage
+- **Network Optimization**: Efficient audio loading from local audio storage
 - **Cross-Platform Compatibility**: Works across iOS Safari, Chrome, and Android browsers
 
 ## Troubleshooting Guide

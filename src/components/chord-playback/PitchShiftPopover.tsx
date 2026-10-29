@@ -19,7 +19,7 @@ import {
   useTogglePitchShift,
   usePitchShiftSemitones,
   useIsProcessingPitchShift,
-  useIsFirebaseAudioAvailable,
+  useIsCachedAudioAvailable,
   useSetPitchShiftSemitones
 } from '@/stores/uiStore';
 import { formatSemitones } from '@/utils/chordTransposition';
@@ -30,7 +30,7 @@ interface PitchShiftPopoverProps {
 }
 
 // React.memo prevents re-renders from parent (UtilityBar) when only unrelated
-// props change (e.g. chordPlayback, segmentation objects). Without this,
+// props change (e.g. chordPlayback objects). Without this,
 // YouTube progress events (~4×/sec) cascade through the viewModel → UtilityBar
 // → PitchShiftPopover, causing slider jitter during drags. The internal
 // zustand selectors (pitchShiftSemitones, etc.) still trigger re-renders when
@@ -44,10 +44,10 @@ const PitchShiftPopover: React.FC<PitchShiftPopoverProps> = memo(({
   const togglePitchShift = useTogglePitchShift();
   const pitchShiftSemitones = usePitchShiftSemitones();
   const isProcessingPitchShift = useIsProcessingPitchShift();
-  const isFirebaseAudioAvailable = useIsFirebaseAudioAvailable();
+  const isCachedAudioAvailable = useIsCachedAudioAvailable();
   const setPitchShiftSemitones = useSetPitchShiftSemitones();
 
-  const isDisabled = !isFirebaseAudioAvailable;
+  const isDisabled = !isCachedAudioAvailable;
   const buttonClassName = `h-9 w-9 min-w-9 rounded-full shadow-md transition-colors duration-200 inline-flex items-center justify-center p-0 ${
     isPitchShiftEnabled
       ? 'bg-green-600 text-white hover:bg-green-700'

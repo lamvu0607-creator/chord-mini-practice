@@ -1,4 +1,4 @@
-# Deployment Configuration
+﻿# Deployment Configuration
 
 <cite>
 **Referenced Files in This Document**
@@ -21,7 +21,7 @@
 - [python_backend/requirements.txt](file://python_backend/requirements.txt)
 - [next.config.js](file://next.config.js)
 - [vercel.json](file://vercel.json)
-- [firebase.json](file://firebase/firebase.json)
+- [local-persistence.json](file://local-persistence/local-persistence.json)
 - [docker-compose.prod.yml](file://docker-compose.prod.yml)
 - [scripts/build-and-push.sh](file://scripts/build-and-push.sh)
 - [scripts/publish-docker-images.sh](file://scripts/publish-docker-images.sh)
@@ -60,7 +60,7 @@ RD["Redis (optional)<br/>docker-compose.dev.yml"]
 end
 subgraph "Production"
 VZ["Vercel Edge Runtime<br/>vercel.json"]
-FR["Firebase Hosting/Functions<br/>firebase.json"]
+FR["Local persistence Hosting/Functions<br/>local-persistence.json"]
 CR["Cloud Run (Sheetsage)<br/>cloudrun/Dockerfile"]
 end
 FE --> |"HTTP"| VZ
@@ -71,14 +71,14 @@ FR --> |"Transcription Jobs"| CR
 **Diagram sources**
 - [docker-compose.dev.yml:1-116](file://docker/docker-compose.dev.yml#L1-L116)
 - [vercel.json](file://vercel.json)
-- [firebase.json](file://firebase/firebase.json)
+- [local-persistence.json](file://local-persistence/local-persistence.json)
 - [cloudrun/Dockerfile:1-100](file://sheetsage/src/sheetsage_upstream/cloudrun/Dockerfile#L1-L100)
 
 **Section sources**
 - [docker-compose.yml:1-115](file://docker/docker-compose.yml#L1-L115)
 - [docker-compose.dev.yml:1-116](file://docker/docker-compose.dev.yml#L1-L116)
 - [vercel.json](file://vercel.json)
-- [firebase.json](file://firebase/firebase.json)
+- [local-persistence.json](file://local-persistence/local-persistence.json)
 
 ## Core Components
 - Sheetsage transcription service container:
@@ -93,7 +93,7 @@ FR --> |"Transcription Jobs"| CR
   - Upload timeout and content length limits configured for large audio uploads.
 
 - Frontend container:
-  - Built from the repository root Dockerfile targeting the “runner” stage for production.
+  - Built from the repository root Dockerfile targeting the â€œrunnerâ€ stage for production.
   - Health checks probe the Next.js health endpoint.
 
 **Section sources**
@@ -105,21 +105,21 @@ FR --> |"Transcription Jobs"| CR
 ## Architecture Overview
 The production deployment integrates:
 - Vercel Edge Runtime for frontend routing and API exposure.
-- Firebase Hosting/Functions for static assets and serverless functions.
+- Local persistence Hosting/Functions for static assets and serverless functions.
 - Cloud Run for the Sheetsage transcription service with persistent caching and GPU scheduling support in local scripts.
 
 ```mermaid
 graph TB
 Client["Browser/App"] --> Vercel["Vercel Edge Runtime"]
-Vercel --> Firebase["Firebase Hosting/Functions"]
-Firebase --> CR["Cloud Run: Sheetsage"]
+Vercel --> Local persistence["Local persistence Hosting/Functions"]
+Local persistence --> CR["Cloud Run: Sheetsage"]
 CR --> Cache["Persistent Cache Volume"]
 CR --> GPU["Optional GPU Devices"]
 ```
 
 **Diagram sources**
 - [vercel.json](file://vercel.json)
-- [firebase.json](file://firebase/firebase.json)
+- [local-persistence.json](file://local-persistence/local-persistence.json)
 - [cloudrun/Dockerfile:1-100](file://sheetsage/src/sheetsage_upstream/cloudrun/Dockerfile#L1-L100)
 
 ## Detailed Component Analysis
@@ -180,14 +180,14 @@ CR-->>Dev : Service ready with health checks
 
 ### Local Development with docker-compose
 - Development stack includes:
-  - Frontend service built from the root Dockerfile with “runner” target.
-  - Backend service built from python_backend/Dockerfile with “runtime” target.
+  - Frontend service built from the root Dockerfile with â€œrunnerâ€ target.
+  - Backend service built from python_backend/Dockerfile with â€œruntimeâ€ target.
   - Optional Redis for rate limiting and caching.
 - Health checks:
   - Frontend probes http://localhost:3000/api/health.
   - Backend probes http://localhost:8080/health.
 - Environment variables:
-  - Frontend: NODE_ENV, NEXT_PUBLIC_* Firebase keys, PUBLIC API keys, PYTHON_API_URL, SONGFORMER_API_URL, secrets.
+  - Frontend: NODE_ENV, NEXT_PUBLIC_* Local persistence keys, PUBLIC API keys, PYTHON_API_URL, SONGFORMER_API_URL, secrets.
   - Backend: Flask environment, model selection flags, upload limits, Redis URL.
 
 ```mermaid
@@ -282,25 +282,25 @@ E --> F["Security Audit"]
 - Backend-to-Sheetsage:
   - Python backend orchestrates transcription jobs that route to the Sheetsage Cloud Run service.
 - External Services:
-  - Firebase Hosting/Functions for static assets and serverless functions.
+  - Local persistence Hosting/Functions for static assets and serverless functions.
   - Vercel Edge Runtime for routing and API exposure.
 
 ```mermaid
 graph LR
 FE["Frontend"] --> API["Python Backend"]
 API --> SRV["Sheetsage Cloud Run"]
-API --> FB["Firebase Functions/Hosting"]
+API --> FB["Local persistence Functions/Hosting"]
 ```
 
 **Diagram sources**
 - [docker-compose.dev.yml:16-49](file://docker/docker-compose.dev.yml#L16-L49)
 - [vercel.json](file://vercel.json)
-- [firebase.json](file://firebase/firebase.json)
+- [local-persistence.json](file://local-persistence/local-persistence.json)
 
 **Section sources**
 - [docker-compose.dev.yml:16-49](file://docker/docker-compose.dev.yml#L16-L49)
 - [vercel.json](file://vercel.json)
-- [firebase.json](file://firebase/firebase.json)
+- [local-persistence.json](file://local-persistence/local-persistence.json)
 
 ## Performance Considerations
 - Resource allocation:
@@ -345,7 +345,7 @@ This deployment guide consolidates Docker configurations, Cloud Run packaging, l
 
 ### Environment Variables Reference
 - Frontend (compose):
-  - NODE_ENV, NEXT_PUBLIC_* Firebase keys, NEXT_PUBLIC_YOUTUBE_API_KEY, NEXT_PUBLIC_BASE_URL, NEXT_PUBLIC_AUDIO_STRATEGY, NEXT_PUBLIC_ENABLE_TRUE_STREAMING, NEXT_DISABLE_DEV_OVERLAY, PYTHON_API_URL, SONGFORMER_API_URL, MUSIC_AI_API_KEY, GEMINI_API_KEY, GENIUS_API_KEY, USE_MOCK_MUSIC_AI, USE_FIREBASE_EMULATOR.
+  - NODE_ENV, NEXT_PUBLIC_* Local persistence keys, NEXT_PUBLIC_YOUTUBE_API_KEY, NEXT_PUBLIC_BASE_URL, NEXT_PUBLIC_AUDIO_STRATEGY, NEXT_PUBLIC_ENABLE_TRUE_STREAMING, NEXT_DISABLE_DEV_OVERLAY, PYTHON_API_URL, SONGFORMER_API_URL, MUSIC_AI_API_KEY, GEMINI_API_KEY, GENIUS_API_KEY, USE_MOCK_MUSIC_AI, USE_PERSISTENCE_EMULATOR.
 - Backend (compose):
   - FLASK_ENV, FLASK_DEBUG, PYTHONUNBUFFERED, PYTHONDONTWRITEBYTECODE, DEFAULT_BEAT_MODEL, DEFAULT_CHORD_MODEL, MAX_CONTENT_LENGTH, UPLOAD_TIMEOUT, REDIS_URL, USE_BEAT_TRANSFORMER, USE_CHORD_CNN_LSTM, USE_BTC_SL, USE_BTC_PL.
 - Sheetsage (container):
@@ -360,8 +360,8 @@ This deployment guide consolidates Docker configurations, Cloud Run packaging, l
 - Load balancing:
   - Cloud Run handles global load balancing; configure regional endpoints and traffic splitting as needed.
 - Monitoring and logging:
-  - Enable Cloud Run metrics and Cloud Logging; integrate with Vercel and Firebase monitoring dashboards.
+  - Enable Cloud Run metrics and Cloud Logging; integrate with Vercel and Local persistence monitoring dashboards.
 - Security:
-  - Enforce HTTPS, restrict API keys, and apply least-privilege access to Cloud Run and Firebase resources.
+  - Enforce HTTPS, restrict API keys, and apply least-privilege access to Cloud Run and Local persistence resources.
 
 [No sources needed since this section provides general guidance]

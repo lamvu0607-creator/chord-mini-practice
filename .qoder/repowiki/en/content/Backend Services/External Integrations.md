@@ -1,4 +1,4 @@
-# External Integrations
+﻿# External Integrations
 
 <cite>
 **Referenced Files in This Document**
@@ -180,7 +180,7 @@ sequenceDiagram
 participant FE as "Frontend"
 participant AE as "Audio Extraction Orchestrator"
 participant YT as "yt-mp3-go Service"
-participant FS as "Firestore Cache"
+participant FS as "SQLite Cache"
 FE->>AE : Extract audio(videoId)
 AE->>FS : Check cache
 alt Cache hit
@@ -358,7 +358,7 @@ BE_SPL["spleeter_service.py"] --> DEM["demix_spectrogram.py"]
 
 ## Performance Considerations
 - Caching:
-  - YouTube metadata is cached in Firestore to avoid repeated extractions and reduce latency.
+  - YouTube metadata is cached in SQLite to avoid repeated extractions and reduce latency.
 - Timeout strategies:
   - Frontend Genius API route applies a 15-second timeout before falling back to direct API calls.
 - Model availability:

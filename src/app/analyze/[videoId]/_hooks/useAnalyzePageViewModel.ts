@@ -43,14 +43,14 @@ import {
 } from '@/utils/analysisDurationLimit';
 import { requestSheetSageTranscription } from '@/services/sheetsage/sheetSageTranscriptionClient';
 import { getCachedSheetSageMelody } from '@/services/sheetsage/sheetSageCacheClient';
-import { useFirebaseReadiness } from '@/hooks/firebase/useFirebaseReadiness';
+import { usePersistenceReadiness } from '@/hooks/persistence/usePersistenceReadiness';
 import { useYouTubeSetup } from '@/hooks/youtube/useYouTubeSetup';
-import { useSegmentationState } from '@/hooks/lyrics/useSegmentationState';
+import { isUploadSourceId } from '@/utils/uploadSourceId';
 import { useTabsAndEditing } from '@/hooks/ui/useTabsAndEditing';
 import { useLyricsState } from '@/hooks/lyrics/useLyricsState';
 import { useAnalysisStore } from '@/stores/analysisStore';
 import { useUIStore } from '@/stores/uiStore';
-import { useIsLoopEnabled, useLoopEndBeat, useLoopStartBeat, useIsPitchShiftEnabled, useIsPitchShiftReady } from '@/stores/uiStore';
+import { useIsLoopEnabled, useLoopEndBeat, useLoopStartBeat, useIsPitchShiftEnabled, useIsPitchShiftReady, useIsStemModeEnabled } from '@/stores/uiStore';
 import { usePlaybackStore, useIsVideoMinimized } from '@/stores/playbackStore';
 import { getPitchShiftService } from '@/services/audio/pitchShiftServiceInstance';
 import { setYouTubePlayerMuted } from '@/utils/youtubePlayerAudio';
@@ -81,6 +81,8 @@ export function useAnalyzePageViewModel({
   useSheetSageBackendAvailability(showSheetSage);
   const queryClient = useQueryClient();
   const router = useRouter();
+  // Uploaded audio (upload_<hex>) uses the same page with an <audio> player instead of YouTube.
+  const isUploadSource = isUploadSourceId(videoId);
   const titleFromSearch = routeParams.title;
   const durationFromSearch = routeParams.duration;
   const channelFromSearch = routeParams.channel;
@@ -199,7 +201,7 @@ export function useAnalyzePageViewModel({
     initialChordDetector: routeParams.chordModel,
   });
 
-  const { firebaseReady } = useFirebaseReadiness();
+  const { persistenceReady } = usePersistenceReadiness();
   const { isPlaying, currentTime, duration, playbackRate } = audioPlayerState;
   const effectiveAnalysisDuration = duration > 0 ? duration : parseAnalysisDurationSeconds(durationFromSearch);
 
@@ -211,14 +213,6 @@ export function useAnalyzePageViewModel({
     setAudioPlayerState(prev => ({ ...prev, currentTime: time }));
   }, [setAudioPlayerState]);
 
-  const {
-    segmentationData,
-    showSegmentation,
-    isSegmenting,
-    segmentationError,
-    toggleSegmentation,
-    resetSegmentation,
-  } = useSegmentationState();
 
   const simplifyChords = useUIStore((state) => state.simplifyChords);
   const showRomanNumerals = useUIStore((state) => state.showRomanNumerals);
@@ -260,7 +254,7 @@ export function useAnalyzePageViewModel({
     durationFromSearch,
     channelFromSearch,
     thumbnailFromSearch,
-    firebaseReady,
+    persistenceReady,
     modelsInitialized,
     beatDetector,
     chordDetector,
@@ -458,8 +452,8 @@ export function useAnalyzePageViewModel({
       return thumbnailFromSearch;
     }
 
-    return videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : null;
-  }, [thumbnailFromSearch, videoId]);
+    return videoId && !isUploadSource ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : null;
+  }, [thumbnailFromSearch, videoId, isUploadSource]);
 
   useEffect(() => {
     if (!videoId || !modelsInitialized) {
@@ -584,6 +578,7 @@ export function useAnalyzePageViewModel({
   const loopStartBeat = useLoopStartBeat();
   const loopEndBeat = useLoopEndBeat();
   const isPitchShiftEnabled = useIsPitchShiftEnabled();
+  const isStemModeEnabled = useIsStemModeEnabled();
   const isPitchShiftReady = useIsPitchShiftReady();
 
   const { toggleEnharmonicCorrection } = useAudioInteractions({
@@ -674,7 +669,7 @@ export function useAnalyzePageViewModel({
     handleChordEdit(originalChord, newChord);
   }, [handleChordEdit]);
 
-  useYouTubeSetup(videoId, setAudioProcessingState);
+  useYouTubeSetup(isUploadSource ? '' : videoId, setAudioProcessingState);
 
   const visibleGridLyrics = isGridLyricsVisible ? appliedGridLyrics?.timedLyrics ?? null : null;
   const visiblePlainLyrics = isGridLyricsVisible ? appliedGridLyrics?.plainLyrics ?? null : null;
@@ -702,10 +697,6 @@ export function useAnalyzePageViewModel({
     translatedLyrics,
     audioUrl: audioProcessingState.audioUrl || undefined,
   }), [videoId, videoTitle, duration, analysisResults, chatbotLyrics, translatedLyrics, audioProcessingState.audioUrl]);
-
-  useEffect(() => {
-    resetSegmentation();
-  }, [videoId, resetSegmentation]);
 
   useEffect(() => {
     useAnalysisStore.getState().clearSheetSage();
@@ -744,20 +735,6 @@ export function useAnalyzePageViewModel({
   }, [
     cachedSheetSageMelodyQuery.error,
   ]);
-
-  const segmentationDisabledReason = !songContext.audioUrl
-    ? 'Song segmentation becomes available after audio extraction finishes.'
-    : songContext.audioUrl.startsWith('blob:')
-      ? 'Song segmentation requires a backend-accessible extracted audio URL.'
-      : !songContext.beats?.length
-        ? 'Song segmentation becomes available after beat analysis finishes.'
-        : undefined;
-
-  const canAnalyzeSegmentation = !segmentationDisabledReason;
-
-  const handleSegmentationToggle = useCallback(() => {
-    void toggleSegmentation(songContext);
-  }, [toggleSegmentation, songContext]);
 
   const toggleChatbot = useCallback(() => {
     setIsChatbotOpen(!isChatbotOpen);
@@ -1013,7 +990,14 @@ export function useAnalyzePageViewModel({
 
     if (!hasSheetSageNotes) {
       if (!hasReadySheetSageBackend) {
-        analysisActions.setSheetSageError(sheetSageBackendError || 'Sheet Sage backend unavailable.');
+        const errorMsg = sheetSageBackendError || 'Sheet Sage backend unavailable.';
+        console.warn('🎵 Melodic transcription unavailable:', errorMsg);
+        analysisActions.setSheetSageError(errorMsg);
+        addToast({
+          title: 'Nhận diện giai điệu chưa khả dụng',
+          description: errorMsg,
+          color: 'danger',
+        });
         return;
       }
 
@@ -1033,7 +1017,13 @@ export function useAnalyzePageViewModel({
         queryClient.setQueryData(queryKeys.sheetSage.cachedMelody(videoId), result);
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown Sheet Sage error';
+        console.error('🎵 Melodic transcription error:', error);
         analysisActions.setSheetSageError(message);
+        addToast({
+          title: 'Lỗi nhận diện giai điệu',
+          description: message,
+          color: 'danger',
+        });
         analysisActions.setIsComputingSheetSage(false);
         return;
       } finally {
@@ -1061,7 +1051,6 @@ export function useAnalyzePageViewModel({
   useMelodicTranscriptionPlayback({
     sheetSageResult,
     audioUrl: audioProcessingState.audioUrl || null,
-    segmentationData,
     audioRef,
     youtubePlayer,
     currentTime,
@@ -1149,7 +1138,6 @@ export function useAnalyzePageViewModel({
 
   useAnalyzePageLifecycleReset({
     videoId,
-    resetSegmentation,
     setIsMelodicTranscriptionPlaybackEnabled,
     setIsFollowModeEnabled,
     setIsCountdownEnabled,
@@ -1220,22 +1208,22 @@ export function useAnalyzePageViewModel({
   // When pitch-shift is ON, the pitch-shift toggle effect in usePitchShiftAudio
   // owns muting (mutes YouTube + audio element). If we unconditionally unmute
   // YouTube here on youtubePlayer load, we override the pitch-shift mute and
-  // the user hears BOTH the YouTube source audio AND the Firebase pitch-shifted
-  // audio simultaneously — which also creates a perceived timing mismatch.
+  // the user hears BOTH the YouTube source audio AND the Persistence pitch-shifted
+  // audio simultaneously â€” which also creates a perceived timing mismatch.
   useEffect(() => {
     if (youtubePlayer) {
-      setYouTubePlayerMuted(youtubePlayer, isPitchShiftEnabled);
+      setYouTubePlayerMuted(youtubePlayer, isPitchShiftEnabled || isStemModeEnabled);
     }
     if (audioRef.current) {
       audioRef.current.muted = true;
     }
-  }, [youtubePlayer, audioRef, isPitchShiftEnabled]);
+  }, [youtubePlayer, audioRef, isPitchShiftEnabled, isStemModeEnabled]);
 
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.playbackRate = playbackRate;
       if (process.env.NODE_ENV === 'development') {
-        console.log(`🎵 Synced audio element playback rate to ${playbackRate}x`);
+        console.log(`ðŸŽµ Synced audio element playback rate to ${playbackRate}x`);
       }
     }
   }, [playbackRate, audioRef]);
@@ -1245,8 +1233,10 @@ export function useAnalyzePageViewModel({
   }, []);
 
   const handleRefreshExtraction = useCallback(() => {
+    // Uploaded audio has no YouTube source to re-download from.
+    if (isUploadSource) return;
     extractAudioFromYouTube(true);
-  }, [extractAudioFromYouTube]);
+  }, [extractAudioFromYouTube, isUploadSource]);
 
   useEffect(() => {
     const playbackStore = usePlaybackStore.getState();
@@ -1276,7 +1266,6 @@ export function useAnalyzePageViewModel({
     isTranscribingLyrics,
     lyricsError,
     videoTitle,
-    showSegmentation,
     isChatbotOpen,
     isLyricsPanelOpen: false,
     isPlaying,
@@ -1358,7 +1347,6 @@ export function useAnalyzePageViewModel({
     fontSize,
     onFontSizeChange: setFontSize,
     theme,
-    segmentationData,
     sequenceCorrections: simplifiedSequenceCorrections,
     chordGridData: simplifiedChordGridData,
     isChatbotOpen,
@@ -1402,7 +1390,6 @@ export function useAnalyzePageViewModel({
       currentBeatIndex,
       chords: simplifiedChordGridData?.chords || [],
       beats: simplifiedChordGridData?.beats || [],
-      segmentationData,
       toggleVideoMinimization,
       toggleFollowMode,
       toggleMetronomeWithSync: handleMetronomeToggle,
@@ -1411,7 +1398,15 @@ export function useAnalyzePageViewModel({
       playbackRate,
       currentTime,
       duration,
-      onReady: handleYouTubeReady,
+      onReady: (player: unknown) => {
+        handleYouTubeReady(player);
+        // The <audio> player knows the real length; YouTube flows get it from extraction.
+        if (isUploadSource) {
+          const audioDuration = (player as { getDuration?: () => number }).getDuration?.();
+          if (audioDuration && Number.isFinite(audioDuration)) setDuration(audioDuration);
+        }
+      },
+      audioOnly: isUploadSource,
       onPlay: async () => {
         if (isCountdownEnabled && !isPlaying && !countdownStateRef.current.inProgress && !countdownStateRef.current.completed) {
           try { (youtubePlayer as any)?.pauseVideo?.(); } catch {}
@@ -1434,7 +1429,7 @@ export function useAnalyzePageViewModel({
       onProgress: handleYouTubeProgress,
       onSeek: (time: number) => {
         // CLOCK AUTHORITY (post-unification): the YouTube scrubber is a
-        // user-initiated seek — route it through the master clock, which
+        // user-initiated seek â€” route it through the master clock, which
         // raises the store fence (R2), bumps the seek token (R3), and
         // publishes the new position. The YouTube iframe is still the
         // primary controller, so we also call `seekTo` so the iframe's own
@@ -1448,8 +1443,8 @@ export function useAnalyzePageViewModel({
         // `grainPlayerPitchShiftService.syncAnchor`, and that method
         // overwrites the service's reported `_currentTime` to match the
         // new master position. The slave loop's drift check
-        // (`|serviceState.currentTime - masterPos|`) therefore reads ≈ 0
-        // and NEVER fires `service.seek(masterPos)` — meaning the actual
+        // (`|serviceState.currentTime - masterPos|`) therefore reads â‰ˆ 0
+        // and NEVER fires `service.seek(masterPos)` â€” meaning the actual
         // audio buffer position stays at the pre-scrub location while the
         // beat grid and YouTube iframe both jump forward. Calling
         // `service.seek` here is the only path that actually relocates
@@ -1474,7 +1469,7 @@ export function useAnalyzePageViewModel({
         const resolvedLoopRange = resolveLoopRange(beats, loopStartBeat, loopEndBeat, duration);
         if (!resolvedLoopRange) return;
         const startTimestamp = resolvedLoopRange.startTimestamp;
-        // CLOCK AUTHORITY: programmatic loop-wrap is a seek — route through
+        // CLOCK AUTHORITY: programmatic loop-wrap is a seek â€” route through
         // the master clock so the fence + seek token + position publish all
         // happen atomically.
         youtubeMasterClock.onUserSeek(startTimestamp);
@@ -1518,7 +1513,7 @@ export function useAnalyzePageViewModel({
 
   // STABLE CALLBACK: Wrapping setPlaybackRate in useCallback prevents the
   // function identity from changing on every viewModel render. Without this,
-  // UtilityBar's memo() breaks on every YouTube progress event (~4×/sec),
+  // UtilityBar's memo() breaks on every YouTube progress event (~4Ã—/sec),
   // cascading re-renders into PitchShiftPopover and causing slider jitter
   // during drags. setAudioPlayerState is stable (useState setter).
   const stableSetPlaybackRate = useCallback((rate: number) => {
@@ -1557,15 +1552,6 @@ export function useAnalyzePageViewModel({
       onSearch: () => void runLRCLibLyricsSearch(),
       onApplyCandidate: applyLRCLibCandidate,
     },
-    segmentation: {
-      isVisible: showSegmentation && !!segmentationData,
-      hasData: !!segmentationData,
-      isLoading: isSegmenting,
-      disabled: !canAnalyzeSegmentation && !segmentationData,
-      disabledReason: !segmentationData ? segmentationDisabledReason : undefined,
-      errorMessage: segmentationError,
-      onToggle: handleSegmentationToggle,
-    },
     metronome: {
       isEnabled: isMetronomeEnabled,
       toggleMetronomeWithSync: handleMetronomeToggle,
@@ -1590,13 +1576,13 @@ export function useAnalyzePageViewModel({
       analysisResults,
       audioDuration: duration,
       audioUrl: audioProcessingState.audioUrl || undefined,
-      fromFirestoreCache: audioProcessingState.fromFirestoreCache,
+      fromPersistentCache: audioProcessingState.fromPersistentCache,
       videoId,
       beatDetector,
       error: audioProcessingState.error || null,
       suggestion: audioProcessingState.suggestion || undefined,
       onTryAnotherVideo: handleTryAnotherVideo,
-      onRetry: () => extractAudioFromYouTube(false),
+      onRetry: isUploadSource ? () => window.location.reload() : () => extractAudioFromYouTube(false),
     },
     melodyToastProps: {
       isComputing: isComputingSheetSage,
@@ -1622,7 +1608,6 @@ export function useAnalyzePageViewModel({
     keySignature,
     currentBeatIndex,
     chordGridData,
-    segmentationData,
     audioUrl: audioProcessingState.audioUrl || null,
     bpm,
     timeSignature,

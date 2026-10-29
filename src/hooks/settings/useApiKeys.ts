@@ -16,8 +16,7 @@ import { apiKeyValidation } from '@/services/api/apiKeyValidationService';
 export const useApiKeys = () => {
   const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>({
     musicAi: { hasKey: false, isValid: false },
-    gemini: { hasKey: false, isValid: false },
-    songformerAccess: { hasKey: false, isValid: false }
+    gemini: { hasKey: false, isValid: false }
   });
   const [isLoading, setIsLoading] = useState(true);
   const [rateLimitInfo, setRateLimitInfo] = useState<RateLimitInfo | null>(null);
@@ -57,10 +56,8 @@ export const useApiKeys = () => {
     // Validate the API key
     if (service === 'musicAi') {
       validationResult = await apiKeyValidation.validateMusicAiKey(apiKey);
-    } else if (service === 'gemini') {
-      validationResult = await apiKeyValidation.validateGeminiKey(apiKey);
     } else {
-      validationResult = await apiKeyValidation.validateSongformerAccessCode(apiKey);
+      validationResult = await apiKeyValidation.validateGeminiKey(apiKey);
     }
     
     if (validationResult.isValid) {
@@ -104,14 +101,6 @@ export const useApiKeys = () => {
       return true; // Always available with fallback
     }
 
-    if (service === 'songformerAccess') {
-      if (process.env.NODE_ENV !== 'production') {
-        return true;
-      }
-
-      return status.hasKey && status.isValid;
-    }
-
     return false;
   }, [apiKeyStatus]);
 
@@ -141,18 +130,6 @@ export const useApiKeys = () => {
       return 'Using your Gemini API key for translations';
     }
 
-    if (service === 'songformerAccess') {
-      if (process.env.NODE_ENV !== 'production') {
-        return 'Song segmentation access code is not required for local development';
-      }
-      if (!status.hasKey) {
-        return 'Access code required for first-time SongFormer segmentation requests';
-      }
-      if (!status.isValid) {
-        return 'Invalid SongFormer access code - please check your code';
-      }
-      return 'SongFormer access code configured';
-    }
     
     return 'Service status unknown';
   }, [apiKeyStatus]);

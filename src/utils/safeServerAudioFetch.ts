@@ -52,8 +52,9 @@ function isDevelopmentLocalhostAllowed(
   url: URL,
   options: SafeAudioSourceValidationOptions
 ): boolean {
+  const allowDev = options.allowDevelopmentLocalhost ?? (process.env.NODE_ENV === 'development');
   return (
-    options.allowDevelopmentLocalhost === true &&
+    allowDev === true &&
     process.env.NODE_ENV === 'development' &&
     ['localhost', '127.0.0.1'].includes(url.hostname)
   );

@@ -1,4 +1,4 @@
-# Beats Blueprint
+﻿# Beats Blueprint
 
 <cite>
 **Referenced Files in This Document**
@@ -34,7 +34,7 @@
 This document describes the beats blueprint service responsible for beat and downbeat detection across three detectors: Beat-Transformer, madmom, and Librosa. It covers the API endpoints, request validation, route handlers, detector integrations, error handling, and the offloading mechanism for large audio files. It also outlines performance characteristics and optimization strategies.
 
 ## Project Structure
-The beats blueprint is implemented in the Python backend under the blueprints/beats package. Supporting services and detectors live under services/, with detector wrappers under services/detectors/. Temporary file handling and audio utilities are provided by services/audio/*. The frontend offload pipeline is implemented in the Next.js app under src/app/api/detect-beats-offload and integrates with the backend via Firebase URLs.
+The beats blueprint is implemented in the Python backend under the blueprints/beats package. Supporting services and detectors live under services/, with detector wrappers under services/detectors/. Temporary file handling and audio utilities are provided by services/audio/*. The frontend offload pipeline is implemented in the Next.js app under src/app/api/detect-beats-offload and integrates with the backend via Local persistence URLs.
 
 ```mermaid
 graph TB
@@ -99,7 +99,7 @@ PATHS --> TF
 - Beat Detection Service: Orchestrates detector selection based on availability, file size, and user preference; normalizes results; logs performance and time signatures.
 - Detectors: Wrappers for Beat-Transformer, madmom, and Librosa with normalized output and availability checks.
 - Temporary Files and Audio Utils: Safe temporary file creation/cleanup and audio validation/duration helpers.
-- Offload Pipeline: Frontend uploads to offload storage, sends Firebase URL to backend, which downloads and processes the file.
+- Offload Pipeline: Frontend uploads to offload storage, sends Local persistence URL to backend, which downloads and processes the file.
 
 **Section sources**
 - [routes.py:40-120](file://python_backend/blueprints/beats/routes.py#L40-L120)
@@ -115,7 +115,7 @@ PATHS --> TF
 ## Architecture Overview
 The beats blueprint exposes three primary endpoints:
 - POST /api/detect-beats: Accepts uploaded audio or a server-side path, validates inputs, selects a detector, and returns normalized beat/downbeat results.
-- POST /api/detect-beats-firebase: Accepts a Firebase Storage URL, streams the file to a temporary location, detects beats, and returns results.
+- POST /api/detect-beats-local-persistence: Accepts a local audio storage URL, streams the file to a temporary location, detects beats, and returns results.
 - GET /api/model-info: Returns model availability, defaults, and file size limits.
 
 ```mermaid
@@ -201,10 +201,10 @@ Result -- No --> Err500["Return 500 with error"]
 - [tempfiles.py:15-66](file://python_backend/services/audio/tempfiles.py#L15-L66)
 - [beat_detection_service.py:163-310](file://python_backend/services/audio/beat_detection_service.py#L163-L310)
 
-### Endpoint: POST /api/detect-beats-firebase
-- Purpose: Detect beats from a Firebase Storage URL.
+### Endpoint: POST /api/detect-beats-local-persistence
+- Purpose: Detect beats from a local audio storage URL.
 - Request parameters:
-  - firebase_url: URL to the audio file in Firebase Storage
+  - local-persistence_url: URL to the audio file in local audio storage
   - detector: 'beat-transformer', 'madmom', 'librosa', or 'auto'
 - Processing:
   - Validates request parameters.
@@ -220,8 +220,8 @@ participant V as "Validator<br/>validators.py"
 participant DL as "_download_remote_audio_to_temp_path"
 participant S as "BeatDetectionService"
 participant D as "Detector"
-C->>R : POST /api/detect-beats-firebase
-R->>V : validate_firebase_beat_detection_request()
+C->>R : POST /api/detect-beats-local-persistence
+R->>V : validate_local-persistence_beat_detection_request()
 V-->>R : (valid?, error?, params)
 R->>DL : download to temp file
 DL-->>R : temp_path
@@ -310,8 +310,8 @@ BeatDetectionService --> LibrosaDetectorService : "uses"
   - Validates detector among supported values.
   - Parses force parameter from query or form.
   - Returns validated parameters and optional file handle.
-- validate_firebase_beat_detection_request:
-  - Requires firebase_url.
+- validate_local-persistence_beat_detection_request:
+  - Requires local-persistence_url.
   - Validates detector parameter.
 - validate_file_size:
   - Computes file size in MB without consuming the stream.
@@ -342,7 +342,7 @@ BeatDetectionService --> LibrosaDetectorService : "uses"
   - Calls POST /api/detect-beats-offload with offload_url, detector, and optional force.
   - Calculates a timeout based on estimated audio duration.
 - Backend:
-  - Verifies App Check, validates the offload URL, and forwards to /api/detect-beats-firebase.
+  - Verifies IP rate limiting, validates the offload URL, and forwards to /api/detect-beats-local-persistence.
   - On failure with Beat-Transformer checkpoint errors, retries with madmom automatically.
   - Optionally deletes the offload URL after successful processing.
 
@@ -350,12 +350,12 @@ BeatDetectionService --> LibrosaDetectorService : "uses"
 sequenceDiagram
 participant FE as "Frontend"
 participant API as "Next.js /detect-beats-offload"
-participant FB as "Firebase Offload"
-participant PY as "Flask /api/detect-beats-firebase"
+participant FB as "Local persistence Offload"
+participant PY as "Flask /api/detect-beats-local-persistence"
 FE->>FB : Upload audio to offload storage
 FB-->>FE : Signed offload URL
 FE->>API : POST /detect-beats-offload (offload_url, detector, force)
-API->>PY : POST /api/detect-beats-firebase (firebase_url, detector, force)
+API->>PY : POST /api/detect-beats-local-persistence (local-persistence_url, detector, force)
 PY-->>API : JSON result
 API->>FB : Delete offload URL (optional)
 API-->>FE : JSON result
@@ -419,7 +419,7 @@ OFF["src/app/api/detect-beats-offload/route.ts"] --> R
   - Auto-selection prefers madmom for small files, Beat-Transformer for medium files, and madmom or Librosa for large files depending on size limits.
   - Force flag allows bypassing size limits for the requested detector.
 - File Size Limits:
-  - Beat-Transformer: 50–100 MB (depending on auto vs. explicit detector).
+  - Beat-Transformer: 50â€“100 MB (depending on auto vs. explicit detector).
   - Madmom: up to 200 MB.
   - Librosa: up to 500 MB.
 - Processing Metrics:
@@ -436,7 +436,7 @@ OFF["src/app/api/detect-beats-offload/route.ts"] --> R
 - 400 Bad Request:
   - Missing file or audio_path.
   - Invalid detector value.
-  - Missing Firebase URL.
+  - Missing Local persistence URL.
 - 404 Not Found:
   - Provided audio_path does not exist.
 - 413 Payload Too Large:
@@ -476,11 +476,11 @@ The beats blueprint provides a robust, extensible system for beat detection acro
 - [routes.py:40-120](file://python_backend/blueprints/beats/routes.py#L40-L120)
 - [beat_detection_service.py:163-310](file://python_backend/services/audio/beat_detection_service.py#L163-L310)
 
-### API Reference: POST /api/detect-beats-firebase
+### API Reference: POST /api/detect-beats-local-persistence
 - Request
   - Content-Type: application/x-www-form-urlencoded or multipart/form-data
   - Fields:
-    - firebase_url: signed URL to audio in Firebase Storage
+    - local-persistence_url: signed URL to audio in local audio storage
     - detector: 'beat-transformer' | 'madmom' | 'librosa' | 'auto'
 - Response (success)
   - Same normalized JSON as /api/detect-beats.

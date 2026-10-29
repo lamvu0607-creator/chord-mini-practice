@@ -1,5 +1,4 @@
 import type { ChordSignalDynamics } from '@/services/audio/audioDynamicsTypes';
-import type { SegmentationResult } from '@/types/chatbotTypes';
 import { noteNameToMidi, type MidiNote } from '@/utils/chordToMidi';
 
 import {
@@ -11,7 +10,7 @@ import {
   PIANO_SHORT_BLOCK_CHORD_VOLUME_REDUCTION,
   TIMING_EPSILON,
 } from '../constants';
-import { getActiveSegmentationSegmentForTime, hashPatternSeed, isSparsePianoSegment } from '../segmentContext';
+import { hashPatternSeed } from '../patternSeed';
 import { clamp01, easeInOutSineCurve, mix, resolveAttack, resolveFullness, resolveMotion, resolveQuietness } from '../signalDynamics';
 import type { ScheduledNote } from '../types';
 
@@ -109,7 +108,6 @@ export function generatePianoNotes(
   startTime?: number,
   totalDuration?: number,
   timeSignature: number = 4,
-  segmentationData?: SegmentationResult | null,
   signalDynamics?: ChordSignalDynamics | null,
   simpleBlockChord: boolean = false,
 ): ScheduledNote[] {
@@ -294,10 +292,7 @@ export function generatePianoNotes(
   }
 
   const isWaltz = timeSignature === 3 || isCompoundTime;
-  const activeSegment = getActiveSegmentationSegmentForTime(segmentationData, chordStartTime);
-  const segmentSparseLift = isSparsePianoSegment(activeSegment) ? 0.56 : 0;
   const sparseBlend = clamp01(Math.max(
-    segmentSparseLift,
     quietness * 0.9 - fullness * 0.2,
     isNearSongEnding ? 0.88 : 0,
   ));
@@ -322,12 +317,6 @@ export function generatePianoNotes(
         && motion < 0.54
         && attack < 0.5
         && activityBlend < 0.48
-      )
-      || (
-        isSparsePianoSegment(activeSegment)
-        && sparseBlend > 0.5
-        && fullness < 0.5
-        && activityBlend < 0.52
       )
       || (
         Boolean(signalDynamics)

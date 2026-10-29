@@ -5,9 +5,9 @@ import type { AnalysisResult } from '@/services/chord-analysis/chordRecognitionS
 import type { AudioProcessingState } from '@/services/audio/audioProcessingService';
 import { useAnalyzePageOrchestrator } from '@/hooks/analyze/useAnalyzePageOrchestrator';
 import { ChordGridContainer } from '@/components/chord-analysis/ChordGridContainer';
-import { getTranscription } from '@/services/firebase/firestoreService';
+import { getTranscription } from '@/services/persistence/transcriptionService';
 
-jest.mock('@/services/firebase/firestoreService', () => ({
+jest.mock('@/services/persistence/transcriptionService', () => ({
   getTranscription: jest.fn(),
   updateTranscriptionEnrichment: jest.fn(),
 }));
@@ -83,7 +83,7 @@ const audioProcessingState: AudioProcessingState = {
   isAnalyzed: true,
   audioUrl: 'https://example.test/audio.mp3',
   fromCache: true,
-  fromFirestoreCache: true,
+  fromPersistentCache: true,
   error: null,
   suggestion: null,
 };
@@ -131,7 +131,7 @@ describe('cached correction pipeline', () => {
       durationFromSearch: null,
       channelFromSearch: null,
       thumbnailFromSearch: null,
-      firebaseReady: false,
+      persistenceReady: false,
       modelsInitialized: false,
       beatDetector: 'madmom',
       chordDetector: 'chord-cnn-lstm',
@@ -196,7 +196,7 @@ describe('cached correction pipeline', () => {
       durationFromSearch: null,
       channelFromSearch: null,
       thumbnailFromSearch: null,
-      firebaseReady: false,
+      persistenceReady: false,
       modelsInitialized: false,
       beatDetector: 'madmom',
       chordDetector: 'chord-cnn-lstm',
@@ -258,7 +258,7 @@ describe('cached correction pipeline', () => {
     expect(screen.getByTestId('mock-chord-grid')).toHaveAttribute('data-grid-chords', 'C#|D#|G#');
   });
 
-  it('keeps Firebase-corrected labels authoritative when Roman numerals are toggled on', async () => {
+  it('keeps persisted corrected labels authoritative when Roman numerals are toggled on', async () => {
     const updateRomanNumeralData = jest.fn();
 
     fetchMock.mockImplementation(async (input) => {
@@ -289,7 +289,7 @@ describe('cached correction pipeline', () => {
       durationFromSearch: null,
       channelFromSearch: null,
       thumbnailFromSearch: null,
-      firebaseReady: false,
+      persistenceReady: false,
       modelsInitialized: false,
       beatDetector: 'madmom' as const,
       chordDetector: 'chord-cnn-lstm' as const,

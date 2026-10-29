@@ -205,6 +205,15 @@ class BeatDetectionService:
             detector_service = self.detectors[selected_detector]
             result = detector_service.detect_beats(file_path)
 
+            # Fallback to librosa if primary detector failed
+            if not result.get('success') and selected_detector != 'librosa':
+                log_info(f"Detector {selected_detector} failed ({result.get('error')}), falling back to librosa")
+                if 'librosa' in self.detectors and self.detectors['librosa'].is_available():
+                    fallback_result = self.detectors['librosa'].detect_beats(file_path)
+                    if fallback_result.get('success'):
+                        result = fallback_result
+                        selected_detector = 'librosa'
+
             # Add metadata
             result['file_size_mb'] = file_size_mb
             result['detector_selected'] = selected_detector

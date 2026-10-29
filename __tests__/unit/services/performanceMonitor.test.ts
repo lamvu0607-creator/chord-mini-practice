@@ -23,9 +23,9 @@ describe('PerformanceMonitor', () => {
   describe('initial state', () => {
     it('starts with zeroed metrics', () => {
       const metrics = monitor.getMetrics();
-      expect(metrics.firebaseQueries.total).toBe(0);
-      expect(metrics.firebaseQueries.cached).toBe(0);
-      expect(metrics.firebaseQueries.failed).toBe(0);
+      expect(metrics.persistenceQueries.total).toBe(0);
+      expect(metrics.persistenceQueries.cached).toBe(0);
+      expect(metrics.persistenceQueries.failed).toBe(0);
       expect(metrics.filenameMatching.totalAttempts).toBe(0);
       expect(metrics.cachePerformance.hitRate).toBe(0);
       expect(metrics.errorTracking.totalErrors).toBe(0);
@@ -37,47 +37,47 @@ describe('PerformanceMonitor', () => {
     });
   });
 
-  describe('trackFirebaseQuery', () => {
+  describe('trackPersistenceQuery', () => {
     it('increments total on each call', () => {
-      monitor.trackFirebaseQuery('cache_hit', 50);
-      monitor.trackFirebaseQuery('cache_miss', 100);
-      expect(monitor.getMetrics().firebaseQueries.total).toBe(2);
+      monitor.trackPersistenceQuery('cache_hit', 50);
+      monitor.trackPersistenceQuery('cache_miss', 100);
+      expect(monitor.getMetrics().persistenceQueries.total).toBe(2);
     });
 
     it('increments cached count for cache_hit', () => {
-      monitor.trackFirebaseQuery('cache_hit', 30);
-      expect(monitor.getMetrics().firebaseQueries.cached).toBe(1);
+      monitor.trackPersistenceQuery('cache_hit', 30);
+      expect(monitor.getMetrics().persistenceQueries.cached).toBe(1);
     });
 
     it('increments failed count for error', () => {
-      monitor.trackFirebaseQuery('error', 200);
-      expect(monitor.getMetrics().firebaseQueries.failed).toBe(1);
+      monitor.trackPersistenceQuery('error', 200);
+      expect(monitor.getMetrics().persistenceQueries.failed).toBe(1);
     });
 
     it('does not increment cached for cache_miss', () => {
-      monitor.trackFirebaseQuery('cache_miss', 100);
-      expect(monitor.getMetrics().firebaseQueries.cached).toBe(0);
+      monitor.trackPersistenceQuery('cache_miss', 100);
+      expect(monitor.getMetrics().persistenceQueries.cached).toBe(0);
     });
 
     it('calculates reduction percentage based on cache hits', () => {
-      monitor.trackFirebaseQuery('cache_hit', 10);
-      monitor.trackFirebaseQuery('cache_hit', 20);
-      monitor.trackFirebaseQuery('cache_miss', 30);
+      monitor.trackPersistenceQuery('cache_hit', 10);
+      monitor.trackPersistenceQuery('cache_hit', 20);
+      monitor.trackPersistenceQuery('cache_miss', 30);
       // 2 cached out of 3 total = 66.67%
-      const reduction = monitor.getMetrics().firebaseQueries.reductionPercentage;
+      const reduction = monitor.getMetrics().persistenceQueries.reductionPercentage;
       expect(reduction).toBeCloseTo(66.67, 1);
     });
 
     it('computes average response time', () => {
-      monitor.trackFirebaseQuery('cache_hit', 100);
-      monitor.trackFirebaseQuery('cache_miss', 200);
-      const avg = monitor.getMetrics().firebaseQueries.avgResponseTime;
+      monitor.trackPersistenceQuery('cache_hit', 100);
+      monitor.trackPersistenceQuery('cache_miss', 200);
+      const avg = monitor.getMetrics().persistenceQueries.avgResponseTime;
       expect(avg).toBeCloseTo(150, 0);
     });
 
     it('updates lastUpdated timestamp', () => {
       const before = Date.now();
-      monitor.trackFirebaseQuery('cache_hit', 50);
+      monitor.trackPersistenceQuery('cache_hit', 50);
       const metrics = monitor.getMetrics();
       expect(metrics.lastUpdated).toBeGreaterThanOrEqual(before);
     });
@@ -158,7 +158,7 @@ describe('PerformanceMonitor', () => {
   describe('getPerformanceSummary', () => {
     it('returns excellent status when no data (defaults to 0)', () => {
       const summary = monitor.getPerformanceSummary();
-      // With all zeros, firebaseReduction=0 < 40, so status should be critical
+      // With all zeros, persistenceReduction=0 < 40, so status should be critical
       expect(summary.status).toBe('critical');
       expect(summary).toHaveProperty('summary');
       expect(summary).toHaveProperty('keyMetrics');
@@ -167,7 +167,7 @@ describe('PerformanceMonitor', () => {
 
     it('returns correct key metrics structure', () => {
       const summary = monitor.getPerformanceSummary();
-      expect(summary.keyMetrics).toHaveProperty('Firebase Query Reduction');
+      expect(summary.keyMetrics).toHaveProperty('Persistence Query Reduction');
       expect(summary.keyMetrics).toHaveProperty('Filename Accuracy');
       expect(summary.keyMetrics).toHaveProperty('Cache Hit Rate');
       expect(summary.keyMetrics).toHaveProperty('Error Reduction');
@@ -201,16 +201,16 @@ describe('PerformanceMonitor', () => {
   });
 
   describe('alerts', () => {
-    it('generates critical alert when firebase reduction is very low', () => {
-      // All cache_miss → 0% reduction → critical alert
-      monitor.trackFirebaseQuery('cache_miss', 100);
+    it('generates critical alert when persistence reduction is very low', () => {
+      // All cache_miss â†’ 0% reduction â†’ critical alert
+      monitor.trackPersistenceQuery('cache_miss', 100);
       const summary = monitor.getPerformanceSummary();
       const criticalAlerts = summary.alerts.filter((a: any) => a.type === 'critical');
       expect(criticalAlerts.length).toBeGreaterThan(0);
     });
 
     it('generates warning alert when filename accuracy is below 95%', () => {
-      // 9 successes, 1 failure = 90% → warning
+      // 9 successes, 1 failure = 90% â†’ warning
       for (let i = 0; i < 9; i++) monitor.trackFilenameMatching(true);
       monitor.trackFilenameMatching(false);
       const summary = monitor.getPerformanceSummary();

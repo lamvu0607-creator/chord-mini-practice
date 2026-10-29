@@ -12,6 +12,7 @@ import AnalyzePageChrome from './_components/AnalyzePageChrome';
 import AnalyzeResultsPane from './_components/AnalyzeResultsPane';
 import AnalyzeSidePanels from './_components/AnalyzeSidePanels';
 import AnalyzeFloatingDockSection from './_components/AnalyzeFloatingDockSection';
+import AnalyzeClipControl from '@/components/analysis/AnalyzeClipControl';
 import { useAnalyzePageViewModel } from './_hooks/useAnalyzePageViewModel';
 import dynamic from 'next/dynamic';
 import { AnalysisControlsSkeleton } from '@/components/common/SkeletonLoaders';
@@ -44,7 +45,7 @@ export default function YouTubeVideoAnalyzePage() {
             <PitchShiftAudioManager
               youtubePlayer={viewModel.youtubePlayer}
               audioRef={viewModel.audioRef}
-              firebaseAudioUrl={viewModel.audioUrl}
+              cachedAudioUrl={viewModel.audioUrl}
               isPlaying={viewModel.audioPlayerState.isPlaying}
               currentTime={viewModel.audioPlayerState.currentTime}
               playbackRate={viewModel.audioPlayerState.playbackRate}
@@ -59,7 +60,6 @@ export default function YouTubeVideoAnalyzePage() {
               chordGridData={viewModel.chordGridData as unknown as ComponentProps<typeof ChordPlaybackManager>['chordGridData']}
               isPlaying={viewModel.audioPlayerState.isPlaying}
               currentTime={viewModel.audioPlayerState.currentTime}
-              segmentationData={viewModel.segmentationData as unknown as ComponentProps<typeof ChordPlaybackManager>['segmentationData']}
               audioUrl={viewModel.audioUrl}
               bpm={viewModel.bpm}
               timeSignature={viewModel.timeSignature}
@@ -74,7 +74,17 @@ export default function YouTubeVideoAnalyzePage() {
                   <div className="px-4 pt-2 pb-1">
                     <div suppressHydrationWarning>
                       {/* suppressHydrationWarning keeps the shell stable while dynamic controls hydrate */}
-                      <DynamicAnalysisControls {...viewModel.controlsProps} />
+                      <DynamicAnalysisControls
+                        {...viewModel.controlsProps}
+                        secondaryAction={(
+                          <AnalyzeClipControl
+                            videoId={videoId}
+                            title={viewModel.chromeProps.videoTitle}
+                            variant="button"
+                            isDisabled={!viewModel.controlsProps.isExtracted || viewModel.controlsProps.isAnalyzing}
+                          />
+                        )}
+                      />
                     </div>
                   </div>
 
@@ -100,6 +110,8 @@ export default function YouTubeVideoAnalyzePage() {
                 <AnalyzeFloatingDockSection
                   floatingDockProps={viewModel.floatingDockProps}
                   utilityBarProps={viewModel.utilityBarProps}
+                  videoId={videoId}
+                  videoTitle={viewModel.chromeProps.videoTitle}
                 />
               </div>
             </div>

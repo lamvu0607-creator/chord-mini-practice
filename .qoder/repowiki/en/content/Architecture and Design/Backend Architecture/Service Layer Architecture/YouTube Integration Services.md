@@ -17,7 +17,7 @@ The current YouTube extraction stack is environment-aware:
 - Production uses `ytMp3GoService` against the private `YT_MP3_GO_BASE_URL` deployment.
 - Local development uses `ytDlpService` through the `/api/ytdlp/*` routes.
 - `/api/extract-audio` is the frontend-facing orchestration route.
-- Extracted audio is cached through Firebase Storage when possible, with Firestore metadata as a fallback.
+- Extracted audio is cached through local audio storage when possible, with SQLite metadata as a fallback.
 
 The older deleted legacy extraction service and compatibility wrapper have been removed from the source tree and should not be treated as active integration points.
 
@@ -34,7 +34,7 @@ MP3 --> Job["POST /yt-downloader/download"]
 MP3 --> Events["GET /yt-downloader/events?id=jobID"]
 DLP --> DlpInfo["/api/ytdlp/extract"]
 DLP --> DlpDownload["/api/ytdlp/download"]
-AES --> Storage["Firebase Storage + Firestore metadata"]
+AES --> Storage["local audio storage + SQLite metadata"]
 ```
 
 **Diagram sources**
@@ -44,7 +44,7 @@ AES --> Storage["Firebase Storage + Firestore metadata"]
 - [route.ts:1-116](file://src/app/api/extract-audio/route.ts#L1-L116)
 
 ## Core Components
-- `AudioExtractionServiceSimplified`: selects the extraction strategy, checks Firebase Storage and Firestore cache, delegates production misses to browser extraction finalization, and stores successful output.
+- `AudioExtractionServiceSimplified`: selects the extraction strategy, checks local audio storage and SQLite cache, delegates production misses to browser extraction finalization, and stores successful output.
 - `YtMp3GoService`: validates video IDs, requests video info, creates a quality-specific download job, monitors SSE status, and returns the finished audio URL.
 - `YtDlpService`: development-only path for local yt-dlp metadata extraction and audio download.
 - `/api/extract-audio`: accepts video metadata from search results, supports `getInfoOnly`, and returns the normalized audio URL plus extraction method.
@@ -57,7 +57,7 @@ participant Route as "/api/extract-audio"
 participant Audio as "AudioExtractionServiceSimplified"
 participant MP3 as "ytMp3GoService"
 participant Remote as "yt-mp3-go"
-participant Store as "Firebase"
+participant Store as "Local persistence"
 Client->>Route : POST {videoId, videoMetadata}
 Route->>Audio : extractAudio(videoMetadata)
 Audio->>Store : Check existing audio and metadata
@@ -76,7 +76,7 @@ Route-->>Client : audioUrl, duration, method
 - Production defaults to browser-side yt-dlp with server-side cache checks and finalization; yt-mp3-go remains rollback-only behind explicit strategy configuration.
 - The service retries medium quality once and then falls back to low quality before returning failure.
 - yt-dlp remains available for local development and for explicit `NEXT_PUBLIC_AUDIO_STRATEGY=ytdlp`.
-- Temporary external URLs are treated as stream URLs; Firebase Storage URLs are treated as permanent.
+- Temporary external URLs are treated as stream URLs; local audio storage URLs are treated as permanent.
 
 ## Related Tests
 - [detect-key.route.test.ts](file://__tests__/integration/api/detect-key.route.test.ts)

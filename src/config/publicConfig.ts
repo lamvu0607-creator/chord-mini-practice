@@ -21,15 +21,6 @@
 
 // Type definition for public configuration
 export interface PublicConfig {
-  // Firebase Configuration
-  NEXT_PUBLIC_FIREBASE_API_KEY?: string;
-  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN?: string;
-  NEXT_PUBLIC_FIREBASE_PROJECT_ID?: string;
-  NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?: string;
-  NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID?: string;
-  NEXT_PUBLIC_FIREBASE_APP_ID?: string;
-  NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID?: string;
-
   // API Configuration
   NEXT_PUBLIC_YOUTUBE_API_KEY?: string;
   NEXT_PUBLIC_BASE_URL?: string;
@@ -178,40 +169,4 @@ export function getCachedConfig(): PublicConfig | null {
  */
 export async function preloadConfig(): Promise<void> {
   await loadPublicConfig();
-}
-
-/**
- * Get Firebase configuration from runtime config
- * 
- * @returns Promise resolving to Firebase configuration object
- */
-export async function getFirebaseConfig() {
-  const config = await loadPublicConfig();
-  
-  return {
-    apiKey: config.NEXT_PUBLIC_FIREBASE_API_KEY,
-    authDomain: config.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    projectId: config.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    storageBucket: config.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: config.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    appId: config.NEXT_PUBLIC_FIREBASE_APP_ID,
-    measurementId: config.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
-  };
-}
-
-/**
- * Get Firebase configuration synchronously (server-side only)
- * 
- * @returns Firebase configuration object
- */
-export function getFirebaseConfigSync() {
-  return {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
-  };
 }

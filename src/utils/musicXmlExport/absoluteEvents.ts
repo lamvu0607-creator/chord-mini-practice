@@ -315,7 +315,6 @@ export function buildPianoNotationNoteEvents(
     bpm,
     timeSignature,
     totalDuration,
-    segmentationData: options?.segmentationData ?? null,
   });
   dynamics.setSignalAnalysis(options?.signalAnalysis ?? null);
 
@@ -347,7 +346,6 @@ export function buildPianoNotationNoteEvents(
       startTime: event.startTime,
       totalDuration,
       timeSignature,
-      segmentationData: options?.segmentationData ?? null,
       signalDynamics,
       simpleBlockChord: options?.simpleBlockChord ?? false,
     });

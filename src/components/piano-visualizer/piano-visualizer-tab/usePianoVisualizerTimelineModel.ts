@@ -12,9 +12,9 @@ import {
 } from '@/utils/chordToMidi';
 import type { AudioMixerSettings } from '@/services/chord-playback/audioMixerService';
 import type { AnalysisResult } from '@/services/chord-analysis/chordRecognitionService';
-import type { SegmentationResult } from '@/types/chatbotTypes';
 import type { SheetSageResult } from '@/types/sheetSage';
 import {
+  HARMONY_TRANSCRIPTION_COLOR,
   INSTRUMENT_COLORS,
   MELODIC_TRANSCRIPTION_COLOR,
   PIANO_WHITE_KEY_COUNT,
@@ -34,7 +34,6 @@ interface UsePianoVisualizerTimelineModelParams {
   sequenceCorrections?: SequenceCorrections | null;
   analysisResults?: AnalysisResult | null;
   audioUrl?: string | null;
-  segmentationData?: SegmentationResult | null;
   sheetSageResult?: SheetSageResult | null;
   showMelodicOverlay: boolean;
   pitchShiftSemitones: number;
@@ -53,7 +52,6 @@ export function usePianoVisualizerTimelineModel({
   sequenceCorrections = null,
   analysisResults,
   audioUrl,
-  segmentationData = null,
   sheetSageResult = null,
   showMelodicOverlay,
   pitchShiftSemitones,
@@ -114,9 +112,8 @@ export function usePianoVisualizerTimelineModel({
       bpm: detectedBpm || 120,
       timeSignature,
       totalDuration,
-      segmentationData,
     }),
-    [detectedBpm, segmentationData, timeSignature, totalDuration],
+    [detectedBpm, timeSignature, totalDuration],
   );
   const dynamicsAnalyzer = useSharedAudioDynamics(audioUrl, dynamicsParams);
   const signalAnalysis = dynamicsAnalyzer.getSignalAnalysis();
@@ -212,7 +209,7 @@ export function usePianoVisualizerTimelineModel({
 
   const melodyOverlayNotes = useMemo(
     () => showMelodicOverlay
-      ? buildSheetSageExtraVisualNotes(sheetSageResult, MELODIC_TRANSCRIPTION_COLOR, pitchShiftSemitones)
+      ? buildSheetSageExtraVisualNotes(sheetSageResult, MELODIC_TRANSCRIPTION_COLOR, pitchShiftSemitones, HARMONY_TRANSCRIPTION_COLOR)
       : [],
     [pitchShiftSemitones, sheetSageResult, showMelodicOverlay],
   );

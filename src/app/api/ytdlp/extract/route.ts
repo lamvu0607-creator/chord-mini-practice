@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { spawn } from 'child_process';
+import { spawnYtDlp } from '@/server/ytdlp/runner';
 
 export const maxDuration = 300;
 
@@ -89,7 +89,7 @@ async function extractVideoInfo(url: string): Promise<VideoInfo> {
       url
     ];
 
-    const ytdlp = spawn('yt-dlp', args);
+    const ytdlp = spawnYtDlp(args);
     let stdout = '';
     let stderr = '';
 

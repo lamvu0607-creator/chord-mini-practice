@@ -5,7 +5,6 @@ import { transposeKeySignature } from '@/utils/chordTransposition';
 import { isSilentChord } from '@/services/chord-analysis/gridShared';
 import { transposeSheetSageNoteEvents } from '@/utils/sheetSagePlayback';
 import type { ChordEvent } from '@/utils/chordToMidi';
-import type { SegmentationResult } from '@/types/chatbotTypes';
 import type { AudioDynamicsAnalysisResult } from '@/services/audio/audioDynamicsTypes';
 import type { SheetSageNoteEvent, SheetSageResult } from '@/types/sheetSage';
 import { countLeadingNullBeatSlots, findClosestTimedBeatIndex } from './helpers';
@@ -435,7 +434,6 @@ interface UseSheetMusicModelParams {
   sequenceCorrections?: SequenceCorrections | null;
   detectedBpm?: number | null;
   timeSignature: number;
-  segmentationData?: SegmentationResult | null;
   signalAnalysis: AudioDynamicsAnalysisResult | null;
   simplePianoBlockChords: boolean;
   includeMelodyInSheetMusic: boolean;
@@ -458,7 +456,6 @@ export function useSheetMusicModel({
   sequenceCorrections = null,
   detectedBpm,
   timeSignature,
-  segmentationData = null,
   signalAnalysis,
   simplePianoBlockChords,
   includeMelodyInSheetMusic,
@@ -677,7 +674,6 @@ export function useSheetMusicModel({
             title: 'ChordMini Piano Visualizer Score',
             keySignature: sheetMusicDisplayKeySignature,
             keySections: sheetMusicKeySections,
-            segmentationData,
             signalAnalysis,
             simplePianoBlockChords,
             lyrics: gridLyrics?.lyrics,
@@ -732,7 +728,6 @@ export function useSheetMusicModel({
     sheetPickupResolution.preferInferredExportPickup,
     sheetPickupResolution.usesFirstPlayableLeadInPickup,
     sheetSageResult,
-    segmentationData,
     signalAnalysis,
     simplePianoBlockChords,
     timeSignature,

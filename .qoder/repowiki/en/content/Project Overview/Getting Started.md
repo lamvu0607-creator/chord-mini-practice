@@ -1,4 +1,4 @@
-# Getting Started
+﻿# Getting Started
 
 <cite>
 **Referenced Files in This Document**
@@ -14,7 +14,7 @@
 - [.env.docker.example](file://.env.docker.example)
 - [scripts/start_python_backend.sh](file://scripts/start_python_backend.sh)
 - [src/config/api.ts](file://src/config/api.ts)
-- [src/config/firebase.ts](file://src/config/firebase.ts)
+- [src/config/local-persistence.ts](file://src/config/local-persistence.ts)
 </cite>
 
 ## Table of Contents
@@ -44,10 +44,10 @@ Ensure your system meets the following requirements before starting:
 - Python 3.10.x (3.10.16 recommended)
 - Docker (recommended for optional services and production)
 - Git LFS (required for large model files)
-- Firebase account (free tier)
+- Local persistence account (free tier)
 - Gemini API key (free tier)
 
-These prerequisites are documented in the repository’s quick setup section.
+These prerequisites are documented in the repositoryâ€™s quick setup section.
 
 **Section sources**
 - [README.md:47-54](file://README.md#L47-L54)
@@ -96,11 +96,11 @@ Important notes:
 ## Environment Configuration
 Create and edit environment files for your setup.
 
-- Local development: copy .env.example to .env.local and configure Firebase, YouTube, Gemini, Genius, and optional local backend URLs.
+- Local development: copy .env.example to .env.local and configure Local persistence, YouTube, Gemini, Genius, and optional local backend URLs.
 - Production: copy .env.docker.example to .env.docker and configure all required variables.
 
 Key variables include:
-- Firebase public keys and project identifiers
+- Local persistence public keys and project identifiers
 - YouTube, Gemini, Genius API keys
 - Backend URLs (PYTHON_API_URL, SONGFORMER_API_URL, SHEETSAGE_API_URL)
 - Audio strategy and streaming flags
@@ -131,12 +131,12 @@ If dependency resolution fails (common on Windows), use WSL2/Ubuntu or Docker. Y
 Start the Next.js frontend in development mode.
 
 - The frontend connects to the backend using the PYTHON_API_URL configured in .env.local.
-- The frontend handles Firebase configuration dynamically via /api/config.
+- The frontend handles Local persistence configuration dynamically via /api/config.
 
 **Section sources**
 - [README.md:165-168](file://README.md#L165-L168)
 - [src/config/api.ts:13-25](file://src/config/api.ts#L13-L25)
-- [src/config/firebase.ts:57-67](file://src/config/firebase.ts#L57-L67)
+- [src/config/local-persistence.ts:57-67](file://src/config/local-persistence.ts#L57-L67)
 
 ## Optional Backends
 Optionally run additional services:
@@ -153,7 +153,7 @@ After starting the services, verify the setup:
 
 - Confirm the backend responds to health checks on port 5001.
 - Ensure the frontend is reachable at http://localhost:3000.
-- Validate Firebase configuration is loaded by the frontend.
+- Validate Local persistence configuration is loaded by the frontend.
 - Test API routes for ML features (e.g., recognize chords) via the frontend.
 
 **Section sources**
@@ -164,13 +164,13 @@ After starting the services, verify the setup:
 The frontend and backend communicate as follows:
 - The frontend is a Next.js app that proxies ML/audio processing endpoints to the Python backend.
 - API routes are centralized and distinguish between internal frontend endpoints and external backend endpoints.
-- Firebase configuration is loaded at runtime from /api/config to support Docker deployments.
+- Local persistence configuration is loaded at runtime from /api/config to support Docker deployments.
 
 ```mermaid
 graph TB
 FE["Next.js Frontend<br/>Port 3000"] --> API["API Routes<br/>src/config/api.ts"]
 API --> PB["Python Backend<br/>Flask App<br/>Port 5001"]
-FE --> FB["Firebase Config<br/>Runtime Load<br/>src/config/firebase.ts"]
+FE --> FB["Local persistence Config<br/>Runtime Load<br/>src/config/local-persistence.ts"]
 PB --> Models["ML Models<br/>Beat/Chord/Lyrics"]
 FE --> |Optional| SF["SongFormer Backend<br/>Port 8080"]
 FE --> |Optional| SS["Sheet Sage Backend<br/>Port 8082"]
@@ -179,12 +179,12 @@ FE --> |Optional| SS["Sheet Sage Backend<br/>Port 8082"]
 **Diagram sources**
 - [src/config/api.ts:13-51](file://src/config/api.ts#L13-L51)
 - [python_backend/app.py:180-186](file://python_backend/app.py#L180-L186)
-- [src/config/firebase.ts:57-67](file://src/config/firebase.ts#L57-L67)
+- [src/config/local-persistence.ts:57-67](file://src/config/local-persistence.ts#L57-L67)
 
 **Section sources**
 - [src/config/api.ts:13-51](file://src/config/api.ts#L13-L51)
 - [python_backend/app.py:180-186](file://python_backend/app.py#L180-L186)
-- [src/config/firebase.ts:57-67](file://src/config/firebase.ts#L57-L67)
+- [src/config/local-persistence.ts:57-67](file://src/config/local-persistence.ts#L57-L67)
 
 ## Troubleshooting
 Common issues and resolutions:

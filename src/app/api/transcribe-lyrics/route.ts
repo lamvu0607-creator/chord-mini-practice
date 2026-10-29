@@ -3,10 +3,9 @@ import path from 'path';
 import fs from 'fs/promises';
 import musicAiService from '@/services/lyrics/musicAiService';
 import {
-  getDocumentWithAdminAccess,
-  setDocumentWithAdminAccess,
-} from '@/services/firebase/firestoreAdminService';
-import { isFirebaseStorageUrl } from '@/utils/urlValidationUtils';
+  getDocument,
+  setDocument,
+} from '@/server/persistence/documentService';
 
 interface CachedLyricsData {
   lyrics?: string;
@@ -17,9 +16,9 @@ interface CachedLyricsData {
 /**
  * API route to transcribe lyrics from an audio file
  * This route will:
- * 1. Check if lyrics are already cached in Firestore
+ * 1. Check if lyrics are already cached in SQLite
  * 2. If not, transcribe lyrics using the Music.ai API
- * 3. Cache the results in Firestore
+ * 3. Cache the results in SQLite
  * 4. Return the transcription results
  */
 
@@ -32,9 +31,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { videoId, audioPath, forceRefresh, checkCacheOnly, musicAiApiKey } = body;
 
-    console.log('🎵 [API] /api/transcribe-lyrics called');
-    console.log('🎵 [API] Timestamp:', new Date().toISOString());
-    console.log('🎵 [API] Request body analysis:', {
+    console.log('ðŸŽµ [API] /api/transcribe-lyrics called');
+    console.log('ðŸŽµ [API] Timestamp:', new Date().toISOString());
+    console.log('ðŸŽµ [API] Request body analysis:', {
       videoId,
       audioPath,
       audioPathType: typeof audioPath,
@@ -42,30 +41,29 @@ export async function POST(request: NextRequest) {
       forceRefresh,
       checkCacheOnly,
       musicAiApiKey: musicAiApiKey ? musicAiApiKey.substring(0, 8) + '...' : 'NOT_PROVIDED',
-      isFirebaseUrl: typeof audioPath === 'string' ? isFirebaseStorageUrl(audioPath) : false,
       hasAudioPath: !!audioPath
     });
 
     if (!videoId) {
-      console.log('❌ [API] Video ID is missing');
+      console.log('âŒ [API] Video ID is missing');
       return NextResponse.json({ error: 'Video ID is required' }, { status: 400 });
     }
 
-    console.log('✅ [API] Video ID provided:', videoId);
+    console.log('âœ… [API] Video ID provided:', videoId);
 
-    // Check if lyrics are already cached in Firestore (unless forceRefresh is true)
-    console.log('🔍 [API] Checking for cached lyrics in Firestore...');
+    // Check if lyrics are already cached in SQLite (unless forceRefresh is true)
+    console.log('ðŸ” [API] Checking for cached lyrics...');
     let cachedData: CachedLyricsData | null = null;
     try {
-      cachedData = await getDocumentWithAdminAccess<CachedLyricsData>('lyrics', videoId);
+      cachedData = await getDocument<CachedLyricsData>('lyrics', videoId);
     } catch (cacheLookupError) {
-      console.warn('⚠️ [API] Lyrics cache lookup unavailable, continuing without cache:', cacheLookupError);
+      console.warn('âš ï¸ [API] Lyrics cache lookup unavailable, continuing without cache:', cacheLookupError);
     }
 
     // If lyrics are cached and forceRefresh is not true, return them
     if (cachedData && !forceRefresh) {
-      console.log(`✅ [API] Found cached lyrics for video ID: ${videoId}`);
-      console.log('📦 [API] Cached data structure:', {
+      console.log(`âœ… [API] Found cached lyrics for video ID: ${videoId}`);
+      console.log('ðŸ“¦ [API] Cached data structure:', {
         type: typeof cachedData,
         hasLyrics: !!cachedData?.lyrics,
         lyricsType: typeof cachedData?.lyrics,
@@ -138,7 +136,7 @@ export async function POST(request: NextRequest) {
 
     // If checkCacheOnly is true and no cache was found, return early
     if (checkCacheOnly) {
-      console.log(`📦 [API] Cache-only check for video ID: ${videoId} - no cached lyrics found`);
+      console.log(`ðŸ“¦ [API] Cache-only check for video ID: ${videoId} - no cached lyrics found`);
       return NextResponse.json({
         success: false,
         message: 'No cached lyrics found',
@@ -146,11 +144,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log('🎵 [API] Proceeding with new transcription request');
+    console.log('ðŸŽµ [API] Proceeding with new transcription request');
 
     // For non-cache-only requests, audioPath is required
     if (!audioPath) {
-      console.log('❌ [API] audioPath is required for transcription requests (non-cache-only)');
+      console.log('âŒ [API] audioPath is required for transcription requests (non-cache-only)');
       return NextResponse.json({
         error: 'Audio file not found. Please extract audio first.',
         details: 'audioPath is required for transcription requests'
@@ -161,8 +159,8 @@ export async function POST(request: NextRequest) {
       console.log(`Force refreshing lyrics for video ID: ${videoId}`);
     }
 
-    // Handle audio path - prioritize provided audioPath (Firebase Storage URL)
-    console.log('🎵 [API] Audio path analysis:');
+    // Prefer the audio path supplied by the local extraction pipeline.
+    console.log('ðŸŽµ [API] Audio path analysis:');
     console.log('  - Received audioPath:', audioPath);
     console.log('  - audioPath type:', typeof audioPath);
     console.log('  - audioPath length:', audioPath?.length);
@@ -171,12 +169,8 @@ export async function POST(request: NextRequest) {
 
     let finalAudioPath = audioPath;
 
-    // If audioPath is provided and looks like a Firebase Storage URL, use it directly
-    if (typeof finalAudioPath === 'string' && isFirebaseStorageUrl(finalAudioPath)) {
-      console.log(`✅ [API] Using Firebase Storage URL for transcription: ${finalAudioPath}`);
-      console.log('🔥 [API] Firebase Storage URL detected - should work with Music.AI');
-    } else if (!finalAudioPath) {
-      console.log('❌ [API] No audioPath provided, checking for local audio file...');
+    if (!finalAudioPath) {
+      console.log('âŒ [API] No audioPath provided, checking for local audio file...');
       // Fallback: Check if we have a local audio file for this video ID
       const audioDir = path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', 'audio');
       try {
@@ -185,21 +179,20 @@ export async function POST(request: NextRequest) {
 
         if (matchingFile) {
           finalAudioPath = `/audio/${matchingFile}`;
-          console.log(`📁 [API] Using local audio file: ${finalAudioPath}`);
+          console.log(`ðŸ“ [API] Using local audio file: ${finalAudioPath}`);
         } else {
-          console.log('❌ [API] No local audio file found either');
+          console.log('âŒ [API] No local audio file found either');
           return NextResponse.json({ error: 'Audio file not found. Please extract audio first.' }, { status: 404 });
         }
       } catch (error) {
-        console.error('❌ [API] Error reading audio directory:', error);
+        console.error('âŒ [API] Error reading audio directory:', error);
         return NextResponse.json({ error: 'Error accessing audio files' }, { status: 500 });
       }
     } else {
-      // audioPath provided but not a Firebase URL - treat as local path
-      console.log(`📁 [API] Using provided audio path (non-Firebase): ${finalAudioPath}`);
+      console.log(`ðŸ“ [API] Using provided audio path: ${finalAudioPath}`);
     }
 
-    console.log(`🎵 [API] Final audio path for transcription: ${finalAudioPath}`);
+    console.log(`ðŸŽµ [API] Final audio path for transcription: ${finalAudioPath}`);
 
     // Check if user provided Music.AI API key
     if (!musicAiApiKey) {
@@ -223,27 +216,27 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Cache the results in Firestore (non-critical operation)
+    // Cache the results in SQLite (non-critical operation)
     // Use the same direct approach as translations to avoid authentication issues
     try {
-      console.log('🔍 [PRODUCTION DEBUG] Starting lyrics caching process...');
-      console.log('🔍 [PRODUCTION DEBUG] Video ID:', videoId, 'Length:', videoId?.length, 'Type:', typeof videoId);
+      console.log('ðŸ” [PRODUCTION DEBUG] Starting lyrics caching process...');
+      console.log('ðŸ” [PRODUCTION DEBUG] Video ID:', videoId, 'Length:', videoId?.length, 'Type:', typeof videoId);
 
       // Analyze the raw lyricsData structure
-      console.log('🔍 [PRODUCTION DEBUG] Raw lyricsData analysis:');
-      console.log('🔍 [PRODUCTION DEBUG] - Type:', typeof lyricsData);
-      console.log('🔍 [PRODUCTION DEBUG] - Is null/undefined:', lyricsData == null);
-      console.log('🔍 [PRODUCTION DEBUG] - Constructor:', lyricsData?.constructor?.name);
-      console.log('🔍 [PRODUCTION DEBUG] - Keys:', Object.keys(lyricsData || {}));
-      console.log('🔍 [PRODUCTION DEBUG] - Lines type:', typeof lyricsData?.lines);
-      console.log('🔍 [PRODUCTION DEBUG] - Lines length:', lyricsData?.lines?.length);
-      console.log('🔍 [PRODUCTION DEBUG] - Lines is array:', Array.isArray(lyricsData?.lines));
+      console.log('ðŸ” [PRODUCTION DEBUG] Raw lyricsData analysis:');
+      console.log('ðŸ” [PRODUCTION DEBUG] - Type:', typeof lyricsData);
+      console.log('ðŸ” [PRODUCTION DEBUG] - Is null/undefined:', lyricsData == null);
+      console.log('ðŸ” [PRODUCTION DEBUG] - Constructor:', lyricsData?.constructor?.name);
+      console.log('ðŸ” [PRODUCTION DEBUG] - Keys:', Object.keys(lyricsData || {}));
+      console.log('ðŸ” [PRODUCTION DEBUG] - Lines type:', typeof lyricsData?.lines);
+      console.log('ðŸ” [PRODUCTION DEBUG] - Lines length:', lyricsData?.lines?.length);
+      console.log('ðŸ” [PRODUCTION DEBUG] - Lines is array:', Array.isArray(lyricsData?.lines));
 
       // Sample first few lines for structure analysis
       if (lyricsData?.lines && Array.isArray(lyricsData.lines) && lyricsData.lines.length > 0) {
-        console.log('🔍 [PRODUCTION DEBUG] - First line structure:', JSON.stringify(lyricsData.lines[0], null, 2));
+        console.log('ðŸ” [PRODUCTION DEBUG] - First line structure:', JSON.stringify(lyricsData.lines[0], null, 2));
         if (lyricsData.lines.length > 1) {
-          console.log('🔍 [PRODUCTION DEBUG] - Second line structure:', JSON.stringify(lyricsData.lines[1], null, 2));
+          console.log('ðŸ” [PRODUCTION DEBUG] - Second line structure:', JSON.stringify(lyricsData.lines[1], null, 2));
         }
       }
 
@@ -255,14 +248,14 @@ export async function POST(request: NextRequest) {
         source: 'music-ai-transcription'
       };
 
-      console.log('🔍 [PRODUCTION DEBUG] Final data structure analysis:');
-      console.log('🔍 [PRODUCTION DEBUG] - Total fields:', Object.keys(dataWithTimestamp).length);
-      console.log('🔍 [PRODUCTION DEBUG] - Field names:', Object.keys(dataWithTimestamp));
-      console.log('🔍 [PRODUCTION DEBUG] - videoId:', dataWithTimestamp.videoId);
-      console.log('🔍 [PRODUCTION DEBUG] - timestamp:', dataWithTimestamp.timestamp);
-      console.log('🔍 [PRODUCTION DEBUG] - cached:', dataWithTimestamp.cached);
-      console.log('🔍 [PRODUCTION DEBUG] - source:', dataWithTimestamp.source);
-      console.log('🔍 [PRODUCTION DEBUG] - lines count:', dataWithTimestamp.lines?.length);
+      console.log('ðŸ” [PRODUCTION DEBUG] Final data structure analysis:');
+      console.log('ðŸ” [PRODUCTION DEBUG] - Total fields:', Object.keys(dataWithTimestamp).length);
+      console.log('ðŸ” [PRODUCTION DEBUG] - Field names:', Object.keys(dataWithTimestamp));
+      console.log('ðŸ” [PRODUCTION DEBUG] - videoId:', dataWithTimestamp.videoId);
+      console.log('ðŸ” [PRODUCTION DEBUG] - timestamp:', dataWithTimestamp.timestamp);
+      console.log('ðŸ” [PRODUCTION DEBUG] - cached:', dataWithTimestamp.cached);
+      console.log('ðŸ” [PRODUCTION DEBUG] - source:', dataWithTimestamp.source);
+      console.log('ðŸ” [PRODUCTION DEBUG] - lines count:', dataWithTimestamp.lines?.length);
 
       // Check for any problematic field types or values
       for (const [key, value] of Object.entries(dataWithTimestamp)) {
@@ -270,15 +263,15 @@ export async function POST(request: NextRequest) {
         const isArray = Array.isArray(value);
         const isNull = value === null;
         const isUndefined = value === undefined;
-        console.log(`🔍 [PRODUCTION DEBUG] - Field "${key}": type=${valueType}, isArray=${isArray}, isNull=${isNull}, isUndefined=${isUndefined}`);
+        console.log(`ðŸ” [PRODUCTION DEBUG] - Field "${key}": type=${valueType}, isArray=${isArray}, isNull=${isNull}, isUndefined=${isUndefined}`);
 
         // Check for circular references or complex objects
         if (valueType === 'object' && !isArray && !isNull) {
           try {
             JSON.stringify(value);
-            console.log(`🔍 [PRODUCTION DEBUG] - Field "${key}" is serializable`);
+            console.log(`ðŸ” [PRODUCTION DEBUG] - Field "${key}" is serializable`);
           } catch (e) {
-            console.log(`🔍 [PRODUCTION DEBUG] - Field "${key}" has serialization issues:`, e instanceof Error ? e.message : String(e));
+            console.log(`ðŸ” [PRODUCTION DEBUG] - Field "${key}" has serialization issues:`, e instanceof Error ? e.message : String(e));
           }
         }
       }
@@ -287,36 +280,36 @@ export async function POST(request: NextRequest) {
       try {
         const jsonString = JSON.stringify(dataWithTimestamp);
         const sizeInBytes = new Blob([jsonString]).size;
-        console.log('🔍 [PRODUCTION DEBUG] - Estimated document size:', sizeInBytes, 'bytes');
-        console.log('🔍 [PRODUCTION DEBUG] - Size in KB:', (sizeInBytes / 1024).toFixed(2), 'KB');
+        console.log('ðŸ” [PRODUCTION DEBUG] - Estimated document size:', sizeInBytes, 'bytes');
+        console.log('ðŸ” [PRODUCTION DEBUG] - Size in KB:', (sizeInBytes / 1024).toFixed(2), 'KB');
 
-        // Firestore has a 1MB document size limit
+        // SQLite has a 1MB document size limit
         if (sizeInBytes > 1000000) {
-          console.warn('⚠️ [PRODUCTION DEBUG] - Document size exceeds 1MB limit!');
+          console.warn('âš ï¸ [PRODUCTION DEBUG] - Document size exceeds 1MB limit!');
         }
       } catch (sizeError) {
-        console.error('🔍 [PRODUCTION DEBUG] - Error calculating document size:', sizeError);
+        console.error('ðŸ” [PRODUCTION DEBUG] - Error calculating document size:', sizeError);
       }
 
-      console.log('🔍 [PRODUCTION DEBUG] Attempting setDoc operation...');
-      await setDocumentWithAdminAccess('lyrics', videoId, dataWithTimestamp);
-      console.log(`✅ Successfully cached lyrics for video ID: ${videoId}`);
+      console.log('ðŸ” [PRODUCTION DEBUG] Attempting setDoc operation...');
+      await setDocument('lyrics', videoId, dataWithTimestamp);
+      console.log(`âœ… Successfully cached lyrics for video ID: ${videoId}`);
     } catch (cacheError: unknown) {
-      console.error('❌ [PRODUCTION DEBUG] Error caching lyrics - COMPREHENSIVE ERROR ANALYSIS:');
-      console.error('❌ Error type:', typeof cacheError);
+      console.error('âŒ [PRODUCTION DEBUG] Error caching lyrics - COMPREHENSIVE ERROR ANALYSIS:');
+      console.error('âŒ Error type:', typeof cacheError);
 
       const errorObj = cacheError as Error & { code?: string; details?: unknown; customData?: unknown };
-      console.error('❌ Error constructor:', errorObj?.constructor?.name);
-      console.error('❌ Error message:', errorObj?.message);
-      console.error('❌ Error code:', errorObj?.code);
-      console.error('❌ Error stack:', errorObj?.stack);
-      console.error('❌ Full error object:', cacheError);
+      console.error('âŒ Error constructor:', errorObj?.constructor?.name);
+      console.error('âŒ Error message:', errorObj?.message);
+      console.error('âŒ Error code:', errorObj?.code);
+      console.error('âŒ Error stack:', errorObj?.stack);
+      console.error('âŒ Full error object:', cacheError);
 
-      // Check if it's a FirebaseError
+      // Check if it's a PersistenceError
       if (errorObj?.code) {
-        console.error('❌ Firebase error code:', errorObj.code);
-        console.error('❌ Firebase error details:', errorObj.details);
-        console.error('❌ Firebase error customData:', errorObj.customData);
+        console.error('âŒ Persistence error code:', errorObj.code);
+        console.error('âŒ Persistence error details:', errorObj.details);
+        console.error('âŒ Persistence error customData:', errorObj.customData);
       }
 
       // Continue even if caching fails - this is non-critical

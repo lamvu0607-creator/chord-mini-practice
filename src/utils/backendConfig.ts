@@ -108,9 +108,7 @@ export const backendConfig = {
    */
   endpoints: {
     detectBeats: '/api/detect-beats',
-    detectBeatsOffload: '/api/detect-beats-offload',
     recognizeChords: '/api/recognize-chords',
-    recognizeChordsOffload: '/api/recognize-chords-offload',
     recognizeChordsBtcPl: '/api/recognize-chords-btc-pl',
     recognizeChordsBtcSl: '/api/recognize-chords-btc-sl',
     modelInfo: '/api/model-info',

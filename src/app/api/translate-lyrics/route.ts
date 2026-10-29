@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
 import crypto from 'crypto';
-import { createGeminiClient, GEMINI_MODEL_NAME } from '@/config/gemini';
+import { createGeminiClient, GEMINI_MODEL_NAME, type GeminiClient } from '@/config/gemini';
 import {
-  getDocumentWithAdminAccess,
-  setDocumentWithAdminAccess,
-} from '@/services/firebase/firestoreAdminService';
+  getDocument,
+  setDocument,
+} from '@/server/persistence/documentService';
 
 // Define the model name to use
 const MODEL_NAME = GEMINI_MODEL_NAME;
@@ -53,9 +52,9 @@ function generateCacheKey(lyrics: string, sourceLanguage?: string, targetLanguag
  */
 async function checkCache(cacheKey: string): Promise<TranslationResponse | null> {
   try {
-    return await getDocumentWithAdminAccess<TranslationResponse>(TRANSLATIONS_COLLECTION, cacheKey);
+    return await getDocument<TranslationResponse>(TRANSLATIONS_COLLECTION, cacheKey);
   } catch (error) {
-    console.warn('Firestore admin cache check failed, proceeding without cache:', error);
+    console.warn('SQLite admin cache check failed, proceeding without cache:', error);
     return null;
   }
 }
@@ -70,10 +69,10 @@ async function cacheTranslation(cacheKey: string, data: TranslationResponse, vid
       videoId: videoId || 'unknown',
       createdAt: new Date().toISOString(),
     };
-    await setDocumentWithAdminAccess(TRANSLATIONS_COLLECTION, cacheKey, dataWithTimestamp);
+    await setDocument(TRANSLATIONS_COLLECTION, cacheKey, dataWithTimestamp);
     console.log('Successfully cached translation data');
   } catch (error) {
-    console.warn('Firestore admin cache write failed, continuing without cached translation:', error);
+    console.warn('SQLite admin cache write failed, continuing without cached translation:', error);
   }
 }
 
@@ -143,7 +142,7 @@ function cleanTranslationResponse(translatedText: string, originalLyrics: string
 /**
  * Detects the language of the lyrics using Gemini API
  */
-async function detectLanguage(lyrics: string, geminiAI: GoogleGenAI): Promise<string> {
+async function detectLanguage(lyrics: string, geminiAI: GeminiClient): Promise<string> {
   try {
     // Check for Chinese characters using regex
     const chineseRegex = /[\u4e00-\u9fff\u3400-\u4dbf\u20000-\u2a6df\u2a700-\u2b73f\u2b740-\u2b81f\u2b820-\u2ceaf\uf900-\ufaff\u3300-\u33ff\ufe30-\ufe4f\uf900-\ufaff\u2f800-\u2fa1f]/;
@@ -176,7 +175,7 @@ async function detectLanguage(lyrics: string, geminiAI: GoogleGenAI): Promise<st
 /**
  * Translates lyrics using Gemini API
  */
-async function translateLyrics(lyrics: string, geminiAI: GoogleGenAI, sourceLanguage?: string, targetLanguage: string = 'English'): Promise<string> {
+async function translateLyrics(lyrics: string, geminiAI: GeminiClient, sourceLanguage?: string, targetLanguage: string = 'English'): Promise<string> {
   try {
     // Create comprehensive prompt to ensure complete line-by-line translation
     let prompt = '';

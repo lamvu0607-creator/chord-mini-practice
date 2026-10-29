@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getSafeBeatModel, getSafeChordModel } from '@/utils/modelFiltering';
+import { getDefaultChordModel, getSafeBeatModel, getSafeChordModel } from '@/utils/modelFiltering';
 
 // Define detector types
 export type BeatDetectorType = 'madmom' | 'beat-transformer';
@@ -64,7 +64,7 @@ export const useModelState = (options: UseModelStateOptions = {}): ModelState =>
         return getSafeChordModel(saved as ChordDetectorType);
       }
     }
-    return 'chord-cnn-lstm';
+    return getDefaultChordModel();
   });
 
   const [modelsInitialized, setModelsInitialized] = useState<boolean>(false);

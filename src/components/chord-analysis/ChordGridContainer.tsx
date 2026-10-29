@@ -4,11 +4,10 @@ import React from 'react';
 import ChordGrid from '@/components/chord-analysis/ChordGrid';
 import { useAnalysisResults, useKeySignature, useIsDetectingKey, useShowCorrectedChords, useChordCorrections } from '@/stores/analysisStore';
 import { useBeatHandlers } from '@/stores/playbackStore';
-import { useRomanNumerals, useShowSegmentation, useIsPitchShiftEnabled, useTargetKey } from '@/stores/uiStore';
+import { useRomanNumerals, useIsPitchShiftEnabled, useTargetKey } from '@/stores/uiStore';
 import { useResolvedChordDisplayData } from '@/hooks/chord-analysis/useResolvedChordDisplayData';
 import { AnalysisResult } from '@/services/chord-analysis/chordRecognitionService';
 import type { MetricSegment } from '@/services/chord-analysis/gridTypes';
-import { SegmentationResult } from '@/types/chatbotTypes';
 import type { BeatGridTimedLyrics } from './GridLyricsRow';
 
 interface AudioMappingItem {
@@ -62,8 +61,6 @@ interface ChordGridContainerProps {
       }>;
     };
   } | null;
-  // NEW: Song segmentation data for color-coding
-  segmentationData?: SegmentationResult | null;
   // Edit mode props
   isEditMode?: boolean;
   editedChords?: Record<number, string>;
@@ -84,7 +81,6 @@ export const ChordGridContainer: React.FC<ChordGridContainerProps> = React.memo(
   showCorrectedChords,
   chordCorrections = null,
   sequenceCorrections = null,
-  segmentationData = null,
   isEditMode = false,
   editedChords = {},
   onChordEdit,
@@ -109,8 +105,6 @@ export const ChordGridContainer: React.FC<ChordGridContainerProps> = React.memo(
   // Use Zustand selectors to subscribe to only Roman numerals slice
   const { showRomanNumerals: mergedShowRomanNumerals, romanNumeralData: mergedRomanNumeralData } = useRomanNumerals();
 
-  // Segmentation toggle from Zustand store
-  const showSegmentation = useShowSegmentation();
 
   // Get pitch shift state for key signature display from Zustand store
   const isPitchShiftEnabled = useIsPitchShiftEnabled();
@@ -165,8 +159,6 @@ export const ChordGridContainer: React.FC<ChordGridContainerProps> = React.memo(
       showCorrectedChords: effectiveShowCorrectedChords,
       chordCorrections: effectiveChordCorrections,
       sequenceCorrections: effectiveSequenceCorrections,
-      segmentationData,
-      showSegmentation,
       showRomanNumerals: mergedShowRomanNumerals,
       romanNumeralData: mergedRomanNumeralData
     };
@@ -186,8 +178,6 @@ export const ChordGridContainer: React.FC<ChordGridContainerProps> = React.memo(
     mergedKeySignature,
     mergedIsDetectingKey,
     isUploadPage,
-    segmentationData,
-    showSegmentation,
     mergedShowRomanNumerals,
     mergedRomanNumeralData,
     isPitchShiftEnabled,

@@ -58,11 +58,6 @@ interface UIStore {
   romanNumeralData: RomanNumeralData | null;
   updateRomanNumeralData: (data: RomanNumeralData | null) => void;
 
-  // Segmentation
-  showSegmentation: boolean;
-  setShowSegmentation: (val: boolean) => void;
-  toggleSegmentation: () => void;
-
   // Chord simplification
   simplifyChords: boolean;
   setSimplifyChords: (val: boolean) => void;
@@ -89,17 +84,20 @@ interface UIStore {
   pitchShiftSemitones: number;
   isProcessingPitchShift: boolean;
   pitchShiftError: string | null;
-  isFirebaseAudioAvailable: boolean;
+  isCachedAudioAvailable: boolean;
   originalKey: string;
   targetKey: string;
   setIsPitchShiftEnabled: (enabled: boolean) => void;
+  // Stem mode: separated stems replace the original audio (mutually exclusive with pitch shift)
+  isStemModeEnabled: boolean;
+  setIsStemModeEnabled: (enabled: boolean) => void;
   setIsPitchShiftReady: (ready: boolean) => void;
   togglePitchShift: () => void;
   setPitchShiftSemitones: (semitones: number) => void;
   resetPitchShift: () => void;
   setIsProcessingPitchShift: (processing: boolean) => void;
   setPitchShiftError: (error: string | null) => void;
-  setIsFirebaseAudioAvailable: (available: boolean) => void;
+  setIsCachedAudioAvailable: (available: boolean) => void;
   setOriginalKey: (key: string) => void;
 
   // Shared guitar voicing state
@@ -122,7 +120,7 @@ interface UIStore {
   // Initialization
   initializeVideoTitle: (title: string) => void;
   initializeOriginalKey: (key: string) => void;
-  initializeFirebaseAudioAvailable: (available: boolean) => void;
+  initializeCachedAudioAvailable: (available: boolean) => void;
 }
 
 export const useUIStore = create<UIStore>()(
@@ -138,18 +136,18 @@ export const useUIStore = create<UIStore>()(
       editedChords: {},
       showRomanNumerals: false,
       romanNumeralData: null,
-      showSegmentation: false,
       simplifyChords: false,
       isMelodicTranscriptionPlaybackEnabled: false,
       isLoopEnabled: false,
       loopStartBeat: -1,
       loopEndBeat: -1,
       isPitchShiftEnabled: false,
+      isStemModeEnabled: false,
       isPitchShiftReady: false,
       pitchShiftSemitones: 0,
       isProcessingPitchShift: false,
       pitchShiftError: null,
-      isFirebaseAudioAvailable: false,
+      isCachedAudioAvailable: false,
       originalKey: 'C',
       targetKey: 'C',
       guitarCapoFret: 0,
@@ -259,12 +257,6 @@ export const useUIStore = create<UIStore>()(
 
       updateRomanNumeralData: (data) => set({ romanNumeralData: data }, false, 'updateRomanNumeralData'),
 
-      // Segmentation
-      setShowSegmentation: (val) => set({ showSegmentation: val }, false, 'setShowSegmentation'),
-
-      toggleSegmentation: () =>
-        set((state) => ({ showSegmentation: !state.showSegmentation }), false, 'toggleSegmentation'),
-
       // Chord simplification
       setSimplifyChords: (val) => set({ simplifyChords: val }, false, 'setSimplifyChords'),
 
@@ -302,6 +294,8 @@ export const useUIStore = create<UIStore>()(
         set(
           (state) => ({
             isPitchShiftEnabled: !state.isPitchShiftEnabled,
+            // Only one source may replace the YouTube audio at a time.
+            isStemModeEnabled: state.isPitchShiftEnabled ? state.isStemModeEnabled : false,
             pitchShiftError: null,
           }),
           false,
@@ -324,7 +318,17 @@ export const useUIStore = create<UIStore>()(
           'setPitchShiftSemitones'
         ),
 
-      setIsPitchShiftEnabled: (enabled) => set({ isPitchShiftEnabled: enabled }, false, 'setIsPitchShiftEnabled'),
+      setIsPitchShiftEnabled: (enabled) => set(
+        (state) => ({ isPitchShiftEnabled: enabled, isStemModeEnabled: enabled ? false : state.isStemModeEnabled }),
+        false,
+        'setIsPitchShiftEnabled',
+      ),
+
+      setIsStemModeEnabled: (enabled) => set(
+        (state) => ({ isStemModeEnabled: enabled, isPitchShiftEnabled: enabled ? false : state.isPitchShiftEnabled }),
+        false,
+        'setIsStemModeEnabled',
+      ),
 
       setIsPitchShiftReady: (ready) => set({ isPitchShiftReady: ready }, false, 'setIsPitchShiftReady'),
 
@@ -345,8 +349,8 @@ export const useUIStore = create<UIStore>()(
 
       setPitchShiftError: (error) => set({ pitchShiftError: error }, false, 'setPitchShiftError'),
 
-      setIsFirebaseAudioAvailable: (available) =>
-        set({ isFirebaseAudioAvailable: available }, false, 'setIsFirebaseAudioAvailable'),
+      setIsCachedAudioAvailable: (available) =>
+        set({ isCachedAudioAvailable: available }, false, 'setIsCachedAudioAvailable'),
 
       setOriginalKey: (key) =>
         set(
@@ -392,13 +396,13 @@ export const useUIStore = create<UIStore>()(
           (state) => ({
             showRomanNumerals: false,
             romanNumeralData: null,
-            showSegmentation: false,
             simplifyChords: false,
             isMelodicTranscriptionPlaybackEnabled: false,
             isLoopEnabled: false,
             loopStartBeat: -1,
             loopEndBeat: -1,
             isPitchShiftEnabled: false,
+            isStemModeEnabled: false,
             isPitchShiftReady: false,
             pitchShiftSemitones: 0,
             isProcessingPitchShift: false,
@@ -427,8 +431,8 @@ export const useUIStore = create<UIStore>()(
           'initializeOriginalKey'
         ),
 
-      initializeFirebaseAudioAvailable: (available) =>
-        set({ isFirebaseAudioAvailable: available }, false, 'initializeFirebaseAudioAvailable'),
+      initializeCachedAudioAvailable: (available) =>
+        set({ isCachedAudioAvailable: available }, false, 'initializeCachedAudioAvailable'),
     }),
     { name: 'UIStore' }
   )
@@ -462,9 +466,6 @@ export const useToggleRomanNumerals = () => useUIStore((state) => state.toggleRo
 export const useRomanNumeralData = () => useUIStore((state) => state.romanNumeralData);
 export const useUpdateRomanNumeralData = () => useUIStore((state) => state.updateRomanNumeralData);
 
-export const useShowSegmentation = () => useUIStore((state) => state.showSegmentation);
-export const useToggleSegmentation = () => useUIStore((state) => state.toggleSegmentation);
-
 export const useSimplifyChords = () => useUIStore((state) => state.simplifyChords);
 export const useToggleSimplifyChords = () => useUIStore((state) => state.toggleSimplifyChords);
 export const useIsMelodicTranscriptionPlaybackEnabled = () =>
@@ -489,12 +490,13 @@ export const usePitchShift = () =>
     pitchShiftSemitones: state.pitchShiftSemitones,
     isProcessingPitchShift: state.isProcessingPitchShift,
     pitchShiftError: state.pitchShiftError,
-    isFirebaseAudioAvailable: state.isFirebaseAudioAvailable,
+    isCachedAudioAvailable: state.isCachedAudioAvailable,
     originalKey: state.originalKey,
     targetKey: state.targetKey,
   })));
 
 export const useIsPitchShiftEnabled = () => useUIStore((state) => state.isPitchShiftEnabled);
+export const useIsStemModeEnabled = () => useUIStore((state) => state.isStemModeEnabled);
 export const useIsPitchShiftReady = () => useUIStore((state) => state.isPitchShiftReady);
 export const usePitchShiftSemitones = () => useUIStore((state) => state.pitchShiftSemitones);
 export const useTargetKey = () => useUIStore((state) => state.targetKey);
@@ -502,12 +504,12 @@ export const useOriginalKey = () => useUIStore((state) => state.originalKey);
 export const useTogglePitchShift = () => useUIStore((state) => state.togglePitchShift);
 export const useIsProcessingPitchShift = () => useUIStore((state) => state.isProcessingPitchShift);
 export const usePitchShiftError = () => useUIStore((state) => state.pitchShiftError);
-export const useIsFirebaseAudioAvailable = () => useUIStore((state) => state.isFirebaseAudioAvailable);
+export const useIsCachedAudioAvailable = () => useUIStore((state) => state.isCachedAudioAvailable);
 export const useSetPitchShiftSemitones = () => useUIStore((state) => state.setPitchShiftSemitones);
 export const useSetIsPitchShiftReady = () => useUIStore((state) => state.setIsPitchShiftReady);
 export const useSetIsProcessingPitchShift = () => useUIStore((state) => state.setIsProcessingPitchShift);
 export const useSetPitchShiftError = () => useUIStore((state) => state.setPitchShiftError);
-export const useSetIsFirebaseAudioAvailable = () => useUIStore((state) => state.setIsFirebaseAudioAvailable);
+export const useSetIsCachedAudioAvailable = () => useUIStore((state) => state.setIsCachedAudioAvailable);
 export const useResetPitchShift = () => useUIStore((state) => state.resetPitchShift);
 export const useResetAnalysisUtilityBarState = () => useUIStore((state) => state.resetAnalysisUtilityBarState);
 export const useGuitarCapoFret = () => useUIStore((state) => state.guitarCapoFret);

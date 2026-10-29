@@ -9,15 +9,13 @@ import os
 import tempfile
 import traceback
 import requests
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, jsonify, current_app
 from config import get_config
 from extensions import limiter
 from utils.logging import log_info, log_error, log_debug
 from utils.paths import AUDIO_DIR
-from services.audio.tempfiles import temporary_file
 from .validators import (
     validate_chord_recognition_request,
-    validate_firebase_chord_recognition_request,
     validate_file_size,
     normalize_audio_url_to_path,
     get_detector_display_name
@@ -57,6 +55,7 @@ def recognize_chords():
     Returns:
     - JSON with chord recognition results
     """
+    file_path = None
     temp_file_path = None
 
     try:
@@ -74,12 +73,20 @@ def recognize_chords():
             data = params['json_data']
             audio_url = data.get('audioUrl')
 
-            if audio_url and audio_url.startswith('/audio/'):
-                file_path = normalize_audio_url_to_path(audio_url, str(AUDIO_DIR))
-                if not os.path.exists(file_path):
-                    return jsonify({"error": f"Audio file not found: {audio_url}"}), 404
+            if not audio_url or not isinstance(audio_url, str):
+                return jsonify({"error": "audioUrl is required in JSON payload"}), 400
+
+            resolved_path = normalize_audio_url_to_path(audio_url, str(AUDIO_DIR))
+            if os.path.exists(resolved_path):
+                file_path = resolved_path
+            elif audio_url.startswith(('http://', 'https://')):
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
+                temp_file_path = temp_file.name
+                temp_file.close()
+                _download_remote_audio_to_temp_path(audio_url, temp_file_path)
+                file_path = temp_file_path
             else:
-                return jsonify({"error": "Invalid audioUrl format"}), 400
+                return jsonify({"error": f"Audio file not found: {audio_url}"}), 404
 
         elif file:
             # File upload
@@ -89,9 +96,13 @@ def recognize_chords():
                 return jsonify({"error": size_error}), 413
 
             # Save uploaded file temporarily
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
-            file.save(temp_file.name)
+            ext = os.path.splitext(file.filename or '')[1].lower()
+            if ext not in ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.webm']:
+                ext = '.mp3'
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
             temp_file_path = temp_file.name
+            temp_file.close()
+            file.save(temp_file_path)
             file_path = temp_file_path
 
         elif params['audio_path']:
@@ -125,83 +136,6 @@ def recognize_chords():
 
     except Exception as e:
         error_msg = f"Chord recognition error: {str(e)}"
-        log_error(error_msg)
-        log_error(traceback.format_exc())
-        return jsonify({
-            "success": False,
-            "error": error_msg,
-            "traceback": traceback.format_exc() if not config.PRODUCTION_MODE else None
-        }), 500
-    finally:
-        # Clean up temporary file
-        if temp_file_path and os.path.exists(temp_file_path):
-            try:
-                os.unlink(temp_file_path)
-                log_debug(f"Cleaned up temporary file: {temp_file_path}")
-            except Exception as cleanup_error:
-                log_error(f"Failed to clean up temporary file {temp_file_path}: {cleanup_error}")
-
-
-@chords_bp.route('/api/recognize-chords-firebase', methods=['POST'])
-@limiter.limit(config.get_rate_limit('heavy_processing'))
-def recognize_chords_firebase():
-    """
-    Recognize chords in an audio file from Firebase Storage URL.
-
-    Parameters:
-    - firebase_url: Firebase Storage URL of the audio file
-    - detector: Chord recognition model to use
-    - chord_dict: Optional chord dictionary to use
-
-    Returns:
-    - JSON with chord recognition results
-    """
-    try:
-        # Validate request
-        is_valid, error_msg, params = validate_firebase_chord_recognition_request()
-        if not is_valid:
-            return jsonify({"error": error_msg}), 400
-
-        firebase_url = params['firebase_url']
-        detector = params['detector']
-        chord_dict = params['chord_dict']
-
-        log_info(f"Processing Firebase chord recognition: {firebase_url[:100]}... "
-                f"with detector={detector}")
-
-        # Download file from Firebase Storage
-        log_info("Downloading file from Firebase Storage...")
-        with temporary_file(suffix='.mp3') as temp_file_path:
-            _download_remote_audio_to_temp_path(firebase_url, temp_file_path)
-
-            log_info(f"Downloaded file to: {temp_file_path}")
-            log_info(f"File size: {os.path.getsize(temp_file_path) / (1024 * 1024):.1f}MB")
-
-            # Get chord recognition service
-            chord_service = current_app.extensions['services']['chord_recognition']
-
-            # Run chord recognition
-            result = chord_service.recognize_chords(
-                file_path=temp_file_path,
-                detector=detector,
-                chord_dict=chord_dict,
-                force=False,  # Don't force for Firebase requests
-                use_spleeter=False  # Don't use Spleeter for Firebase requests
-            )
-
-        if result.get('success'):
-            log_info(f"Firebase chord recognition successful: {result['total_chords']} chords detected")
-        else:
-            log_error(f"Firebase chord recognition failed: {result.get('error', 'Unknown error')}")
-
-        return jsonify(result)
-
-    except requests.exceptions.RequestException as e:
-        error_msg = f"Failed to download file from Firebase Storage: {str(e)}"
-        log_error(error_msg)
-        return jsonify({"error": error_msg}), 400
-    except Exception as e:
-        error_msg = f"Firebase chord recognition error: {str(e)}"
         log_error(error_msg)
         log_error(traceback.format_exc())
         return jsonify({

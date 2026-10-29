@@ -4,7 +4,6 @@ import { getAudioMixerService } from '@/services/chord-playback/audioMixerServic
 import { getSoundfontChordPlaybackService } from '@/services/chord-playback/soundfontChordPlaybackService';
 import { useSharedAudioDynamics } from '@/hooks/audio/useSharedAudioDynamics';
 import type { SheetSageResult } from '@/types/sheetSage';
-import type { SegmentationResult } from '@/types/chatbotTypes';
 import type { YouTubePlayer } from '@/types/youtube';
 import { useIsPitchShiftEnabled, useIsPitchShiftReady, usePitchShiftSemitones } from '@/stores/uiStore';
 import { buildPreparedSheetSageMelodyNotes, buildScheduledSheetSageMelodyNotes } from '@/utils/sheetSagePlayback';
@@ -12,7 +11,6 @@ import { buildPreparedSheetSageMelodyNotes, buildScheduledSheetSageMelodyNotes }
 interface UseMelodicTranscriptionPlaybackProps {
   sheetSageResult: SheetSageResult | null;
   audioUrl?: string | null;
-  segmentationData?: SegmentationResult | null;
   audioRef?: RefObject<HTMLAudioElement | null>;
   youtubePlayer?: YouTubePlayer | null;
   currentTime: number;
@@ -23,7 +21,6 @@ interface UseMelodicTranscriptionPlaybackProps {
 export function useMelodicTranscriptionPlayback({
   sheetSageResult,
   audioUrl = null,
-  segmentationData = null,
   audioRef,
   youtubePlayer = null,
   currentTime,
@@ -64,9 +61,8 @@ export function useMelodicTranscriptionPlayback({
       bpm: sheetSageResult?.tempoBpm ?? 120,
       timeSignature: sheetSageResult?.beatsPerMeasure ?? 4,
       totalDuration: melodyTotalDuration,
-      segmentationData,
     }),
-    [melodyTotalDuration, segmentationData, sheetSageResult?.beatsPerMeasure, sheetSageResult?.tempoBpm],
+    [melodyTotalDuration, sheetSageResult?.beatsPerMeasure, sheetSageResult?.tempoBpm],
   );
   const dynamicsAnalyzer = useSharedAudioDynamics(audioUrl, dynamicsParams);
   const signalAnalysis = dynamicsAnalyzer.getSignalAnalysis();

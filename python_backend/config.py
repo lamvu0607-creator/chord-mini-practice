@@ -98,7 +98,14 @@ class Config:
 
     @classmethod
     def get_rate_limit(cls, endpoint_type: str) -> str:
-        """Get rate limit string for endpoint type."""
+        """Get rate limit string for endpoint type.
+
+        RATE_LIMIT_<TYPE> (e.g. RATE_LIMIT_HEAVY_PROCESSING="30 per minute") overrides
+        the default. Useful behind a proxy where every request shares one client IP.
+        """
+        override = os.environ.get(f"RATE_LIMIT_{endpoint_type.upper()}")
+        if override:
+            return override
         return cls.RATE_LIMITS.get(endpoint_type, "10 per minute")
 
 

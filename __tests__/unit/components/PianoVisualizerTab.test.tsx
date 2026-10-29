@@ -204,31 +204,6 @@ describe('PianoVisualizerTab piano-only playback', () => {
     });
   });
 
-  it('passes segmentation data into piano-only dynamics shaping when available', async () => {
-    const segmentationData = {
-      segments: [{ label: 'Chorus', startTime: 8, endTime: 16 }],
-      metadata: { totalDuration: 16 },
-    } as any;
-
-    render(
-      <PianoVisualizerTab
-        chordGridData={{ chords: ['C'], beats: [0], hasPadding: false, paddingCount: 0, shiftCount: 0 }}
-        analysisResults={{ beatDetectionResult: { bpm: 120, time_signature: 4 } } as any}
-        segmentationData={segmentationData}
-        currentTime={10.75}
-        isPlaying
-        isChordPlaybackEnabled={false}
-      />,
-    );
-
-    await waitFor(() => {
-      expect(mockSetParams).toHaveBeenCalledWith(expect.objectContaining({
-        segmentationData,
-        totalDuration: 16,
-      }));
-    });
-  });
-
   it('prefers the beat-index chord near a boundary when currentTime lags slightly behind', async () => {
     render(
       <PianoVisualizerTab

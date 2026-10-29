@@ -464,51 +464,6 @@ describe('ChordGrid Component', () => {
 
       expect(screen.getByText('C')).toBeInTheDocument();
     });
-
-    it('should compute segmented label strip height from row count and Roman numeral cell height', () => {
-      const chords = ['C', 'G', 'Am', 'F', 'C', 'G', 'Am', 'F', 'C', 'G', 'Am', 'F', 'C', 'G', 'Am', 'F', 'C', 'G', 'Am', 'F'];
-      const beats = Array.from({ length: 20 }, (_, index) => index);
-
-      renderWithTheme(
-        <ChordGrid
-          chords={chords}
-          beats={beats}
-          showSegmentation={true}
-          showRomanNumerals={true}
-          romanNumeralData={{
-            analysis: ['I', 'V', 'vi', 'IV'],
-            keyContext: 'C major',
-          }}
-          segmentationData={{
-            segments: [
-              {
-                startTime: 0,
-                endTime: 3,
-                type: 'verse',
-                label: 'Verse',
-              },
-            ],
-            analysis: {
-              structure: 'Verse',
-            },
-            metadata: {
-              totalDuration: 4,
-              analysisTimestamp: 1,
-              model: 'test',
-            },
-          }}
-        />
-      );
-
-      const sectionLabel = screen.getByText('Verse');
-      const stripContainer = sectionLabel as HTMLElement | null;
-      const sectionRow = stripContainer?.parentElement?.parentElement;
-      const heightValue = stripContainer?.style.height ?? '';
-
-      expect(heightValue).not.toBe('');
-      expect(parseFloat(heightValue)).toBeGreaterThan(0);
-      expect(sectionRow).toHaveClass('items-stretch');
-    });
   });
 
   describe('Responsive Behavior', () => {

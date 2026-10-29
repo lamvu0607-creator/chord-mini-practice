@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { generateAnalyzeMetadata } from './metadata';
+import { isUploadSourceId } from '@/utils/uploadSourceId';
 
 interface Props {
   params: Promise<{ videoId: string }>;
@@ -8,6 +9,18 @@ interface Props {
 
 export async function generateMetadata({ params }: { params: Promise<{ videoId: string }> }): Promise<Metadata> {
   const { videoId } = await params;
+
+  // Uploaded audio is private: generic title, never indexed.
+  if (isUploadSourceId(videoId)) {
+    return {
+      title: 'Uploaded audio | ChordMini',
+      description: 'Chord and beat analysis of an uploaded audio file.',
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
+  }
 
   // Validate videoId format (YouTube video IDs are 11 characters)
   if (!videoId || typeof videoId !== 'string' || videoId.length !== 11) {

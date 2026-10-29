@@ -1,8 +1,6 @@
 // Beat detection service to communicate with the Next.js API proxy
 import { createSafeTimeoutSignal } from '@/utils/environmentUtils';
 import { getAudioDurationFromFile } from '@/utils/audioDurationUtils';
-import { offloadUploadService } from '../storage/offloadUploadService';
-import { getAppCheckTokenForApi } from '@/config/firebase';
 import {
   buildBeatModelInfoResult,
   fallbackBeatModelInfo,
@@ -170,20 +168,9 @@ export async function detectBeatsWithRateLimit(
 
     const abortSignal = createSafeTimeoutSignal(timeoutValue);
 
-    // Fetch App Check token for request attestation
-    const appCheckToken = typeof window !== 'undefined'
-      ? await getAppCheckTokenForApi()
-      : null;
-
-    const headers: HeadersInit = {};
-    if (appCheckToken) {
-      headers['X-Firebase-AppCheck'] = appCheckToken;
-    }
-
     const response = await fetch('/api/detect-beats', {
       method: 'POST',
       body: formData,
-      headers,
       signal: abortSignal,
     });
 
@@ -293,52 +280,6 @@ export async function detectBeatsFromFile(
 }
 
 /**
- * Detects beats from an existing Firebase/offload URL.
- * Production flows should forward the URL directly rather than re-downloading bytes in the browser.
- *
- * @param firebaseUrl - Firebase Storage URL of the audio file
- * @param detector - Which beat detector to use ('auto', 'madmom', or 'beat-transformer')
- * @returns Promise with beat detection results
- */
-export async function detectBeatsFromFirebaseUrl(
-  firebaseUrl: string,
-  detector: 'auto' | 'madmom' | 'beat-transformer' = 'madmom',
-  _videoId?: string
-): Promise<BeatDetectionResult> {
-  try {
-    const result = await offloadUploadService.detectBeatsFromOffloadUrl(firebaseUrl, detector, {
-      deleteAfterProcessing: true,
-    });
-
-    if (!result.success) {
-      throw new Error(`Beat detection failed: ${result.error || 'Unknown offload error'}`);
-    }
-
-    const backendResponse = result.data as BeatDetectionBackendResponse;
-    const normalized: BeatDetectionResult & Partial<BeatDetectionBackendResponse> = {
-      success: true,
-      beats: backendResponse.beats || [],
-      downbeats: backendResponse.downbeats || [],
-      downbeat_candidates: backendResponse.downbeat_candidates,
-      downbeat_candidates_meta: backendResponse.downbeat_candidates_meta,
-      bpm: backendResponse.BPM || backendResponse.bpm || 120,
-      total_beats: (backendResponse.beats || []).length,
-      duration: backendResponse.duration || 0,
-      time_signature: parseTimeSignature(backendResponse.time_signature),
-      model: backendResponse.model_used || backendResponse.model || detector
-    };
-
-    return normalized;
-
-  } catch (error) {
-    console.error('Error in Firebase URL beat detection:', error);
-    throw error;
-  }
-}
-
-
-
-/**
  * Detects beats in an audio file already on the server
  *
  * @param audioPath - Path to the audio file on the server
@@ -361,20 +302,9 @@ export async function detectBeatsFromPath(
 
     }
 
-    // Fetch App Check token for request attestation
-    const appCheckToken = typeof window !== 'undefined'
-      ? await getAppCheckTokenForApi()
-      : null;
-
-    const headers: HeadersInit = {};
-    if (appCheckToken) {
-      headers['X-Firebase-AppCheck'] = appCheckToken;
-    }
-
     const response = await fetch('/api/detect-beats', {
       method: 'POST',
       body: formData,
-      headers,
     });
 
     if (!response.ok) {

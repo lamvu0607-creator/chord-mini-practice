@@ -23,8 +23,8 @@
 - [audioAnalysisService.ts](file://src/services/audio/audioAnalysisService.ts)
 - [chordRecognitionService.ts](file://src/services/chord-analysis/chordRecognitionService.ts)
 - [modelFiltering.ts](file://src/utils/modelFiltering.ts)
-- [firestoreService.ts](file://src/services/firebase/firestoreService.ts)
-- [firebaseStorageSimplified.ts](file://src/services/firebase/firebaseStorageSimplified.ts)
+- [sqliteService.ts](file://src/services/local-persistence/sqliteService.ts)
+- [local-persistenceStorageSimplified.ts](file://src/services/local-persistence/local-persistenceStorageSimplified.ts)
 - [audioExtractionSimplified.ts](file://src/services/audio/audioExtractionSimplified.ts)
 </cite>
 
@@ -63,7 +63,7 @@ The analysis interface is composed of several focused UI components and supporti
 - Orchestration: useAnalyzePageOrchestrator hook with enhanced cache pipeline
 - Services: audioAnalysisService, chordRecognitionService
 - Utilities: modelFiltering
-- Cache systems: Firestore transcription cache, Firebase storage cache, parallel pipeline cache
+- Cache systems: SQLite transcription cache, Local persistence storage cache, parallel pipeline cache
 
 ```mermaid
 graph TB
@@ -91,8 +91,8 @@ UAO["useAnalyzePageOrchestrator"]
 end
 subgraph "Enhanced Cache Pipeline"
 CTI["applyCachedTranscriptionIfAvailable"]
-FSC["firestoreService"]
-FSS["firebaseStorageSimplified"]
+FSC["sqliteService"]
+FSS["local-persistenceStorageSimplified"]
 AES["audioExtractionSimplified"]
 end
 subgraph "Services"
@@ -142,8 +142,8 @@ HBMS --> MF
 - [audioAnalysisService.ts:1-704](file://src/services/audio/audioAnalysisService.ts#L1-L704)
 - [chordRecognitionService.ts:1-32](file://src/services/chord-analysis/chordRecognitionService.ts#L1-L32)
 - [modelFiltering.ts:1-179](file://src/utils/modelFiltering.ts#L1-L179)
-- [firestoreService.ts:423-470](file://src/services/firebase/firestoreService.ts#L423-L470)
-- [firebaseStorageSimplified.ts:169-259](file://src/services/firebase/firebaseStorageSimplified.ts#L169-L259)
+- [sqliteService.ts:423-470](file://src/services/local-persistence/sqliteService.ts#L423-L470)
+- [local-persistenceStorageSimplified.ts:169-259](file://src/services/local-persistence/local-persistenceStorageSimplified.ts#L169-L259)
 - [audioExtractionSimplified.ts:632-1606](file://src/services/audio/audioExtractionSimplified.ts#L632-L1606)
 
 **Section sources**
@@ -159,8 +159,8 @@ HBMS --> MF
 - [audioAnalysisService.ts:1-704](file://src/services/audio/audioAnalysisService.ts#L1-L704)
 - [chordRecognitionService.ts:1-32](file://src/services/chord-analysis/chordRecognitionService.ts#L1-L32)
 - [modelFiltering.ts:1-179](file://src/utils/modelFiltering.ts#L1-L179)
-- [firestoreService.ts:423-470](file://src/services/firebase/firestoreService.ts#L423-L470)
-- [firebaseStorageSimplified.ts:169-259](file://src/services/firebase/firebaseStorageSimplified.ts#L169-L259)
+- [sqliteService.ts:423-470](file://src/services/local-persistence/sqliteService.ts#L423-L470)
+- [local-persistenceStorageSimplified.ts:169-259](file://src/services/local-persistence/local-persistenceStorageSimplified.ts#L169-L259)
 - [audioExtractionSimplified.ts:632-1606](file://src/services/audio/audioExtractionSimplified.ts#L632-L1606)
 
 ## Core Components
@@ -360,7 +360,7 @@ PB->>DI : isVisible && !fromCache
 DI-->>PB : Show download/queue toast
 PB->>EN : isVisible
 EN-->>PB : Show extraction toast
-PB->>PSB : fromCache, fromFirestoreCache, audioUrl, videoId, beatDetector
+PB->>PSB : fromCache, fromSQLiteCache, audioUrl, videoId, beatDetector
 PSB-->>PB : Show processing toasts and completion
 PB->>Error : error present
 Error-->>PB : Render friendly error
@@ -490,7 +490,7 @@ Orchestrator->>Store : completeAnalysis(results)
 
 ### applyCachedTranscriptionIfAvailable Function
 The `applyCachedTranscriptionIfAvailable` function enables immediate cached result access:
-- Checks Firestore for cached transcription snapshots with the current model combination
+- Checks SQLite for cached transcription snapshots with the current model combination
 - Sets cache availability state and updates UI immediately
 - Loads cached audio URL and duration when available
 - Updates video title from cached data
@@ -524,13 +524,13 @@ ProcessCache --> Complete["Analysis Complete"]
 
 **Diagram sources**
 - [useAnalyzePageOrchestrator.ts:622-720](file://src/hooks/analyze/useAnalyzePageOrchestrator.ts#L622-L720)
-- [firestoreService.ts:423-470](file://src/services/firebase/firestoreService.ts#L423-L470)
-- [firebaseStorageSimplified.ts:169-259](file://src/services/firebase/firebaseStorageSimplified.ts#L169-L259)
+- [sqliteService.ts:423-470](file://src/services/local-persistence/sqliteService.ts#L423-L470)
+- [local-persistenceStorageSimplified.ts:169-259](file://src/services/local-persistence/local-persistenceStorageSimplified.ts#L169-L259)
 
 **Section sources**
 - [useAnalyzePageOrchestrator.ts:622-720](file://src/hooks/analyze/useAnalyzePageOrchestrator.ts#L622-L720)
-- [firestoreService.ts:423-470](file://src/services/firebase/firestoreService.ts#L423-L470)
-- [firebaseStorageSimplified.ts:169-259](file://src/services/firebase/firebaseStorageSimplified.ts#L169-L259)
+- [sqliteService.ts:423-470](file://src/services/local-persistence/sqliteService.ts#L423-L470)
+- [local-persistenceStorageSimplified.ts:169-259](file://src/services/local-persistence/local-persistenceStorageSimplified.ts#L169-L259)
 
 ## Dependency Analysis
 The components exhibit clear dependency relationships:
@@ -539,7 +539,7 @@ The components exhibit clear dependency relationships:
 - Processing banners depend on processing context and service durations.
 - AnalysisControls depends on model selectors and store for action enabling/disabling.
 - Orchestrator coordinates services and updates store, driving UI state.
-- **Enhanced**: Cache pipeline adds dependencies on Firestore and Firebase services.
+- **Enhanced**: Cache pipeline adds dependencies on SQLite and Local persistence services.
 
 ```mermaid
 graph TB
@@ -555,8 +555,8 @@ PB --> EN["ExtractionNotification"]
 HBMS --> MF["modelFiltering"]
 HCMS --> MF
 UAO["useAnalyzePageOrchestrator"] --> CTI["applyCachedTranscriptionIfAvailable"]
-CTI --> FSC["firestoreService"]
-CTI --> FSS["firebaseStorageSimplified"]
+CTI --> FSC["sqliteService"]
+CTI --> FSS["local-persistenceStorageSimplified"]
 AES["audioExtractionSimplified"] --> FSS
 UAO --> AAS["audioAnalysisService"]
 AAS --> CRS["chordRecognitionService"]
@@ -578,8 +578,8 @@ AAS --> CRS["chordRecognitionService"]
 - [audioAnalysisService.ts:1-704](file://src/services/audio/audioAnalysisService.ts#L1-L704)
 - [chordRecognitionService.ts:1-32](file://src/services/chord-analysis/chordRecognitionService.ts#L1-L32)
 - [modelFiltering.ts:1-179](file://src/utils/modelFiltering.ts#L1-L179)
-- [firestoreService.ts:423-470](file://src/services/firebase/firestoreService.ts#L423-L470)
-- [firebaseStorageSimplified.ts:169-259](file://src/services/firebase/firebaseStorageSimplified.ts#L169-L259)
+- [sqliteService.ts:423-470](file://src/services/local-persistence/sqliteService.ts#L423-L470)
+- [local-persistenceStorageSimplified.ts:169-259](file://src/services/local-persistence/local-persistenceStorageSimplified.ts#L169-L259)
 - [audioExtractionSimplified.ts:632-1606](file://src/services/audio/audioExtractionSimplified.ts#L632-L1606)
 
 **Section sources**
@@ -596,8 +596,8 @@ AAS --> CRS["chordRecognitionService"]
 - [audioAnalysisService.ts:1-704](file://src/services/audio/audioAnalysisService.ts#L1-L704)
 - [chordRecognitionService.ts:1-32](file://src/services/chord-analysis/chordRecognitionService.ts#L1-L32)
 - [modelFiltering.ts:1-179](file://src/utils/modelFiltering.ts#L1-L179)
-- [firestoreService.ts:423-470](file://src/services/firebase/firestoreService.ts#L423-L470)
-- [firebaseStorageSimplified.ts:169-259](file://src/services/firebase/firebaseStorageSimplified.ts#L169-L259)
+- [sqliteService.ts:423-470](file://src/services/local-persistence/sqliteService.ts#L423-L470)
+- [local-persistenceStorageSimplified.ts:169-259](file://src/services/local-persistence/local-persistenceStorageSimplified.ts#L169-L259)
 - [audioExtractionSimplified.ts:632-1606](file://src/services/audio/audioExtractionSimplified.ts#L632-L1606)
 
 ## Performance Considerations

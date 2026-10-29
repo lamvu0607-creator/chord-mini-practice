@@ -1,63 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
+import React from 'react';
 import Navigation from '@/components/common/Navigation';
+import PageBackdrop from '@/components/ui/PageBackdrop';
 import MiniGamesContainer from '@/components/games/MiniGamesContainer';
-import { useTheme } from '@/contexts/ThemeContext';
-
-// Dynamic import for LightRays WebGL background matching homepage
-const LightRays = dynamic(() => import('@/components/ui/LightRays'), { ssr: false });
 
 export default function GamesPage() {
-  const { theme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMounted(true);
-  }, []);
-
   return (
     <div className="relative flex flex-col min-h-screen transition-colors duration-300">
-      {/* Background - Replicating homepage hero background */}
-      <div className="fixed inset-0 z-0 h-screen pointer-events-none overflow-hidden">
-        {theme === 'dark' ? (
-          <div className="h-full w-full bg-black relative">
-            {mounted && (
-              <div className="absolute inset-0 z-0">
-                <LightRays
-                  lightSpread={0.1}
-                  saturation={0}
-                  mouseInfluence={0}
-                  pulsating={true}
-                  noiseAmount={0.1}
-                  raysColor="#f1ebe6"
-                  raysSpeed={0.5}
-                  fadeDistance={2}
-                />
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="h-full w-full relative bg-[#faf6ee] overflow-hidden">
-            {mounted && (
-              <div className="absolute inset-0 z-0">
-                <LightRays
-                  lightSpread={0.1}
-                  saturation={0}
-                  mouseInfluence={0}
-                  pulsating={true}
-                  noiseAmount={0.1}
-                  raysColor="#ffe082"
-                  raysSpeed={0.5}
-                  fadeDistance={2}
-                />
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      <PageBackdrop />
 
       {/* Navigation */}
       <Navigation overlay />

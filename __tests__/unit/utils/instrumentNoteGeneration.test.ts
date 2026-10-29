@@ -954,7 +954,6 @@ describe('instrumentNoteGeneration octave defaults', () => {
       [{ name: 'guitar', color: '#fff' }],
       new Map(),
       120,
-      4,
       { capoFret: 0, selectedPositions: { G: 0 } },
       'C',
     );

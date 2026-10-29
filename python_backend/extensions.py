@@ -46,16 +46,20 @@ def init_limiter(app: Flask, config) -> None:
         app: Flask application instance
         config: Configuration object with rate limiting settings
     """
-    # Configure rate limiting storage
-    if config.REDIS_URL:
-        limiter.init_app(
-            app,
-            storage_uri=config.REDIS_URL
-        )
-        app.logger.info(f"Rate limiting configured with Redis: {config.REDIS_URL}")
-    else:
-        limiter.init_app(app)
-        app.logger.info("Rate limiting configured with in-memory storage")
+    redis_url = getattr(config, 'REDIS_URL', None)
+    if redis_url:
+        try:
+            import redis  # Check if redis client library is available
+            app.config["RATELIMIT_STORAGE_URI"] = redis_url
+            limiter.init_app(app)
+            app.logger.info(f"Rate limiting configured with Redis: {redis_url}")
+            return
+        except (ImportError, Exception) as exc:
+            app.logger.warning(f"Redis rate limiting unavailable ({exc}), falling back to in-memory storage")
+
+    app.config["RATELIMIT_STORAGE_URI"] = "memory://"
+    limiter.init_app(app)
+    app.logger.info("Rate limiting configured with in-memory storage")
 
 
 def init_logging(app: Flask, config) -> None:

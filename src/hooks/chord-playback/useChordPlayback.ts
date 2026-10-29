@@ -8,7 +8,6 @@ import {
   DEFAULT_FLUTE_VOLUME,
 } from '@/config/audioDefaults';
 import { useGuitarCapoFret, useGuitarSelectedPositions, useSimplifyChords, useTargetKey } from '@/stores/uiStore';
-import type { SegmentationResult } from '@/types/chatbotTypes';
 import { isNoChordChordName } from '@/utils/chordToMidi';
 import type { GuitarVoicingSelection } from '@/utils/guitarVoicing';
 import { findChordEventIndexForPlayback } from '@/utils/chordEventLookup';
@@ -22,7 +21,6 @@ export interface UseChordPlaybackProps {
   currentTime: number;
   bpm?: number; // Beats per minute for dynamic timing (optional, defaults to 120)
   timeSignature?: number; // Beats per measure (e.g. 3 for 3/4, defaults to 4)
-  segmentationData?: SegmentationResult | null;
   audioUrl?: string | null;
 }
 
@@ -255,7 +253,6 @@ export const useChordPlayback = ({
   currentTime,
   bpm = 120, // Default to 120 BPM if not provided
   timeSignature = 4, // Default to 4/4 time
-  segmentationData,
   audioUrl,
 }: UseChordPlaybackProps): UseChordPlaybackReturn => {
   const [isEnabled, setIsEnabled] = useState(false);
@@ -294,9 +291,8 @@ export const useChordPlayback = ({
       bpm,
       timeSignature,
       totalDuration: estimatedSongDuration,
-      segmentationData,
     }),
-    [bpm, estimatedSongDuration, segmentationData, timeSignature],
+    [bpm, estimatedSongDuration, timeSignature],
   );
   const dynamicsAnalyzer = useSharedAudioDynamics(audioUrl, dynamicsParams);
 
@@ -316,7 +312,6 @@ export const useChordPlayback = ({
   const estimatedSongDurationRef = useRef(estimatedSongDuration);
   const audioUrlRef = useRef(audioUrl);
   const dynamicsAnalyzerRef = useRef(dynamicsAnalyzer);
-  const segmentationDataRef = useRef(segmentationData);
   const guitarVoicingRef = useRef(guitarVoicing);
   const targetKeyRef = useRef(targetKey);
   const simplePianoBlockChordsRef = useRef(simplePianoBlockChords);
@@ -336,7 +331,6 @@ export const useChordPlayback = ({
   useEffect(() => { estimatedSongDurationRef.current = estimatedSongDuration; }, [estimatedSongDuration]);
   useEffect(() => { audioUrlRef.current = audioUrl; }, [audioUrl]);
   useEffect(() => { dynamicsAnalyzerRef.current = dynamicsAnalyzer; }, [dynamicsAnalyzer]);
-  useEffect(() => { segmentationDataRef.current = segmentationData; }, [segmentationData]);
   useEffect(() => { guitarVoicingRef.current = guitarVoicing; }, [guitarVoicing]);
   useEffect(() => { targetKeyRef.current = targetKey; }, [targetKey]);
   useEffect(() => { simplePianoBlockChordsRef.current = simplePianoBlockChords; }, [simplePianoBlockChords]);
@@ -475,7 +469,6 @@ export const useChordPlayback = ({
           totalDuration: estimatedSongDurationRef.current,
           playbackTime: time,
           beatCount: event.beatCount,
-          segmentationData: segmentationDataRef.current,
           signalDynamics,
           simplePianoBlockChord: simplePianoBlockChordsRef.current,
           nextChordName: event.nextChordName,
@@ -651,7 +644,6 @@ export const useChordPlayback = ({
         totalDuration: estimatedSongDuration,
         playbackTime: currentTime,
         beatCount: event.beatCount,
-        segmentationData,
         signalDynamics,
         simplePianoBlockChord: simplePianoBlockChords,
         nextChordName: event.nextChordName,
@@ -677,7 +669,6 @@ export const useChordPlayback = ({
     isPlaying,
     isReady,
     playbackRecoveryNonce,
-    segmentationData,
     simplePianoBlockChords,
     targetKey,
     timeSignature,

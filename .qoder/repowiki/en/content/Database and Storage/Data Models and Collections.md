@@ -1,12 +1,12 @@
-# Data Models and Collections
+﻿# Data Models and Collections
 
 <cite>
 **Referenced Files in This Document**
-- [firestore.indexes.json](file://firebase/firestore.indexes.json)
-- [firestore.rules](file://firebase/firestore.rules)
-- [firestoreService.ts](file://src/services/firebase/firestoreService.ts)
-- [firestoreAdminService.ts](file://src/services/firebase/firestoreAdminService.ts)
-- [segmentationJobService.ts](file://src/services/firebase/segmentationJobService.ts)
+- [sqlite.indexes.json](file://local-persistence/sqlite.indexes.json)
+- [sqlite.rules](file://local-persistence/sqlite.rules)
+- [sqliteService.ts](file://src/services/local-persistence/sqliteService.ts)
+- [sqliteAdminService.ts](file://src/services/local-persistence/sqliteAdminService.ts)
+- [segmentationJobService.ts](file://src/services/local-persistence/segmentationJobService.ts)
 - [route.ts](file://src/app/api/melody-cache/route.ts)
 - [sheetSageCacheClient.ts](file://src/services/sheetsage/sheetSageCacheClient.ts)
 - [delete-cache-admin.js](file://scripts/delete-cache-admin.js)
@@ -30,28 +30,28 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document provides comprehensive data model documentation for the ChordMiniApp collections and schemas stored in Firestore. It covers the main collections including transcriptions, translations, lyrics, key detections, segmentation jobs, and melody caches. For each collection, we define document structure, field types, validation rules, and relationships. We explain indexing strategy, query optimization, caching policies, migration procedures, and administrative maintenance via the Firestore Admin SDK. Finally, we outline TypeScript interfaces and type safety measures, and address data lifecycle management including retention, archival, and deletion strategies.
+This document provides comprehensive data model documentation for the ChordMiniApp collections and schemas stored in SQLite. It covers the main collections including transcriptions, translations, lyrics, key detections, segmentation jobs, and melody caches. For each collection, we define document structure, field types, validation rules, and relationships. We explain indexing strategy, query optimization, caching policies, migration procedures, and administrative maintenance via the SQLite Admin SDK. Finally, we outline TypeScript interfaces and type safety measures, and address data lifecycle management including retention, archival, and deletion strategies.
 
 ## Project Structure
 The data model spans several layers:
-- Frontend services that read/write Firestore documents and manage caches
+- Frontend services that read/write SQLite documents and manage caches
 - Backend APIs that expose endpoints for melody cache and segmentation jobs
-- Firestore configuration for indexes and security rules
+- SQLite configuration for indexes and security rules
 - Administrative scripts for bulk operations and backfills
 
 ```mermaid
 graph TB
 subgraph "Frontend"
-FSvc["firestoreService.ts"]
+FSvc["sqliteService.ts"]
 SCache["sheetSageCacheClient.ts"]
 end
 subgraph "Backend"
 API["melody-cache route.ts"]
 SegSvc["segmentationJobService.ts"]
 end
-subgraph "Firestore"
-Rules["firestore.rules"]
-Idx["firestore.indexes.json"]
+subgraph "SQLite"
+Rules["sqlite.rules"]
+Idx["sqlite.indexes.json"]
 Trans["transcriptions"]
 Melody["melody"]
 Jobs["segmentationJobs"]
@@ -61,7 +61,7 @@ TransCache["transcriptionCache"]
 TrCache["translationCache"]
 end
 subgraph "Admin Tools"
-AdminSDK["firestoreAdminService.ts"]
+AdminSDK["sqliteAdminService.ts"]
 DelCache["delete-cache-admin.js"]
 Backfill1["backfill-transcription-homepage-metadata.js"]
 Backfill2["backfill-transcription-usage-count.js"]
@@ -95,17 +95,17 @@ Backfill2 --> Trans
 ```
 
 **Diagram sources**
-- [firestoreService.ts:64-108](file://src/services/firebase/firestoreService.ts#L64-L108)
-- [firestoreAdminService.ts:1-313](file://src/services/firebase/firestoreAdminService.ts#L1-L313)
-- [segmentationJobService.ts:189-336](file://src/services/firebase/segmentationJobService.ts#L189-L336)
+- [sqliteService.ts:64-108](file://src/services/local-persistence/sqliteService.ts#L64-L108)
+- [sqliteAdminService.ts:1-313](file://src/services/local-persistence/sqliteAdminService.ts#L1-L313)
+- [segmentationJobService.ts:189-336](file://src/services/local-persistence/segmentationJobService.ts#L189-L336)
 - [route.ts:81-92](file://src/app/api/melody-cache/route.ts#L81-L92)
 - [sheetSageCacheClient.ts:1-17](file://src/services/sheetsage/sheetSageCacheClient.ts#L1-L17)
-- [firestore.indexes.json:1-38](file://firebase/firestore.indexes.json#L1-L38)
-- [firestore.rules:124-140](file://firebase/firestore.rules#L124-L140)
+- [sqlite.indexes.json:1-38](file://local-persistence/sqlite.indexes.json#L1-L38)
+- [sqlite.rules:124-140](file://local-persistence/sqlite.rules#L124-L140)
 
 **Section sources**
-- [firestore.indexes.json:1-38](file://firebase/firestore.indexes.json#L1-L38)
-- [firestore.rules:1-289](file://firebase/firestore.rules#L1-L289)
+- [sqlite.indexes.json:1-38](file://local-persistence/sqlite.indexes.json#L1-L38)
+- [sqlite.rules:1-289](file://local-persistence/sqlite.rules#L1-L289)
 
 ## Core Collections and Schemas
 
@@ -153,12 +153,12 @@ Indexes:
 - Composite index for isPrimaryVariant + searchableKeys (contains) + createdAt (descending)
 
 **Section sources**
-- [firestoreService.ts:64-102](file://src/services/firebase/firestoreService.ts#L64-L102)
-- [firestoreService.ts:203-248](file://src/services/firebase/firestoreService.ts#L203-L248)
-- [firestoreService.ts:324-380](file://src/services/firebase/firestoreService.ts#L324-L380)
-- [firestoreService.ts:688-747](file://src/services/firebase/firestoreService.ts#L688-L747)
-- [firestore.indexes.json:3-34](file://firebase/firestore.indexes.json#L3-L34)
-- [firestore.rules:39-50](file://firebase/firestore.rules#L39-L50)
+- [sqliteService.ts:64-102](file://src/services/local-persistence/sqliteService.ts#L64-L102)
+- [sqliteService.ts:203-248](file://src/services/local-persistence/sqliteService.ts#L203-L248)
+- [sqliteService.ts:324-380](file://src/services/local-persistence/sqliteService.ts#L324-L380)
+- [sqliteService.ts:688-747](file://src/services/local-persistence/sqliteService.ts#L688-L747)
+- [sqlite.indexes.json:3-34](file://local-persistence/sqlite.indexes.json#L3-L34)
+- [sqlite.rules:39-50](file://local-persistence/sqlite.rules#L39-L50)
 
 ### Transcription Cache
 Purpose: Store precomputed transcription results for quick retrieval.
@@ -168,7 +168,7 @@ Purpose: Store precomputed transcription results for quick retrieval.
 - Access: read allowed; create/update allowed; delete restricted
 
 **Section sources**
-- [firestore.rules:106-121](file://firebase/firestore.rules#L106-L121)
+- [sqlite.rules:106-121](file://local-persistence/sqlite.rules#L106-L121)
 
 ### Translations
 Purpose: Store translated lyrics.
@@ -178,7 +178,7 @@ Purpose: Store translated lyrics.
 - Access: read allowed; create/update allowed; delete restricted to admins
 
 **Section sources**
-- [firestore.rules:159-174](file://firebase/firestore.rules#L159-L174)
+- [sqlite.rules:159-174](file://local-persistence/sqlite.rules#L159-L174)
 
 ### Translation Cache
 Purpose: Store cached translation results.
@@ -188,7 +188,7 @@ Purpose: Store cached translation results.
 - Access: read allowed; create/update allowed; delete restricted to admins
 
 **Section sources**
-- [firestore.rules:142-157](file://firebase/firestore.rules#L142-L157)
+- [sqlite.rules:142-157](file://local-persistence/sqlite.rules#L142-L157)
 
 ### Lyrics
 Purpose: Store transcribed lyrics (from Music.AI).
@@ -198,7 +198,7 @@ Purpose: Store transcribed lyrics (from Music.AI).
 - Access: read allowed; create/update allowed; delete restricted to admins
 
 **Section sources**
-- [firestore.rules:176-194](file://firebase/firestore.rules#L176-L194)
+- [sqlite.rules:176-194](file://local-persistence/sqlite.rules#L176-L194)
 
 ### Key Detections
 Purpose: Store musical key analysis results.
@@ -208,7 +208,7 @@ Purpose: Store musical key analysis results.
 - Access: read allowed; create/update allowed; delete restricted to admins
 
 **Section sources**
-- [firestore.rules:266-281](file://firebase/firestore.rules#L266-L281)
+- [sqlite.rules:266-281](file://local-persistence/sqlite.rules#L266-L281)
 
 ### Melody Cache
 Purpose: Store Sheet Sage melody transcription results.
@@ -230,14 +230,14 @@ Purpose: Store Sheet Sage melody transcription results.
   - Validates numeric fields
 
 Frontend cache:
-- SmartFirebaseCache wrapper for memoization and normalization
+- SmartLocal persistenceCache wrapper for memoization and normalization
 
 Backend API:
 - GET endpoint serves cached melody data for a given videoId
 
 **Section sources**
-- [firestoreService.ts:104-108](file://src/services/firebase/firestoreService.ts#L104-L108)
-- [firestoreService.ts:276-322](file://src/services/firebase/firestoreService.ts#L276-L322)
+- [sqliteService.ts:104-108](file://src/services/local-persistence/sqliteService.ts#L104-L108)
+- [sqliteService.ts:276-322](file://src/services/local-persistence/sqliteService.ts#L276-L322)
 - [route.ts:81-92](file://src/app/api/melody-cache/route.ts#L81-L92)
 - [sheetSageCacheClient.ts:1-17](file://src/services/sheetsage/sheetSageCacheClient.ts#L1-L17)
 
@@ -257,16 +257,16 @@ TTL and cleanup:
 - Cron-triggered cleanup endpoint
 
 **Section sources**
-- [segmentationJobService.ts:189-336](file://src/services/firebase/segmentationJobService.ts#L189-L336)
+- [segmentationJobService.ts:189-336](file://src/services/local-persistence/segmentationJobService.ts#L189-L336)
 
 ## Architecture Overview
 
 ```mermaid
 sequenceDiagram
 participant Client as "Client App"
-participant FS as "firestoreService.ts"
-participant Cache as "SmartFirebaseCache"
-participant FB as "Firestore"
+participant FS as "sqliteService.ts"
+participant Cache as "SmartLocal persistenceCache"
+participant FB as "SQLite"
 participant API as "melody-cache route.ts"
 Client->>FS : getMelodyTranscription(videoId)
 FS->>Cache : peek(videoId)
@@ -287,7 +287,7 @@ API-->>Client : JSON response
 ```
 
 **Diagram sources**
-- [firestoreService.ts:471-522](file://src/services/firebase/firestoreService.ts#L471-L522)
+- [sqliteService.ts:471-522](file://src/services/local-persistence/sqliteService.ts#L471-L522)
 - [route.ts:81-92](file://src/app/api/melody-cache/route.ts#L81-L92)
 
 ## Detailed Component Analysis
@@ -317,15 +317,15 @@ Derived --> Output(["Normalized Transcription"])
 ```
 
 **Diagram sources**
-- [firestoreService.ts:203-248](file://src/services/firebase/firestoreService.ts#L203-L248)
-- [firestoreService.ts:154-175](file://src/services/firebase/firestoreService.ts#L154-L175)
-- [firestoreService.ts:177-201](file://src/services/firebase/firestoreService.ts#L177-L201)
+- [sqliteService.ts:203-248](file://src/services/local-persistence/sqliteService.ts#L203-L248)
+- [sqliteService.ts:154-175](file://src/services/local-persistence/sqliteService.ts#L154-L175)
+- [sqliteService.ts:177-201](file://src/services/local-persistence/sqliteService.ts#L177-L201)
 
 **Section sources**
-- [firestoreService.ts:64-102](file://src/services/firebase/firestoreService.ts#L64-L102)
-- [firestoreService.ts:203-248](file://src/services/firebase/firestoreService.ts#L203-L248)
-- [firestoreService.ts:154-175](file://src/services/firebase/firestoreService.ts#L154-L175)
-- [firestoreService.ts:177-201](file://src/services/firebase/firestoreService.ts#L177-L201)
+- [sqliteService.ts:64-102](file://src/services/local-persistence/sqliteService.ts#L64-L102)
+- [sqliteService.ts:203-248](file://src/services/local-persistence/sqliteService.ts#L203-L248)
+- [sqliteService.ts:154-175](file://src/services/local-persistence/sqliteService.ts#L154-L175)
+- [sqliteService.ts:177-201](file://src/services/local-persistence/sqliteService.ts#L177-L201)
 
 ### Melody Transcription Data Model and Normalization
 Melody documents are normalized to ensure:
@@ -345,11 +345,11 @@ Defaults --> MOut(["Normalized Melody"])
 ```
 
 **Diagram sources**
-- [firestoreService.ts:276-322](file://src/services/firebase/firestoreService.ts#L276-L322)
+- [sqliteService.ts:276-322](file://src/services/local-persistence/sqliteService.ts#L276-L322)
 
 **Section sources**
-- [firestoreService.ts:104-108](file://src/services/firebase/firestoreService.ts#L104-L108)
-- [firestoreService.ts:276-322](file://src/services/firebase/firestoreService.ts#L276-L322)
+- [sqliteService.ts:104-108](file://src/services/local-persistence/sqliteService.ts#L104-L108)
+- [sqliteService.ts:276-322](file://src/services/local-persistence/sqliteService.ts#L276-L322)
 
 ### Segmentation Job Lifecycle
 Segmentation jobs are tracked with status transitions and TTL semantics. The service:
@@ -363,7 +363,7 @@ sequenceDiagram
 participant Client as "Client"
 participant API as "Segmentation API"
 participant Svc as "segmentationJobService.ts"
-participant FB as "Firestore"
+participant FB as "SQLite"
 Client->>API : GET /jobs/[jobId]
 API->>Svc : getSegmentationJob(jobId)
 Svc->>FB : getDoc(segmentationJobs, jobId)
@@ -380,11 +380,11 @@ API-->>Client : success
 ```
 
 **Diagram sources**
-- [segmentationJobService.ts:204-226](file://src/services/firebase/segmentationJobService.ts#L204-L226)
-- [segmentationJobService.ts:320-336](file://src/services/firebase/segmentationJobService.ts#L320-L336)
+- [segmentationJobService.ts:204-226](file://src/services/local-persistence/segmentationJobService.ts#L204-L226)
+- [segmentationJobService.ts:320-336](file://src/services/local-persistence/segmentationJobService.ts#L320-L336)
 
 **Section sources**
-- [segmentationJobService.ts:189-336](file://src/services/firebase/segmentationJobService.ts#L189-L336)
+- [segmentationJobService.ts:189-336](file://src/services/local-persistence/segmentationJobService.ts#L189-L336)
 
 ### Indexing Strategy and Query Optimization
 Composite indexes enable efficient queries:
@@ -405,22 +405,22 @@ number usageCount
 ```
 
 **Diagram sources**
-- [firestore.indexes.json:3-34](file://firebase/firestore.indexes.json#L3-L34)
+- [sqlite.indexes.json:3-34](file://local-persistence/sqlite.indexes.json#L3-L34)
 
 **Section sources**
-- [firestore.indexes.json:1-38](file://firebase/firestore.indexes.json#L1-L38)
+- [sqlite.indexes.json:1-38](file://local-persistence/sqlite.indexes.json#L1-L38)
 
 ### Caching Policies
-- Transcriptions: SmartFirebaseCache with normalization and eviction
-- Melody: SmartFirebaseCache with normalization and memoization
+- Transcriptions: SmartLocal persistenceCache with normalization and eviction
+- Melody: SmartLocal persistenceCache with normalization and memoization
 - Homepage variant metadata: batched updates to all variants for a videoId
 - Usage count: atomic increment via server-side increment
 
 **Section sources**
-- [firestoreService.ts:254-254](file://src/services/firebase/firestoreService.ts#L254-L254)
-- [firestoreService.ts:471-522](file://src/services/firebase/firestoreService.ts#L471-L522)
-- [firestoreService.ts:749-798](file://src/services/firebase/firestoreService.ts#L749-L798)
-- [firestoreService.ts:688-747](file://src/services/firebase/firestoreService.ts#L688-L747)
+- [sqliteService.ts:254-254](file://src/services/local-persistence/sqliteService.ts#L254-L254)
+- [sqliteService.ts:471-522](file://src/services/local-persistence/sqliteService.ts#L471-L522)
+- [sqliteService.ts:749-798](file://src/services/local-persistence/sqliteService.ts#L749-L798)
+- [sqliteService.ts:688-747](file://src/services/local-persistence/sqliteService.ts#L688-L747)
 
 ### Data Migration Procedures
 - Schema versioning: introduce new fields alongside existing ones; keep backward compatibility
@@ -434,10 +434,10 @@ number usageCount
 **Section sources**
 - [backfill-transcription-homepage-metadata.js:115-198](file://scripts/backfill-transcription-homepage-metadata.js#L115-L198)
 - [backfill-transcription-usage-count.js:124-168](file://scripts/backfill-transcription-usage-count.js#L124-L168)
-- [firestoreAdminService.ts:243-257](file://src/services/firebase/firestoreAdminService.ts#L243-L257)
-- [firestoreAdminService.ts:284-312](file://src/services/firebase/firestoreAdminService.ts#L284-L312)
+- [sqliteAdminService.ts:243-257](file://src/services/local-persistence/sqliteAdminService.ts#L243-L257)
+- [sqliteAdminService.ts:284-312](file://src/services/local-persistence/sqliteAdminService.ts#L284-L312)
 
-### Firestore Admin SDK Usage
+### SQLite Admin SDK Usage
 - Authentication: Google Auth with service account or ADC
 - Operations:
   - Batch delete documents
@@ -445,7 +445,7 @@ number usageCount
 - Batch size: 500 writes per commit
 
 **Section sources**
-- [firestoreAdminService.ts:1-313](file://src/services/firebase/firestoreAdminService.ts#L1-L313)
+- [sqliteAdminService.ts:1-313](file://src/services/local-persistence/sqliteAdminService.ts#L1-L313)
 
 ### TypeScript Interfaces and Type Safety
 - Audio analysis types: beat/chord detection results and analysis result shapes
@@ -468,18 +468,18 @@ These interfaces ensure type-safe handling of backend responses and internal dat
   - Bulk deletion via Admin SDK
 
 **Section sources**
-- [firestore.rules:134-140](file://firebase/firestore.rules#L134-L140)
-- [firestore.rules:164-174](file://firebase/firestore.rules#L164-L174)
-- [firestore.rules:181-194](file://firebase/firestore.rules#L181-L194)
-- [firestore.rules:271-281](file://firebase/firestore.rules#L271-L281)
-- [segmentationJobService.ts:276-318](file://src/services/firebase/segmentationJobService.ts#L276-L318)
-- [firestoreAdminService.ts:243-257](file://src/services/firebase/firestoreAdminService.ts#L243-L257)
+- [sqlite.rules:134-140](file://local-persistence/sqlite.rules#L134-L140)
+- [sqlite.rules:164-174](file://local-persistence/sqlite.rules#L164-L174)
+- [sqlite.rules:181-194](file://local-persistence/sqlite.rules#L181-L194)
+- [sqlite.rules:271-281](file://local-persistence/sqlite.rules#L271-L281)
+- [segmentationJobService.ts:276-318](file://src/services/local-persistence/segmentationJobService.ts#L276-L318)
+- [sqliteAdminService.ts:243-257](file://src/services/local-persistence/sqliteAdminService.ts#L243-L257)
 
 ## Dependency Analysis
 
 ```mermaid
 graph LR
-FS["firestoreService.ts"] --> TR["transcriptions"]
+FS["sqliteService.ts"] --> TR["transcriptions"]
 FS --> ML["melody"]
 FS --> KEYS["keyDetections"]
 FS --> LYR["lyrics"]
@@ -488,13 +488,13 @@ FS --> TRL["translationCache"]
 API["melody-cache route.ts"] --> FS
 SC["sheetSageCacheClient.ts"] --> API
 SEG["segmentationJobService.ts"] --> SJ["segmentationJobs"]
-ADM["firestoreAdminService.ts"] --> TR
+ADM["sqliteAdminService.ts"] --> TR
 ADM --> ML
 ADM --> SJ
 ADM --> KEYS
 ADM --> LYR
-IDX["firestore.indexes.json"] --> TR
-RULE["firestore.rules"] --> TR
+IDX["sqlite.indexes.json"] --> TR
+RULE["sqlite.rules"] --> TR
 RULE --> ML
 RULE --> SJ
 RULE --> KEYS
@@ -504,40 +504,40 @@ RULE --> TRL
 ```
 
 **Diagram sources**
-- [firestoreService.ts:250-254](file://src/services/firebase/firestoreService.ts#L250-L254)
+- [sqliteService.ts:250-254](file://src/services/local-persistence/sqliteService.ts#L250-L254)
 - [route.ts:81-92](file://src/app/api/melody-cache/route.ts#L81-L92)
 - [sheetSageCacheClient.ts:1-17](file://src/services/sheetsage/sheetSageCacheClient.ts#L1-L17)
-- [segmentationJobService.ts:189-336](file://src/services/firebase/segmentationJobService.ts#L189-L336)
-- [firestoreAdminService.ts:243-312](file://src/services/firebase/firestoreAdminService.ts#L243-L312)
-- [firestore.indexes.json:1-38](file://firebase/firestore.indexes.json#L1-L38)
-- [firestore.rules:124-140](file://firebase/firestore.rules#L124-L140)
+- [segmentationJobService.ts:189-336](file://src/services/local-persistence/segmentationJobService.ts#L189-L336)
+- [sqliteAdminService.ts:243-312](file://src/services/local-persistence/sqliteAdminService.ts#L243-L312)
+- [sqlite.indexes.json:1-38](file://local-persistence/sqlite.indexes.json#L1-L38)
+- [sqlite.rules:124-140](file://local-persistence/sqlite.rules#L124-L140)
 
 **Section sources**
-- [firestoreService.ts:250-254](file://src/services/firebase/firestoreService.ts#L250-L254)
-- [segmentationJobService.ts:189-336](file://src/services/firebase/segmentationJobService.ts#L189-L336)
-- [firestoreAdminService.ts:243-312](file://src/services/firebase/firestoreAdminService.ts#L243-L312)
-- [firestore.indexes.json:1-38](file://firebase/firestore.indexes.json#L1-L38)
-- [firestore.rules:124-140](file://firebase/firestore.rules#L124-L140)
+- [sqliteService.ts:250-254](file://src/services/local-persistence/sqliteService.ts#L250-L254)
+- [segmentationJobService.ts:189-336](file://src/services/local-persistence/segmentationJobService.ts#L189-L336)
+- [sqliteAdminService.ts:243-312](file://src/services/local-persistence/sqliteAdminService.ts#L243-L312)
+- [sqlite.indexes.json:1-38](file://local-persistence/sqlite.indexes.json#L1-L38)
+- [sqlite.rules:124-140](file://local-persistence/sqlite.rules#L124-L140)
 
 ## Performance Considerations
 - Composite indexes:
   - Enable efficient filtering by isPrimaryVariant and sorting by createdAt
   - Support array-contains queries on searchableKeys for homepage curation
 - Caching:
-  - SmartFirebaseCache reduces read latency and minimizes network requests
+  - SmartLocal persistenceCache reduces read latency and minimizes network requests
   - Normalization avoids repeated computation
 - Batch operations:
-  - Firestore Admin SDK batches deletions to reduce cost and latency
+  - SQLite Admin SDK batches deletions to reduce cost and latency
 - Atomic increments:
   - usageCount via server-side increment prevents race conditions
 - CORS resilience:
-  - Session-wide Firestore disable on CORS/network errors prevents repeated failures
+  - Session-wide SQLite disable on CORS/network errors prevents repeated failures
 
 [No sources needed since this section provides general guidance]
 
 ## Troubleshooting Guide
 - CORS/network errors:
-  - Firestore operations may temporarily disable Firestore for the session
+  - SQLite operations may temporarily disable SQLite for the session
   - Check browser console for CORS-related messages
 - Validation errors:
   - Rules temporarily relaxed to isolate permission issues
@@ -550,11 +550,11 @@ RULE --> TRL
   - Verify request hash uniqueness and status transitions
 
 **Section sources**
-- [firestoreService.ts:462-466](file://src/services/firebase/firestoreService.ts#L462-L466)
-- [firestoreService.ts:515-519](file://src/services/firebase/firestoreService.ts#L515-L519)
-- [firestoreAdminService.ts:67-83](file://src/services/firebase/firestoreAdminService.ts#L67-L83)
-- [firestoreAdminService.ts:237-241](file://src/services/firebase/firestoreAdminService.ts#L237-L241)
-- [segmentationJobService.ts:276-318](file://src/services/firebase/segmentationJobService.ts#L276-L318)
+- [sqliteService.ts:462-466](file://src/services/local-persistence/sqliteService.ts#L462-L466)
+- [sqliteService.ts:515-519](file://src/services/local-persistence/sqliteService.ts#L515-L519)
+- [sqliteAdminService.ts:67-83](file://src/services/local-persistence/sqliteAdminService.ts#L67-L83)
+- [sqliteAdminService.ts:237-241](file://src/services/local-persistence/sqliteAdminService.ts#L237-L241)
+- [segmentationJobService.ts:276-318](file://src/services/local-persistence/segmentationJobService.ts#L276-L318)
 
 ## Conclusion
 The ChordMiniApp data model centers on robust schemas for transcriptions and melody results, supported by strong caching, composite indexes, and administrative tooling. Validation rules are intentionally permissive during stabilization, while type-safe TypeScript interfaces ensure correctness across the stack. The indexing strategy optimizes common queries, and the Admin SDK enables scalable maintenance tasks. Together, these components deliver a reliable foundation for analysis results, lyrics, and segmentation workflows.
@@ -599,5 +599,5 @@ The ChordMiniApp data model centers on robust schemas for transcriptions and mel
   - createdAt: timestamp
 
 **Section sources**
-- [firestoreService.ts:64-108](file://src/services/firebase/firestoreService.ts#L64-L108)
-- [firestoreService.ts:104-108](file://src/services/firebase/firestoreService.ts#L104-L108)
+- [sqliteService.ts:64-108](file://src/services/local-persistence/sqliteService.ts#L64-L108)
+- [sqliteService.ts:104-108](file://src/services/local-persistence/sqliteService.ts#L104-L108)

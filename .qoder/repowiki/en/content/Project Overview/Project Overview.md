@@ -1,4 +1,4 @@
-# Project Overview
+﻿# Project Overview
 
 <cite>
 **Referenced Files in This Document**
@@ -30,7 +30,7 @@
 9. [Conclusion](#conclusion)
 
 ## Introduction
-ChordMiniApp is an open-source music analysis platform designed to empower users with chord recognition, beat tracking, and music visualization. Its mission is to make music theory and analysis accessible to everyone—from casual listeners exploring their favorite songs to professional musicians and educators teaching harmony and composition. The platform integrates a modern Next.js frontend with a Python-based machine learning backend, delivering robust audio processing, real-time visualizations, and practical educational tools.
+ChordMiniApp is an open-source music analysis platform designed to empower users with chord recognition, beat tracking, and music visualization. Its mission is to make music theory and analysis accessible to everyoneâ€”from casual listeners exploring their favorite songs to professional musicians and educators teaching harmony and composition. The platform integrates a modern Next.js frontend with a Python-based machine learning backend, delivering robust audio processing, real-time visualizations, and practical educational tools.
 
 Key capabilities include:
 - Homepage interface for YouTube search, URL input, and recent video access
@@ -101,8 +101,8 @@ Docker --> BE_App
 - Guitar Diagrams: Interactive chord diagrams leveraging a comprehensive chord database, with position selection, capo support, and synchronized focus indicators.
 - Piano Visualizer: Real-time visualization with falling notes, scrolling chord strips, keyboard highlighting, and MIDI export for DAW integration.
 - Lyrics Synchronization: Integration with Genius and LRClib for synchronized lyrics and translation support.
-- API Layer: A typed, rate-limited API service with retry logic, timeouts, and App Check token injection for secure requests.
-- Configuration Management: Runtime configuration loader enabling “build once, run anywhere” deployments via a public config endpoint.
+- API Layer: A typed, rate-limited API service with retry logic, timeouts, and IP rate limiting token injection for secure requests.
+- Configuration Management: Runtime configuration loader enabling â€œbuild once, run anywhereâ€ deployments via a public config endpoint.
 
 Practical examples:
 - Analyze a YouTube song: Enter a URL or search term, select a track, and view synchronized chord grids, guitar diagrams, and piano visualizer.
@@ -235,7 +235,7 @@ ChordData --> ChordPosition : "contains"
 - [src/components/chord-playback/GuitarChordDiagram.tsx:1-364](file://src/components/chord-playback/GuitarChordDiagram.tsx#L1-L364)
 
 ### Frontend: API Service and Configuration
-The API service encapsulates request logic with rate limiting, retries, timeouts, and App Check token injection. The public config loader enables runtime configuration for flexible deployments.
+The API service encapsulates request logic with rate limiting, retries, timeouts, and IP rate limiting token injection. The public config loader enables runtime configuration for flexible deployments.
 
 ```mermaid
 sequenceDiagram
@@ -244,8 +244,8 @@ participant S as "apiService.ts"
 participant F as "Frontend Config"
 participant B as "Backend"
 C->>S : request(endpoint, options)
-S->>F : getAppCheckTokenForApi()
-S->>B : Fetch with headers (Content-Type, AppCheck)
+S->>F : getRateLimitTokenForApi()
+S->>B : Fetch with headers (Content-Type, RateLimit)
 B-->>S : Response (JSON or text)
 S-->>C : ApiResponse (success/data or error)
 ```
@@ -295,7 +295,7 @@ A-->>F : Lyrics data
 
 ## Dependency Analysis
 Technology stack highlights:
-- Frontend: Next.js 16+, React 19, TypeScript, Tailwind CSS, Firebase, Chart.js, Tone.js, react-player, and various UI libraries
+- Frontend: Next.js 16+, React 19, TypeScript, Tailwind CSS, Local persistence, Chart.js, Tone.js, react-player, and various UI libraries
 - Backend: Python 3.10.x, Flask, madmom, librosa, spleeter, and rate limiting via Flask-Limiter
 - Infrastructure: Docker, Docker Compose, and optional Redis for distributed rate limiting
 
@@ -306,7 +306,7 @@ Next["Next.js"]
 React["React"]
 TS["TypeScript"]
 Tailwind["Tailwind CSS"]
-Firebase["Firebase"]
+Local persistence["Local persistence"]
 Chart["Chart.js"]
 Tone["Tone.js"]
 end
@@ -319,7 +319,7 @@ Next --> Flask
 React --> Next
 TS --> Next
 Tailwind --> Next
-Firebase --> Next
+Local persistence --> Next
 Chart --> Next
 Tone --> Next
 Flask --> ML
@@ -344,7 +344,7 @@ Flask --> RL
 ## Troubleshooting Guide
 Common issues and resolutions:
 - Backend connectivity: Verify the backend is running on port 5001 (or configured port) and responds to health checks.
-- Frontend connection errors: Ensure the frontend’s environment points to the correct backend URL and that CORS allows the frontend origin.
+- Frontend connection errors: Ensure the frontendâ€™s environment points to the correct backend URL and that CORS allows the frontend origin.
 - Model availability: Confirm model directories are present and environment variables are set for optional features.
 - Docker deployment: Use the provided Docker Compose configuration and ensure environment variables are correctly set for production.
 
@@ -353,4 +353,4 @@ Common issues and resolutions:
 - [README.md:447-490](file://README.md#L447-L490)
 
 ## Conclusion
-ChordMiniApp delivers a comprehensive, open-source solution for music analysis and education. By combining a modern, responsive frontend with a robust Python backend and curated ML models, it serves diverse audiences with practical tools for learning, practice, and creative exploration. The project’s architecture supports flexible deployment, strong security posture, and ongoing community-driven enhancements.
+ChordMiniApp delivers a comprehensive, open-source solution for music analysis and education. By combining a modern, responsive frontend with a robust Python backend and curated ML models, it serves diverse audiences with practical tools for learning, practice, and creative exploration. The projectâ€™s architecture supports flexible deployment, strong security posture, and ongoing community-driven enhancements.

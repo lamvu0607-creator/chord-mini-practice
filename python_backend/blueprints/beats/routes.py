@@ -2,23 +2,24 @@
 Beat detection routes for ChordMini Flask application.
 
 This module provides all beat detection related endpoints including
-main detection, Firebase integration, testing, and model information.
+main detection, testing, and model information.
 """
 
 import os
 import tempfile
 import traceback
 import requests
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, jsonify, current_app
 from extensions import limiter
 from config import get_config
 from .validators import (
     validate_beat_detection_request,
-    validate_firebase_beat_detection_request,
     validate_file_size
 )
 from services.audio.tempfiles import temporary_file
-from utils.logging import log_info, log_error, log_debug
+from utils.logging import log_error, log_debug
+from utils.paths import AUDIO_DIR
+from ..chords.validators import normalize_audio_url_to_path
 
 # Create blueprint
 beats_bp = Blueprint('beats', __name__)
@@ -72,10 +73,12 @@ def detect_beats():
                     return jsonify({"error": size_error}), 413
 
                 # Create temporary file
-                with temporary_file(suffix='.mp3') as temp_path:
+                ext = os.path.splitext(file.filename or '')[1].lower()
+                if ext not in ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.webm']:
+                    ext = '.mp3'
+                with temporary_file(suffix=ext) as temp_path:
                     file.save(temp_path)
                     file_path = temp_path
-                    temp_file_path = temp_path
 
                     # Run beat detection
                     result = beat_service.detect_beats(
@@ -83,7 +86,25 @@ def detect_beats():
                         detector=params['detector'],
                         force=params['force']
                     )
-            else:
+            elif params.get('audio_url'):
+                audio_url = params['audio_url']
+                resolved_path = normalize_audio_url_to_path(audio_url, str(AUDIO_DIR))
+                if os.path.exists(resolved_path):
+                    file_path = resolved_path
+                elif audio_url.startswith('http://') or audio_url.startswith('https://'):
+                    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
+                    temp_file_path = temp_file.name
+                    _download_remote_audio_to_temp_path(audio_url, temp_file_path)
+                    file_path = temp_file_path
+                else:
+                    return jsonify({"error": f"Audio file not found: {audio_url}"}), 404
+
+                result = beat_service.detect_beats(
+                    file_path=file_path,
+                    detector=params['detector'],
+                    force=params['force']
+                )
+            elif params.get('audio_path'):
                 # Use provided audio path
                 file_path = params['audio_path']
                 if not os.path.exists(file_path):
@@ -95,6 +116,8 @@ def detect_beats():
                     detector=params['detector'],
                     force=params['force']
                 )
+            else:
+                return jsonify({"error": "No valid audio input provided"}), 400
 
             # Return result
             if result.get('success'):
@@ -109,69 +132,16 @@ def detect_beats():
                 "success": False,
                 "error": f"Beat detection failed: {str(e)}"
             }), 500
+        finally:
+            if temp_file_path and os.path.exists(temp_file_path):
+                try:
+                    os.unlink(temp_file_path)
+                    log_debug(f"Cleaned up temporary file: {temp_file_path}")
+                except Exception as cleanup_error:
+                    log_error(f"Failed to clean up temporary file {temp_file_path}: {cleanup_error}")
 
     except Exception as e:
         log_error(f"Unexpected error in detect_beats: {e}")
-        log_error(traceback.format_exc())
-        return jsonify({
-            "success": False,
-            "error": "Internal server error"
-        }), 500
-
-
-@beats_bp.route('/api/detect-beats-firebase', methods=['POST'])
-@limiter.limit(config.get_rate_limit('heavy_processing'))
-def detect_beats_firebase():
-    """
-    Detect beats in an audio file from Firebase Storage URL
-
-    Parameters:
-    - firebase_url: Firebase Storage URL of the audio file
-    - detector: 'beat-transformer', 'madmom', 'librosa', or 'auto' (default)
-
-    Returns:
-    - JSON with beat and downbeat information
-    """
-    try:
-        # Validate request
-        is_valid, error_msg, params = validate_firebase_beat_detection_request()
-        if not is_valid:
-            return jsonify({"error": error_msg}), 400
-
-        # Get beat detection service
-        beat_service = current_app.extensions['services']['beat_detection']
-
-        # Download file from Firebase
-        try:
-            # Create temporary file
-            with temporary_file(suffix='.mp3') as temp_path:
-                _download_remote_audio_to_temp_path(params['firebase_url'], temp_path)
-
-                log_info(f"Downloaded Firebase file to: {temp_path}")
-                log_info(f"File size: {os.path.getsize(temp_path) / (1024 * 1024):.1f}MB")
-
-                # Run beat detection
-                result = beat_service.detect_beats(
-                    file_path=temp_path,
-                    detector=params['detector'],
-                    force=False  # Firebase files use auto size handling
-                )
-
-                # Return result
-                if result.get('success'):
-                    return jsonify(result)
-                else:
-                    return jsonify(result), 500
-
-        except requests.RequestException as e:
-            log_error(f"Failed to download Firebase file: {e}")
-            return jsonify({
-                "success": False,
-                "error": f"Failed to download file from Firebase: {str(e)}"
-            }), 400
-
-    except Exception as e:
-        log_error(f"Unexpected error in detect_beats_firebase: {e}")
         log_error(traceback.format_exc())
         return jsonify({
             "success": False,
@@ -482,10 +452,10 @@ def test_dbn_isolation():
             from madmom.features.downbeats import DBNDownBeatTrackingProcessor
 
             # Test beat DBN
-            beat_dbn = DBNBeatTrackingProcessor(fps=100)
+            _beat_dbn = DBNBeatTrackingProcessor(fps=100)
 
             # Test downbeat DBN
-            downbeat_dbn = DBNDownBeatTrackingProcessor(fps=100)
+            _downbeat_dbn = DBNDownBeatTrackingProcessor(beats_per_bar=[3, 4], fps=100)
 
             return jsonify({
                 "success": True,

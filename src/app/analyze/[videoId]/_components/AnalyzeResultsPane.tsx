@@ -8,7 +8,7 @@ import {
   ChordGridSkeleton,
   LyricsSkeleton,
 } from '@/components/common/SkeletonLoaders';
-import type { RomanNumeralData, SequenceCorrectionsData } from '@/services/firebase/firestoreService';
+import type { RomanNumeralData, SequenceCorrectionsData } from '@/types/transcription';
 import type { AnalyzeResultsPaneProps } from '../_types/analyzePageViewModel';
 import AnalyzeEmptyState from './AnalyzeEmptyState';
 
@@ -42,8 +42,6 @@ export default function AnalyzeResultsPane(props: AnalyzeResultsPaneProps) {
     props.analysisResults as unknown as NonNullable<ComponentProps<typeof AnalysisSummary>['analysisResults']>;
   const chordGridData =
     props.chordGridData as unknown as ComponentProps<typeof ChordGridContainer>['chordGridData'];
-  const segmentationData =
-    props.segmentationData as unknown as ComponentProps<typeof ChordGridContainer>['segmentationData'];
   const sequenceCorrections =
     props.sequenceCorrections as unknown as ComponentProps<typeof ChordGridContainer>['sequenceCorrections'];
   const sheetSageResult =
@@ -106,7 +104,6 @@ export default function AnalyzeResultsPane(props: AnalyzeResultsPaneProps) {
               chordGridData={chordGridData}
               isChatbotOpen={props.isChatbotOpen}
               isLyricsPanelOpen={false}
-              segmentationData={segmentationData}
               isEditMode={props.isEditMode}
               editedChords={props.editedChords}
               onChordEdit={props.onChordEdit}
@@ -137,7 +134,6 @@ export default function AnalyzeResultsPane(props: AnalyzeResultsPaneProps) {
             isLyricsPanelOpen={props.isLyricsPanelOpen}
             isUploadPage={false}
             sequenceCorrections={sequenceCorrections}
-            segmentationData={segmentationData}
             isChordPlaybackEnabled={props.isChordPlaybackEnabled}
             audioUrl={props.audioUrl}
             gridLyrics={props.gridLyrics}
@@ -151,7 +147,6 @@ export default function AnalyzeResultsPane(props: AnalyzeResultsPaneProps) {
             chordGridData={chordGridData}
             keySignature={props.keySignature}
             sequenceCorrections={sequenceCorrections}
-            segmentationData={segmentationData}
             currentTime={props.currentTime}
             currentBeatIndex={props.currentBeatIndex}
             isPlaying={props.isPlaying}
@@ -174,7 +169,6 @@ export default function AnalyzeResultsPane(props: AnalyzeResultsPaneProps) {
           onFontSizeChange={props.onFontSizeChange}
           theme={props.theme}
           analysisResults={analysisResults}
-          segmentationData={segmentationData}
           sequenceCorrections={sequenceCorrections}
         />
       )}

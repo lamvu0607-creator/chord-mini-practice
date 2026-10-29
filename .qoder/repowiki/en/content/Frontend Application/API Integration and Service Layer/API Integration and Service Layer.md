@@ -1,4 +1,4 @@
-# API Integration and Service Layer
+﻿# API Integration and Service Layer
 
 <cite>
 **Referenced Files in This Document**
@@ -10,8 +10,8 @@
 - [lyricsService.ts](file://src/services/lyrics/lyricsService.ts)
 - [lrclibService.ts](file://src/services/lyrics/lrclibService.ts)
 - [customMusicAiClient.ts](file://src/services/api/customMusicAiClient.ts)
-- [firebase.ts](file://src/config/firebase.ts)
-- [streamingFirebaseUpload.ts](file://src/services/firebase/streamingFirebaseUpload.ts)
+- [local-persistence.ts](file://src/config/local-persistence.ts)
+- [streamingLocal persistenceUpload.ts](file://src/services/local-persistence/streamingLocal persistenceUpload.ts)
 - [api.ts](file://src/config/api.ts)
 - [genius_service.py](file://python_backend/services/lyrics/genius_service.py)
 - [lrclib_service.py](file://python_backend/services/lyrics/lrclib_service.py)
@@ -32,13 +32,13 @@
 9. [Conclusion](#conclusion)
 
 ## Introduction
-This document explains the API integration architecture, focusing on the service layer pattern, API client implementations, and robust error handling strategies. It covers integrations with backend services, Firebase, and external APIs such as Genius and LRClib. It also documents caching mechanisms, rate limiting, retry strategies, and the parallel pipeline service for concurrent operations and job management. Examples of API calls, response handling, and error recovery patterns are included, along with authentication and security considerations for API interactions.
+This document explains the API integration architecture, focusing on the service layer pattern, API client implementations, and robust error handling strategies. It covers integrations with backend services, Local persistence, and external APIs such as Genius and LRClib. It also documents caching mechanisms, rate limiting, retry strategies, and the parallel pipeline service for concurrent operations and job management. Examples of API calls, response handling, and error recovery patterns are included, along with authentication and security considerations for API interactions.
 
 ## Project Structure
 The API integration spans three primary areas:
 - Frontend API service layer: centralized request orchestration, rate limiting, and retries
 - Backend Python services: ML inference and lyrics orchestration
-- Firebase integration: secure storage and App Check attestation
+- Local persistence integration: secure storage and IP rate limiting attestation
 
 ```mermaid
 graph TB
@@ -50,8 +50,8 @@ D["segmentationAsyncService.ts<br/>Long-running job polling"]
 E["lyricsService.ts<br/>Lyrics orchestration"]
 F["lrclibService.ts<br/>LRClib client"]
 G["customMusicAiClient.ts<br/>Music.ai client"]
-H["firebase.ts<br/>Firebase config & App Check"]
-I["streamingFirebaseUpload.ts<br/>Streaming upload"]
+H["local-persistence.ts<br/>Local persistence config & IP rate limiting"]
+I["streamingLocal persistenceUpload.ts<br/>Streaming upload"]
 J["api.ts<br/>Endpoint routing"]
 end
 subgraph "Backend"
@@ -83,8 +83,8 @@ K --> L
 - [lyricsService.ts:1-197](file://src/services/lyrics/lyricsService.ts#L1-L197)
 - [lrclibService.ts:1-266](file://src/services/lyrics/lrclibService.ts#L1-L266)
 - [customMusicAiClient.ts:1-711](file://src/services/api/customMusicAiClient.ts#L1-L711)
-- [firebase.ts:1-537](file://src/config/firebase.ts#L1-L537)
-- [streamingFirebaseUpload.ts:1-563](file://src/services/firebase/streamingFirebaseUpload.ts#L1-L563)
+- [local-persistence.ts:1-537](file://src/config/local-persistence.ts#L1-L537)
+- [streamingLocal persistenceUpload.ts:1-563](file://src/services/local-persistence/streamingLocal persistenceUpload.ts#L1-L563)
 - [api.ts:1-158](file://src/config/api.ts#L1-L158)
 - [app.py:1-186](file://python_backend/app.py#L1-L186)
 - [error_handlers.py:1-161](file://python_backend/error_handlers.py#L1-L161)
@@ -99,10 +99,10 @@ K --> L
 ## Core Components
 - Enhanced API service with rate limiting and retries
 - Client-side rate limiter and exponential backoff
-- Parallel pipeline service for concurrent audio processing and Firebase uploads
+- Parallel pipeline service for concurrent audio processing and Local persistence uploads
 - Async job service for long-running tasks exceeding platform timeouts
 - Lyrics orchestration with Genius and LRClib fallback
-- Firebase configuration with App Check and streaming upload utilities
+- Local persistence configuration with IP rate limiting and streaming upload utilities
 - Backend error handling and centralized response formatting
 
 **Section sources**
@@ -111,26 +111,26 @@ K --> L
 - [parallelPipelineService.ts:34-350](file://src/services/api/parallelPipelineService.ts#L34-L350)
 - [segmentationAsyncService.ts:30-211](file://src/services/api/segmentationAsyncService.ts#L30-L211)
 - [lyricsService.ts:72-197](file://src/services/lyrics/lyricsService.ts#L72-L197)
-- [firebase.ts:475-537](file://src/config/firebase.ts#L475-L537)
-- [streamingFirebaseUpload.ts:273-431](file://src/services/firebase/streamingFirebaseUpload.ts#L273-L431)
+- [local-persistence.ts:475-537](file://src/config/local-persistence.ts#L475-L537)
+- [streamingLocal persistenceUpload.ts:273-431](file://src/services/local-persistence/streamingLocal persistenceUpload.ts#L273-L431)
 - [error_handlers.py:13-161](file://python_backend/error_handlers.py#L13-L161)
 
 ## Architecture Overview
-The frontend API layer encapsulates all outbound requests, applies rate limiting and retries, attaches App Check tokens, and routes endpoints to either Vercel-hosted routes or external Python backend. The backend exposes ML and lyrics endpoints with centralized error handling. Firebase provides secure storage and App Check attestation for API requests.
+The frontend API layer encapsulates all outbound requests, applies rate limiting and retries, attaches IP rate limiting tokens, and routes endpoints to either Vercel-hosted routes or external Python backend. The backend exposes ML and lyrics endpoints with centralized error handling. Local persistence provides secure storage and IP rate limiting attestation for API requests.
 
 ```mermaid
 sequenceDiagram
 participant FE as "Frontend Client"
 participant API as "apiService.ts"
 participant RL as "rateLimiting.ts"
-participant FB as "Firebase App Check"
+participant FB as "Local persistence IP rate limiting"
 participant BE as "Python Backend"
 FE->>API : "POST /api/recognize-chords"
 API->>RL : "Check client-side rate limit"
 RL-->>API : "Allowed or delay"
-API->>FB : "Get App Check token"
+API->>FB : "Get IP rate limiting token"
 FB-->>API : "Token or null"
-API->>BE : "Forward request with X-Firebase-AppCheck"
+API->>BE : "Forward request with X-Local persistence-RateLimit"
 BE-->>API : "JSON response or error"
 API-->>FE : "Unified ApiResponse"
 ```
@@ -138,13 +138,13 @@ API-->>FE : "Unified ApiResponse"
 **Diagram sources**
 - [apiService.ts:56-241](file://src/services/api/apiService.ts#L56-L241)
 - [rateLimiting.ts:210-266](file://src/utils/rateLimiting.ts#L210-L266)
-- [firebase.ts:522-536](file://src/config/firebase.ts#L522-L536)
+- [local-persistence.ts:522-536](file://src/config/local-persistence.ts#L522-L536)
 - [app.py:87-186](file://python_backend/app.py#L87-L186)
 
 ## Detailed Component Analysis
 
 ### Enhanced API Service
-The API service centralizes request construction, timeout handling, rate limiting, retries, and response parsing. It supports GET/POST/FormData endpoints and integrates with Firebase App Check.
+The API service centralizes request construction, timeout handling, rate limiting, retries, and response parsing. It supports GET/POST/FormData endpoints and integrates with Local persistence IP rate limiting.
 
 ```mermaid
 classDiagram
@@ -184,7 +184,7 @@ Key behaviors:
 - Retry with exponential backoff for transient failures
 - Specialized endpoints for beats/chords with long timeouts
 - Lyrics endpoints for Genius and LRClib
-- App Check token injection for API requests
+- IP rate limiting token injection for API requests
 
 **Section sources**
 - [apiService.ts:56-241](file://src/services/api/apiService.ts#L56-L241)
@@ -221,17 +221,17 @@ Fail --> End(["Return Error"])
 - [rateLimiting.ts:120-187](file://src/utils/rateLimiting.ts#L120-L187)
 
 ### Parallel Pipeline Service
-Optimizes audio processing by downloading the complete audio file and running Google Cloud Run processing in parallel with Firebase upload. Includes caching, background uploads, and result retrieval.
+Optimizes audio processing by downloading the complete audio file and running Google Cloud Run processing in parallel with Local persistence upload. Includes caching, background uploads, and result retrieval.
 
 ```mermaid
 sequenceDiagram
 participant Client as "Client"
 participant PPS as "parallelPipelineService.ts"
-participant FS as "Firebase Upload"
+participant FS as "Local persistence Upload"
 participant GC as "Google Cloud Run"
 Client->>PPS : "startParallelPipeline({directUrl})"
 PPS->>PPS : "Download complete audio file"
-PPS->>FS : "uploadBlobToFirebaseInBackground(blob)"
+PPS->>FS : "uploadBlobToLocal persistenceInBackground(blob)"
 PPS->>GC : "Store blob in cache for immediate processing"
 FS-->>PPS : "Background upload result"
 PPS-->>Client : "ParallelPipelineResult"
@@ -240,7 +240,7 @@ PPS-->>Client : "ParallelPipelineResult"
 **Diagram sources**
 - [parallelPipelineService.ts:34-98](file://src/services/api/parallelPipelineService.ts#L34-L98)
 - [parallelPipelineService.ts:173-203](file://src/services/api/parallelPipelineService.ts#L173-L203)
-- [streamingFirebaseUpload.ts:436-483](file://src/services/firebase/streamingFirebaseUpload.ts#L436-L483)
+- [streamingLocal persistenceUpload.ts:436-483](file://src/services/local-persistence/streamingLocal persistenceUpload.ts#L436-L483)
 
 **Section sources**
 - [parallelPipelineService.ts:34-98](file://src/services/api/parallelPipelineService.ts#L34-L98)
@@ -315,32 +315,32 @@ end
 - [lyricsService.ts:72-172](file://src/services/lyrics/lyricsService.ts#L72-L172)
 - [orchestrator.py:95-147](file://python_backend/services/lyrics/orchestrator.py#L95-L147)
 
-### Firebase Integration and Security
-Firebase configuration initializes App Check and provides streaming upload utilities. App Check tokens are attached to API requests for attestation.
+### Local persistence Integration and Security
+Local persistence configuration initializes IP rate limiting and provides streaming upload utilities. IP rate limiting tokens are attached to API requests for attestation.
 
 ```mermaid
 sequenceDiagram
 participant FE as "Frontend"
-participant FB as "firebase.ts"
+participant FB as "local-persistence.ts"
 participant API as "apiService.ts"
 participant BE as "Backend"
-FE->>FB : "initializeFirebase()"
-FB-->>FE : "App Check provider ready"
+FE->>FB : "initializeLocal persistence()"
+FB-->>FE : "IP rate limiting provider ready"
 FE->>API : "request(endpoint, options)"
-API->>FB : "getAppCheckTokenForApi()"
+API->>FB : "getRateLimitTokenForApi()"
 FB-->>API : "token or null"
-API->>BE : "X-Firebase-AppCheck : token"
+API->>BE : "X-Local persistence-RateLimit : token"
 BE-->>API : "Response"
 API-->>FE : "ApiResponse"
 ```
 
 **Diagram sources**
-- [firebase.ts:475-537](file://src/config/firebase.ts#L475-L537)
+- [local-persistence.ts:475-537](file://src/config/local-persistence.ts#L475-L537)
 - [apiService.ts:106-121](file://src/services/api/apiService.ts#L106-L121)
 
 **Section sources**
-- [firebase.ts:475-537](file://src/config/firebase.ts#L475-L537)
-- [streamingFirebaseUpload.ts:273-431](file://src/services/firebase/streamingFirebaseUpload.ts#L273-L431)
+- [local-persistence.ts:475-537](file://src/config/local-persistence.ts#L475-L537)
+- [streamingLocal persistenceUpload.ts:273-431](file://src/services/local-persistence/streamingLocal persistenceUpload.ts#L273-L431)
 
 ### Backend Error Handling
 Centralized error handlers return consistent JSON responses for HTTP exceptions and application-specific errors.
@@ -388,28 +388,28 @@ class CustomMusicAiClient {
 - [customMusicAiClient.ts:77-711](file://src/services/api/customMusicAiClient.ts#L77-L711)
 
 ## Dependency Analysis
-- Frontend API service depends on rate limiting utilities, Firebase App Check, and endpoint routing configuration.
+- Frontend API service depends on rate limiting utilities, Local persistence IP rate limiting, and endpoint routing configuration.
 - Lyrics orchestration depends on frontend API service for Genius and on LRClib client for direct API calls.
 - Backend Flask app registers error handlers and routes to blueprints; the orchestrator composes provider services.
-- Parallel pipeline service depends on streaming Firebase upload utilities and maintains in-memory caches.
+- Parallel pipeline service depends on streaming Local persistence upload utilities and maintains in-memory caches.
 
 ```mermaid
 graph TB
 API["apiService.ts"] --> RL["rateLimiting.ts"]
-API --> FB["firebase.ts"]
+API --> FB["local-persistence.ts"]
 API --> RT["api.ts"]
 LYR["lyricsService.ts"] --> API
 LYR --> LR["lrclibService.ts"]
 ORCH["orchestrator.py"] --> G["genius_service.py"]
 ORCH --> L["lrclib_service.py"]
-PPS["parallelPipelineService.ts"] --> SFU["streamingFirebaseUpload.ts"]
+PPS["parallelPipelineService.ts"] --> SFU["streamingLocal persistenceUpload.ts"]
 APP["app.py"] --> EH["error_handlers.py"]
 ```
 
 **Diagram sources**
 - [apiService.ts:1-407](file://src/services/api/apiService.ts#L1-L407)
 - [rateLimiting.ts:1-266](file://src/utils/rateLimiting.ts#L1-L266)
-- [firebase.ts:1-537](file://src/config/firebase.ts#L1-L537)
+- [local-persistence.ts:1-537](file://src/config/local-persistence.ts#L1-L537)
 - [api.ts:1-158](file://src/config/api.ts#L1-L158)
 - [lyricsService.ts:1-197](file://src/services/lyrics/lyricsService.ts#L1-L197)
 - [lrclibService.ts:1-266](file://src/services/lyrics/lrclibService.ts#L1-L266)
@@ -417,7 +417,7 @@ APP["app.py"] --> EH["error_handlers.py"]
 - [genius_service.py:1-215](file://python_backend/services/lyrics/genius_service.py#L1-L215)
 - [lrclib_service.py:1-172](file://python_backend/services/lyrics/lrclib_service.py#L1-L172)
 - [parallelPipelineService.ts:1-350](file://src/services/api/parallelPipelineService.ts#L1-L350)
-- [streamingFirebaseUpload.ts:1-563](file://src/services/firebase/streamingFirebaseUpload.ts#L1-L563)
+- [streamingLocal persistenceUpload.ts:1-563](file://src/services/local-persistence/streamingLocal persistenceUpload.ts#L1-L563)
 - [app.py:1-186](file://python_backend/app.py#L1-L186)
 - [error_handlers.py:1-161](file://python_backend/error_handlers.py#L1-L161)
 
@@ -429,7 +429,7 @@ APP["app.py"] --> EH["error_handlers.py"]
 ## Performance Considerations
 - Client-side rate limiting prevents overload and reduces wasted retries.
 - Exponential backoff with jitter mitigates thundering herd and server spikes.
-- Parallel pipeline downloads the complete audio file and runs processing concurrently with Firebase upload to reduce total latency.
+- Parallel pipeline downloads the complete audio file and runs processing concurrently with Local persistence upload to reduce total latency.
 - Long-running jobs are polled with tuned intervals based on song duration to balance responsiveness and cost.
 - Streaming uploads avoid local buffering and respect Vercel operation budgets.
 
@@ -440,15 +440,15 @@ Common issues and recovery patterns:
 - Rate limit exceeded: The API service detects 429 responses and returns a structured error with retry-after guidance. Client-side rate limiter also enforces quotas.
 - Network timeouts: The API service sets AbortController timeouts and returns user-friendly messages. For long operations, use async job service or parallel pipeline.
 - External provider failures: Lyrics orchestration falls back from LRClib to Genius and vice versa. Health checks can be used to monitor provider availability.
-- Firebase upload failures: Streaming upload utilities implement retry logic and budget-aware delays. Background results are tracked and can be queried.
+- Local persistence upload failures: Streaming upload utilities implement retry logic and budget-aware delays. Background results are tracked and can be queried.
 - Backend errors: Centralized error handlers return consistent JSON with status codes and messages for debugging.
 
 **Section sources**
 - [apiService.ts:137-241](file://src/services/api/apiService.ts#L137-L241)
 - [rateLimiting.ts:190-205](file://src/utils/rateLimiting.ts#L190-L205)
 - [lyricsService.ts:176-197](file://src/services/lyrics/lyricsService.ts#L176-L197)
-- [streamingFirebaseUpload.ts:334-431](file://src/services/firebase/streamingFirebaseUpload.ts#L334-L431)
+- [streamingLocal persistenceUpload.ts:334-431](file://src/services/local-persistence/streamingLocal persistenceUpload.ts#L334-L431)
 - [error_handlers.py:13-94](file://python_backend/error_handlers.py#L13-L94)
 
 ## Conclusion
-The API integration architecture employs a robust service layer with client-side rate limiting, exponential backoff, and parallel processing to optimize performance and reliability. The frontend API service unifies endpoint routing, authentication via App Check, and response handling, while backend services provide centralized error handling and provider orchestration. Firebase integration ensures secure storage and attestation, and specialized clients manage external APIs with resilient fallback strategies.
+The API integration architecture employs a robust service layer with client-side rate limiting, exponential backoff, and parallel processing to optimize performance and reliability. The frontend API service unifies endpoint routing, authentication via IP rate limiting, and response handling, while backend services provide centralized error handling and provider orchestration. Local persistence integration ensures secure storage and attestation, and specialized clients manage external APIs with resilient fallback strategies.

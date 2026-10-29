@@ -69,7 +69,7 @@ const StickySearchBar: React.FC<StickySearchBarProps> = ({
               value={searchQuery}
               onChange={(e) => updateSearchQuery(e.target.value)}
               placeholder="Search music or paste URL..."
-              className="w-full min-w-[200px] xl:min-w-[300px] pl-2 xl:pl-3 pr-8 xl:pr-10 py-1 xl:py-1.5 text-xs xl:text-sm border border-transparent bg-gray-200/60 text-gray-800 placeholder:text-gray-700/70 dark:bg-gray-600/60 dark:text-gray-100 dark:placeholder:text-gray-100/70 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+              className="w-full min-w-[140px] xl:min-w-[180px] 2xl:min-w-[220px] pl-2 xl:pl-3 pr-8 xl:pr-10 py-1 xl:py-1.5 text-xs xl:text-sm border border-transparent bg-gray-200/60 text-gray-800 placeholder:text-gray-700/70 dark:bg-gray-600/60 dark:text-gray-100 dark:placeholder:text-gray-100/70 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
             />
             <button
               type="submit"

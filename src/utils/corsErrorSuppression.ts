@@ -32,9 +32,9 @@ const HARMLESS_CORS_PATTERNS = [
   /www-widgetapi\.js.*Unable to post message/,
   /Unable to post message to https:\/\/www\.youtube(?:-nocookie)?\.com.*Recipient has origin/,
 
-  // Firestore WebChannel listen transport noise (browser privacy/CORS quirks)
-  /firestore\.googleapis\.com\/google\.firestore\.v1\.Firestore\/Listen\/channel/i,
-  /Fetch API cannot load .*firestore\.googleapis\.com.*Listen\/channel.*access control checks/i,
+  // SQLite WebChannel listen transport noise (browser privacy/CORS quirks)
+  /sqlite\.googleapis\.com\/google\.sqlite\.v1\.SQLite\/Listen\/channel/i,
+  /Fetch API cannot load .*sqlite\.googleapis\.com.*Listen\/channel.*access control checks/i,
 
   // Generic CORS patterns for embedded content
   /Access to .* from origin .* has been blocked by CORS policy/,
@@ -46,7 +46,7 @@ const NOISY_DEV_LOG_PATTERNS = [
   /^\[Fast Refresh\]/,
   /^\[HMR\]\s+connected/,
   /^\[BEAT_DRIFT_DEBUG\]/,
-  /Found existing audio file in Firebase Storage/,
+  /Found existing audio file in local audio cache/,
 ];
 
 const NOISY_DEV_WARNING_PATTERNS = [
@@ -67,8 +67,7 @@ const HARMLESS_ERROR_MESSAGES = [
   'WebKitBlobResource error',
   'Failed to load resource: The operation couldn\'t be completed. (WebKitBlobResource error',
   'blob:', // Generic blob URL errors
-  'firebasestorage.googleapis.com', // Firebase Storage URL errors
-  'storage.googleapis.com' // Google Cloud Storage URL errors
+  'archive.org' // Public fallback audio source errors
 ];
 
 /**

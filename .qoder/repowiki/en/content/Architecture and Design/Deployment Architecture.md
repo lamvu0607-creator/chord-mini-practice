@@ -1,4 +1,4 @@
-# Deployment Architecture
+﻿# Deployment Architecture
 
 <cite>
 **Referenced Files in This Document**
@@ -15,7 +15,7 @@
 - [python_backend/config.py](file://python_backend/config.py)
 - [python_backend/app.py](file://python_backend/app.py)
 - [src/config/publicConfig.ts](file://src/config/publicConfig.ts)
-- [src/config/firebase.ts](file://src/config/firebase.ts)
+- [src/config/local-persistence.ts](file://src/config/local-persistence.ts)
 - [src/config/gemini.ts](file://src/config/gemini.ts)
 - [scripts/build-and-push.sh](file://scripts/build-and-push.sh)
 - [scripts/publish-docker-images.sh](file://scripts/publish-docker-images.sh)
@@ -58,7 +58,7 @@ BE["Flask Backend<br/>Dockerfile (multi-stage)"]
 RDS["Redis (dev)"]
 end
 subgraph "External Services"
-FB["Firebase"]
+FB["Local persistence"]
 GA["Google APIs"]
 YT["YouTube Data API"]
 end
@@ -85,10 +85,10 @@ FE -.-> RDS
 
 ## Core Components
 - Frontend container (Next.js)
-  - Multi-stage build: deps → builder → runner
+  - Multi-stage build: deps â†’ builder â†’ runner
   - Optimizations: clean npm cache, node-gyp support, yt-dlp/ffmpeg installed at runtime, non-root user, health check
 - Backend container (Python Flask)
-  - Multi-stage build: builder (install ML deps) → runtime (minimal OS libs)
+  - Multi-stage build: builder (install ML deps) â†’ runtime (minimal OS libs)
   - Optimizations: virtualenv reuse, pre-downloaded Spleeter model cache, gunicorn worker tuning, health check
 - Supporting containers
   - Redis (dev) for rate limiting and caching
@@ -196,7 +196,7 @@ C --> D["Expose 8080<br/>Health + gunicorn"]
 - Development
   - Builds frontend and backend from source; frontend depends on backend health; backend depends on Redis health; volumes for cache/logs; health checks
 - Production
-  - Uses prebuilt images; explicit environment variables for Firebase, API keys, and backend URLs; health checks; named volumes for cache persistence
+  - Uses prebuilt images; explicit environment variables for Local persistence, API keys, and backend URLs; health checks; named volumes for cache persistence
 
 ```mermaid
 sequenceDiagram
@@ -252,7 +252,7 @@ GH->>REL : verify + create release notes
 
 ## Dependency Analysis
 - Frontend depends on backend service for ML inference and media processing
-- Backend depends on Redis (dev), external APIs (YouTube, Genius, Music.AI), and Firebase for storage and auth
+- Backend depends on Redis (dev), external APIs (YouTube, Genius, Music.AI), and Local persistence for storage and auth
 - Environment-driven configuration
   - Frontend loads public config at runtime via /api/config
   - Backend reads environment for production mode, rate limiting, and model toggles
@@ -262,7 +262,7 @@ graph LR
 FE["Frontend"] --> |HTTP| BE["Backend"]
 BE --> |Redis| RD["Redis"]
 BE --> |YouTube/Genius/Music.AI| EXT["External APIs"]
-FE --> |Firebase| FB["Firebase"]
+FE --> |Local persistence| FB["Local persistence"]
 ```
 
 **Diagram sources**
@@ -295,7 +295,7 @@ FE --> |Firebase| FB["Firebase"]
 - Backend health check failures
   - Confirm root endpoint responds; check model cache availability; validate Redis connectivity (dev)
 - Environment variables
-  - Use .env.docker.example as template; ensure Firebase keys, API keys, and backend URLs are configured
+  - Use .env.docker.example as template; ensure Local persistence keys, API keys, and backend URLs are configured
 - Security checks
   - Run scripts/security-check.sh to verify no sensitive files are tracked or hardcoded
 
@@ -306,7 +306,7 @@ FE --> |Firebase| FB["Firebase"]
 - [scripts/security-check.sh:1-169](file://scripts/security-check.sh#L1-L169)
 
 ## Conclusion
-ChordMiniApp’s deployment architecture emphasizes containerization, multi-stage builds, and robust orchestration. The CI/CD pipeline automates image builds and security auditing, while Docker Compose supports both development and production environments. Operational excellence is achieved through health checks, environment-driven configuration, and optional dedicated services for specialized inference.
+ChordMiniAppâ€™s deployment architecture emphasizes containerization, multi-stage builds, and robust orchestration. The CI/CD pipeline automates image builds and security auditing, while Docker Compose supports both development and production environments. Operational excellence is achieved through health checks, environment-driven configuration, and optional dedicated services for specialized inference.
 
 [No sources needed since this section summarizes without analyzing specific files]
 
@@ -314,7 +314,7 @@ ChordMiniApp’s deployment architecture emphasizes containerization, multi-stag
 
 ### Environment Variable Management
 - Frontend runtime configuration
-  - Loaded from /api/config at runtime; supports Docker “build once, run anywhere”
+  - Loaded from /api/config at runtime; supports Docker â€œbuild once, run anywhereâ€
 - Backend configuration
   - Production mode detection via environment; CORS origins, rate limits, timeouts, and model toggles configurable via environment
 - Example template
@@ -322,7 +322,7 @@ ChordMiniApp’s deployment architecture emphasizes containerization, multi-stag
 
 **Section sources**
 - [src/config/publicConfig.ts:63-108](file://src/config/publicConfig.ts#L63-L108)
-- [src/config/firebase.ts:43-115](file://src/config/firebase.ts#L43-L115)
+- [src/config/local-persistence.ts:43-115](file://src/config/local-persistence.ts#L43-L115)
 - [python_backend/config.py:16-103](file://python_backend/config.py#L16-L103)
 - [.env.docker.example:1-119](file://.env.docker.example#L1-L119)
 

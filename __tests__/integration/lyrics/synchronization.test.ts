@@ -18,9 +18,6 @@ import {
 
 // Mock dependencies
 jest.mock('@/services/lyrics/lrclibService');
-jest.mock('@/config/firebase', () => ({
-  getAppCheckTokenForApi: jest.fn().mockResolvedValue(null),
-}));
 jest.mock('@/services/api/apiService', () => ({
   apiService: {},
 }));

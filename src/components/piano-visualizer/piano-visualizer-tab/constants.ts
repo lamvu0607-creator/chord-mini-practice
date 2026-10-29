@@ -23,3 +23,4 @@ export const INSTRUMENT_COLORS: Record<string, string> = {
 };
 
 export const MELODIC_TRANSCRIPTION_COLOR = '#22d3ee';
+export const HARMONY_TRANSCRIPTION_COLOR = '#ec4899';

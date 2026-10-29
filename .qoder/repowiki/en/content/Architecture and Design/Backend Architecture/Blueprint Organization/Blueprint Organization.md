@@ -1,4 +1,4 @@
-# Blueprint Organization
+﻿# Blueprint Organization
 
 <cite>
 **Referenced Files in This Document**
@@ -72,7 +72,7 @@ B --> K["blueprints/debug/__init__.py"]
 
 Key responsibilities:
 - Centralized registration and lifecycle management in app_factory.py.
-- Domain-specific routes and validations in each blueprint’s routes.py.
+- Domain-specific routes and validations in each blueprintâ€™s routes.py.
 - Shared utilities and configuration accessed through config and extensions.
 
 **Section sources**
@@ -187,7 +187,7 @@ DocsBP-->>Client : JSON docs
 Purpose: Beat detection and model testing.
 - Routes:
   - POST /api/detect-beats: Detect beats from uploaded or referenced audio; supports multiple detectors and optional Spleeter separation.
-  - POST /api/detect-beats-firebase: Detect beats from Firebase Storage URLs.
+  - POST /api/detect-beats-local-persistence: Detect beats from local audio storage URLs.
   - GET /api/model-info: Returns available detectors, defaults, and size limits.
   - GET /api/test-beat-transformer, /api/test-madmom, /api/test-librosa, /api/test-all-models, /api/test-dbn-isolation: Diagnostic endpoints for model availability and components.
 - Request validation: Uses validators to validate multipart/form-data and JSON payloads, file sizes, and detector selection.
@@ -230,7 +230,7 @@ BeatsBP-->>Client : JSON result or error
 Purpose: Chord recognition and model testing.
 - Routes:
   - POST /api/recognize-chords: Recognize chords from uploaded or referenced audio; supports multiple detectors and optional Spleeter separation.
-  - POST /api/recognize-chords-firebase: Recognize chords from Firebase Storage URLs.
+  - POST /api/recognize-chords-local-persistence: Recognize chords from local audio storage URLs.
   - GET /api/chord-model-info: Returns Flask chord detector availability, dictionaries, and size limits.
   - GET /api/test-chord-cnn-lstm, /api/test-btc-sl, /api/test-btc-pl, /api/test-all-chord-models: Model availability and info.
 - Request validation: Validates inputs, enforces size limits, and normalizes audio URLs.
@@ -377,4 +377,4 @@ Common issues and strategies:
 - [blueprints/lyrics/routes.py:42-126](file://python_backend/blueprints/lyrics/routes.py#L42-L126)
 
 ## Conclusion
-The Flask blueprint-based architecture cleanly separates concerns across service domains while enabling centralized configuration, rate limiting, and dependency injection. Blueprints are easy to extend, maintain, and scale independently. Following the established patterns—centralized registration in the application factory, domain-specific routes and validators, robust request validation and error handling, and service container integration—enables adding new services efficiently and consistently.
+The Flask blueprint-based architecture cleanly separates concerns across service domains while enabling centralized configuration, rate limiting, and dependency injection. Blueprints are easy to extend, maintain, and scale independently. Following the established patternsâ€”centralized registration in the application factory, domain-specific routes and validators, robust request validation and error handling, and service container integrationâ€”enables adding new services efficiently and consistently.

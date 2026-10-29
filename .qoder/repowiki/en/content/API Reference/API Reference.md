@@ -135,7 +135,7 @@ participant Cfg as "config.py"
 participant BP as "Blueprint Routes"
 UI->>Hook : invoke api.detectBeats()/recognizeChords()
 Hook->>API : apiService.detectBeats()/recognizeChords()
-API->>API : attach App Check token (if available)
+API->>API : attach IP rate limiting token (if available)
 API->>Flask : POST /api/detect-beats or /api/recognize-chords
 Flask->>Lim : apply rate limit per Cfg.RATE_LIMITS
 Lim-->>Flask : allow/deny
@@ -196,12 +196,12 @@ BT-->>FE : JSON success
 - [routes.py (beats):40-120](file://python_backend/blueprints/beats/routes.py#L40-L120)
 - [config.py:52-60](file://python_backend/config.py#L52-L60)
 
-#### Beat Detection (Firebase URL)
-- Endpoint: POST /api/detect-beats-firebase
-- Purpose: Detect beats from a Firebase Storage URL.
+#### Beat Detection (Local persistence URL)
+- Endpoint: POST /api/detect-beats-local-persistence
+- Purpose: Detect beats from a local audio storage URL.
 - Request:
   - JSON:
-    - firebase_url: signed URL to audio file
+    - local-persistence_url: signed URL to audio file
     - detector: 'beat-transformer' | 'madmom' | 'librosa' | 'auto'
 - Response: Same as above; downloads file to temp path before processing.
 - Rate limit: heavy_processing.
@@ -284,12 +284,12 @@ Success --> |No| ReturnErr["Return JSON error"]
 - [routes.py (chords):43-143](file://python_backend/blueprints/chords/routes.py#L43-L143)
 - [config.py:52-60](file://python_backend/config.py#L52-L60)
 
-#### Chord Recognition (Firebase URL)
-- Endpoint: POST /api/recognize-chords-firebase
-- Purpose: Recognize chords from a Firebase Storage URL.
+#### Chord Recognition (Local persistence URL)
+- Endpoint: POST /api/recognize-chords-local-persistence
+- Purpose: Recognize chords from a local audio storage URL.
 - Request:
   - JSON:
-    - firebase_url: signed URL
+    - local-persistence_url: signed URL
     - detector: model choice
     - chord_dict: optional
 - Response: success/error with chords and metadata.
@@ -360,7 +360,7 @@ Success --> |No| ReturnErr["Return JSON error"]
   - getLrcLibLyrics(artist, title, duration?)
 - Handles:
   - FormData for file uploads
-  - App Check token injection (non-blocking)
+  - IP rate limiting token injection (non-blocking)
   - Timeout configuration (ML endpoints use longer timeouts)
   - Retry logic with exponential backoff
   - Rate limit handling (client and server)
@@ -484,15 +484,15 @@ K["useRateLimiting.ts"] --> H
 - [extensions.py:22-38](file://python_backend/extensions.py#L22-L38)
 
 ## Conclusion
-ChordMiniApp’s API integrates a robust backend with Flask and a resilient frontend client. The backend enforces rate limits and provides model availability diagnostics, while the frontend offers typed, retry-capable services and hooks for graceful error handling and monitoring.
+ChordMiniAppâ€™s API integrates a robust backend with Flask and a resilient frontend client. The backend enforces rate limits and provides model availability diagnostics, while the frontend offers typed, retry-capable services and hooks for graceful error handling and monitoring.
 
 [No sources needed since this section summarizes without analyzing specific files]
 
 ## Appendices
 
 ### Authentication and Security
-- App Check Token Injection:
-  - apiService attaches X-Firebase-AppCheck when available to strengthen request attestation.
+- IP rate limiting Token Injection:
+  - apiService attaches X-Local persistence-RateLimit when available to strengthen request attestation.
 - CORS:
   - Origins configured via environment; supports localhost, Docker, and Vercel domains.
 - Rate Limiting:

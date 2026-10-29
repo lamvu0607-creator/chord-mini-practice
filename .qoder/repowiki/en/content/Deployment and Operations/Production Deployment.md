@@ -1,4 +1,4 @@
-# Production Deployment
+﻿# Production Deployment
 
 <cite>
 **Referenced Files in This Document**
@@ -145,7 +145,7 @@ Prod->>Prod : Health checks pass
 
 ### Production Docker Compose
 - Services
-  - frontend: Runs the Next.js app, exposes port 3000, sets environment variables for Firebase, YouTube, and API base URL, and defines health checks against the frontend health endpoint
+  - frontend: Runs the Next.js app, exposes port 3000, sets environment variables for Local persistence, YouTube, and API base URL, and defines health checks against the frontend health endpoint
   - backend: Runs the Flask app, exposes port 8080, sets production environment variables, mounts a persistent cache volume for model caching, and defines health checks against the backend root
 - Networks and volumes
   - A bridge network named chordmini-network connects frontend and backend
@@ -180,8 +180,8 @@ BE -.-> Vol
   - Verifies images and docker-compose configuration
   - Creates GitHub Releases with quick-start instructions
 - Pre-deployment and Post-deployment Checks
-  - Pre-deployment checklist validates build, TypeScript, linting, environment variables, Firebase configuration, backend connectivity, and dependencies
-  - Post-deployment verification tests main pages, API endpoints, backend health, Firebase integration, and performance
+  - Pre-deployment checklist validates build, TypeScript, linting, environment variables, Local persistence configuration, backend connectivity, and dependencies
+  - Post-deployment verification tests main pages, API endpoints, backend health, Local persistence integration, and performance
 
 ```mermaid
 flowchart TD
@@ -293,9 +293,9 @@ Vercel["Vercel"] --> FE
 
 ## Troubleshooting Guide
 - Pre-deployment checklist
-  - Validates build, TypeScript, linting, environment variables, Firebase configuration, backend connectivity, and dependencies
+  - Validates build, TypeScript, linting, environment variables, Local persistence configuration, backend connectivity, and dependencies
 - Post-deployment verification
-  - Tests main pages, API endpoints, backend health, Firebase integration, and performance
+  - Tests main pages, API endpoints, backend health, Local persistence integration, and performance
 - Common issues
   - Backend cold start: Expected for serverless deployments; verification accounts for this behavior
   - CORS and CSP: Ensure domains are included in CORS origins and CSP directives
@@ -308,7 +308,7 @@ Vercel["Vercel"] --> FE
 - [next.config.js:130-184](file://next.config.js#L130-L184)
 
 ## Conclusion
-ChordMiniApp’s production deployment leverages Docker Compose for service orchestration, GitHub Actions for CI/CD automation, and Vercel for serverless hosting. The provided scripts and configurations ensure robust pre-deployment validation, reliable post-deployment verification, and secure runtime practices. By following the documented workflow and addressing the troubleshooting guidance, teams can achieve dependable and scalable deployments.
+ChordMiniAppâ€™s production deployment leverages Docker Compose for service orchestration, GitHub Actions for CI/CD automation, and Vercel for serverless hosting. The provided scripts and configurations ensure robust pre-deployment validation, reliable post-deployment verification, and secure runtime practices. By following the documented workflow and addressing the troubleshooting guidance, teams can achieve dependable and scalable deployments.
 
 ## Appendices
 

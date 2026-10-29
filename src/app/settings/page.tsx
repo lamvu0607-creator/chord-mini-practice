@@ -169,7 +169,7 @@ export default function SettingsPage() {
                       icon={<FiDatabase className="w-4 h-4 text-blue" />}
                       iconBg="bg-primary-50 dark:bg-primary-900/20"
                       title="Cache Data"
-                      description="Analysis results are cached in Firebase for performance. No personal data is stored."
+                      description="Analysis results are cached in Persistence for performance. No personal data is stored."
                     />
                     <Divider />
                     <PrivacyItem

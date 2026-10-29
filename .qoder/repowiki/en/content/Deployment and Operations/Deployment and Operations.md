@@ -1,4 +1,4 @@
-# Deployment and Operations
+﻿# Deployment and Operations
 
 <cite>
 **Referenced Files in This Document**
@@ -16,11 +16,11 @@
 - [scripts/post-deployment-verification.sh](file://scripts/post-deployment-verification.sh)
 - [python_backend/config.py](file://python_backend/config.py)
 - [python_backend/app.py](file://python_backend/app.py)
-- [src/config/firebase.ts](file://src/config/firebase.ts)
+- [src/config/local-persistence.ts](file://src/config/local-persistence.ts)
 - [src/config/publicConfig.ts](file://src/config/publicConfig.ts)
 - [src/config/serverBackend.ts](file://src/config/serverBackend.ts)
 - [python_backend/requirements.txt](file://python_backend/requirements.txt)
-- [firebase/firebase.json](file://firebase/firebase.json)
+- [local-persistence/local-persistence.json](file://local-persistence/local-persistence.json)
 - [vercel.json](file://vercel.json)
 </cite>
 
@@ -37,7 +37,7 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document provides comprehensive guidance for deploying and operating ChordMiniApp across development, staging, and production environments. It covers Docker configuration (multi-stage builds, environment configuration, health checks), production deployment (infrastructure, load balancing, monitoring, backups), deployment automation (CI/CD, testing, releases), operational procedures (logging, monitoring, alerting, incident response), environment configuration, scaling strategies, troubleshooting, Firebase hosting and CDN, and maintenance procedures.
+This document provides comprehensive guidance for deploying and operating ChordMiniApp across development, staging, and production environments. It covers Docker configuration (multi-stage builds, environment configuration, health checks), production deployment (infrastructure, load balancing, monitoring, backups), deployment automation (CI/CD, testing, releases), operational procedures (logging, monitoring, alerting, incident response), environment configuration, scaling strategies, troubleshooting, Local persistence hosting and CDN, and maintenance procedures.
 
 ## Project Structure
 ChordMiniApp comprises:
@@ -46,7 +46,7 @@ ChordMiniApp comprises:
 - Optional SongFormer microservice containerized for specialized inference.
 - Docker Compose configurations for local development, staging, and production.
 - GitHub Actions workflows automating Docker publishing, dependency updates, and security scanning.
-- Client-side runtime configuration loader enabling “build once, run anywhere” deployments via /api/config.
+- Client-side runtime configuration loader enabling â€œbuild once, run anywhereâ€ deployments via /api/config.
 
 ```mermaid
 graph TB
@@ -71,7 +71,7 @@ GA_Deps[".github/workflows/dependency-update.yml"]
 end
 subgraph "Runtime Config"
 PubCfg["publicConfig.ts"]
-FBInit["firebase.ts"]
+FBInit["local-persistence.ts"]
 end
 FE_Docker --> FE_ComposeDev
 FE_Docker --> FE_ComposeProd
@@ -93,7 +93,7 @@ FBInit --> FE_Docker
 - [SongFormer/Dockerfile:1-25](file://SongFormer/Dockerfile#L1-L25)
 - [.github/workflows/docker-publish.yml:1-426](file://.github/workflows/docker-publish.yml#L1-L426)
 - [src/config/publicConfig.ts:1-218](file://src/config/publicConfig.ts#L1-L218)
-- [src/config/firebase.ts:1-537](file://src/config/firebase.ts#L1-L537)
+- [src/config/local-persistence.ts:1-537](file://src/config/local-persistence.ts#L1-L537)
 
 **Section sources**
 - [Dockerfile:1-87](file://Dockerfile#L1-L87)
@@ -103,14 +103,14 @@ FBInit --> FE_Docker
 - [SongFormer/Dockerfile:1-25](file://SongFormer/Dockerfile#L1-L25)
 - [.github/workflows/docker-publish.yml:1-426](file://.github/workflows/docker-publish.yml#L1-L426)
 - [src/config/publicConfig.ts:1-218](file://src/config/publicConfig.ts#L1-L218)
-- [src/config/firebase.ts:1-537](file://src/config/firebase.ts#L1-L537)
+- [src/config/local-persistence.ts:1-537](file://src/config/local-persistence.ts#L1-L537)
 
 ## Core Components
 - Frontend Dockerfile: Multi-stage build with Node.js 20 Alpine, native module toolchain, yt-dlp/ffmpeg runtime, non-root user, health check, and production defaults.
 - Backend Dockerfile: Multi-stage build for Python 3.10 slim, system dependencies for ML, virtual environment, pre-downloaded Spleeter models, health check, and Gunicorn runtime.
 - Docker Compose: Local dev/stage/prod orchestration with environment variables, health checks, and optional Redis for rate limiting.
-- Runtime configuration: Client-side publicConfig.ts loads NEXT_PUBLIC_* variables from /api/config at runtime, supporting Docker “build once, run anywhere.”
-- Firebase integration: firebase.ts initializes Firebase with runtime config and robust anonymous auth with retry logic and cold-start handling.
+- Runtime configuration: Client-side publicConfig.ts loads NEXT_PUBLIC_* variables from /api/config at runtime, supporting Docker â€œbuild once, run anywhere.â€
+- Local persistence integration: local-persistence.ts initializes Local persistence with runtime config and robust anonymous auth with retry logic and cold-start handling.
 
 **Section sources**
 - [Dockerfile:1-87](file://Dockerfile#L1-L87)
@@ -118,12 +118,12 @@ FBInit --> FE_Docker
 - [docker/docker-compose.yml:1-115](file://docker/docker-compose.yml#L1-L115)
 - [docker-compose.prod.yml:1-102](file://docker-compose.prod.yml#L1-L102)
 - [src/config/publicConfig.ts:1-218](file://src/config/publicConfig.ts#L1-L218)
-- [src/config/firebase.ts:1-537](file://src/config/firebase.ts#L1-L537)
+- [src/config/local-persistence.ts:1-537](file://src/config/local-persistence.ts#L1-L537)
 
 ## Architecture Overview
 High-level deployment architecture:
 - Frontend (Next.js) served behind a CDN and reverse proxy, communicating with backend services.
-- Backend (Flask + Gunicorn) hosts ML endpoints and integrates with Firebase for auth/data.
+- Backend (Flask + Gunicorn) hosts ML endpoints and integrates with Local persistence for auth/data.
 - Optional SongFormer service for specialized inference.
 - CI/CD publishes Docker images to registries and supports manual verification.
 
@@ -134,7 +134,7 @@ CDN --> FE["Frontend Container<br/>Next.js"]
 FE --> API["/api/* Routes"]
 API --> BE["Backend Container<br/>Flask + Gunicorn"]
 BE --> Models["ML Models<br/>Beat Transformer, Chord CNN-LSTM, Spleeter"]
-BE --> Firebase["Firebase Auth/DB/Storage"]
+BE --> Local persistence["Local persistence Auth/DB/Storage"]
 BE --> ExtAPIs["External APIs<br/>YouTube, Genius, Gemini"]
 BE --> OptionalSF["SongFormer Container"]
 ```
@@ -142,7 +142,7 @@ BE --> OptionalSF["SongFormer Container"]
 **Diagram sources**
 - [Dockerfile:1-87](file://Dockerfile#L1-L87)
 - [python_backend/Dockerfile:1-116](file://python_backend/Dockerfile#L1-L116)
-- [src/config/firebase.ts:1-537](file://src/config/firebase.ts#L1-L537)
+- [src/config/local-persistence.ts:1-537](file://src/config/local-persistence.ts#L1-L537)
 
 ## Detailed Component Analysis
 
@@ -225,19 +225,19 @@ FP --> BP
 - [docker/docker-compose.dev.yml:1-116](file://docker/docker-compose.dev.yml#L1-L116)
 - [docker-compose.prod.yml:1-102](file://docker-compose.prod.yml#L1-L102)
 
-### Runtime Configuration and Firebase Integration
+### Runtime Configuration and Local persistence Integration
 - publicConfig.ts:
   - Loads NEXT_PUBLIC_* variables from /api/config at runtime (client) or process.env (server).
   - Provides caching and fallback mechanisms.
-- firebase.ts:
-  - Initializes Firebase with runtime config, sets up App Check (reCAPTCHA v3), anonymous auth with retry/backoff, and cold-start resilience.
+- local-persistence.ts:
+  - Initializes Local persistence with runtime config, sets up IP rate limiting (reCAPTCHA v3), anonymous auth with retry/backoff, and cold-start resilience.
 
 ```mermaid
 sequenceDiagram
 participant Browser as "Browser"
 participant Next as "Next.js App"
 participant API as "/api/config"
-participant FB as "Firebase SDK"
+participant FB as "Local persistence SDK"
 Browser->>Next : Load page
 Next->>API : GET /api/config (no-cache)
 API-->>Next : Public config (NEXT_PUBLIC_*)
@@ -247,11 +247,11 @@ FB-->>Next : Auth ready (anonymous with retry)
 
 **Diagram sources**
 - [src/config/publicConfig.ts:63-108](file://src/config/publicConfig.ts#L63-L108)
-- [src/config/firebase.ts:43-115](file://src/config/firebase.ts#L43-L115)
+- [src/config/local-persistence.ts:43-115](file://src/config/local-persistence.ts#L43-L115)
 
 **Section sources**
 - [src/config/publicConfig.ts:1-218](file://src/config/publicConfig.ts#L1-L218)
-- [src/config/firebase.ts:1-537](file://src/config/firebase.ts#L1-L537)
+- [src/config/local-persistence.ts:1-537](file://src/config/local-persistence.ts#L1-L537)
 
 ### CI/CD Pipelines and Automation
 - Docker publishing workflow:
@@ -291,7 +291,7 @@ GH->>Rel : create release with notes + assets
 - Monitoring:
   - Monitor container health checks and application logs; integrate with platform logging (e.g., Cloud Logging).
 - Backups:
-  - Back up Firebase Firestore/Storage and backend cache volumes.
+  - Back up Local persistence SQLite/Storage and backend cache volumes.
 
 **Section sources**
 - [docker-compose.prod.yml:1-102](file://docker-compose.prod.yml#L1-L102)
@@ -329,22 +329,22 @@ GH->>Rel : create release with notes + assets
 - Staging/Production:
   - docker-compose.prod.yml uses pre-built images and environment variables for configuration.
 - Runtime configuration:
-  - publicConfig.ts loads NEXT_PUBLIC_* from /api/config; firebase.ts initializes with runtime config.
+  - publicConfig.ts loads NEXT_PUBLIC_* from /api/config; local-persistence.ts initializes with runtime config.
 
 **Section sources**
 - [docker/docker-compose.dev.yml:1-116](file://docker/docker-compose.dev.yml#L1-L116)
 - [docker-compose.prod.yml:1-102](file://docker-compose.prod.yml#L1-L102)
 - [src/config/publicConfig.ts:63-108](file://src/config/publicConfig.ts#L63-L108)
-- [src/config/firebase.ts:43-115](file://src/config/firebase.ts#L43-L115)
+- [src/config/local-persistence.ts:43-115](file://src/config/local-persistence.ts#L43-L115)
 
-### Firebase Hosting, CDN, and SSL
-- Firebase configuration:
-  - Firestore rules and indexes are defined in firebase/firebase.json.
+### Local persistence Hosting, CDN, and SSL
+- Local persistence configuration:
+  - SQLite rules and indexes are defined in local-persistence/local-persistence.json.
 - CDN and SSL:
   - Frontend is served via Vercel; SSL is managed by Vercel. The repository includes vercel.json with cron scheduling for cleanup tasks.
 
 **Section sources**
-- [firebase/firebase.json:1-10](file://firebase/firebase.json#L1-L10)
+- [local-persistence/local-persistence.json:1-10](file://local-persistence/local-persistence.json#L1-L10)
 - [vercel.json:1-9](file://vercel.json#L1-L9)
 
 ### Maintenance Procedures
@@ -365,7 +365,7 @@ GH->>Rel : create release with notes + assets
 - Backend dependencies:
   - Flask stack, Gunicorn, librosa/tensorflow/torch, spleeter, yt-dlp, and pinned versions for stability.
 - Runtime configuration:
-  - publicConfig.ts and firebase.ts decouple build-time and runtime configuration.
+  - publicConfig.ts and local-persistence.ts decouple build-time and runtime configuration.
 
 ```mermaid
 graph TB
@@ -375,7 +375,7 @@ BE["Backend Image"] --> Flask["Flask + Gunicorn"]
 BE --> ML["TensorFlow + Torch + librosa"]
 BE --> Audio["Spleeter + yt-dlp"]
 FE --> API["/api/config (publicConfig.ts)"]
-API --> FB["Firebase Config (firebase.ts)"]
+API --> FB["Local persistence Config (local-persistence.ts)"]
 ```
 
 **Diagram sources**
@@ -383,12 +383,12 @@ API --> FB["Firebase Config (firebase.ts)"]
 - [python_backend/Dockerfile:1-116](file://python_backend/Dockerfile#L1-L116)
 - [python_backend/requirements.txt:1-131](file://python_backend/requirements.txt#L1-L131)
 - [src/config/publicConfig.ts:1-218](file://src/config/publicConfig.ts#L1-L218)
-- [src/config/firebase.ts:1-537](file://src/config/firebase.ts#L1-L537)
+- [src/config/local-persistence.ts:1-537](file://src/config/local-persistence.ts#L1-L537)
 
 **Section sources**
 - [python_backend/requirements.txt:1-131](file://python_backend/requirements.txt#L1-L131)
 - [src/config/publicConfig.ts:1-218](file://src/config/publicConfig.ts#L1-L218)
-- [src/config/firebase.ts:1-537](file://src/config/firebase.ts#L1-L537)
+- [src/config/local-persistence.ts:1-537](file://src/config/local-persistence.ts#L1-L537)
 
 ## Performance Considerations
 - Image optimization:
@@ -409,15 +409,15 @@ API --> FB["Firebase Config (firebase.ts)"]
 - Performance problems:
   - Monitor backend cold starts; consider increasing worker counts or adding warm-up endpoints.
 - Operational challenges:
-  - Check Firebase initialization and anonymous auth retry logic; confirm App Check site key is set.
+  - Check Local persistence initialization and anonymous auth retry logic; confirm IP rate limiting site key is set.
 
 **Section sources**
 - [.github/workflows/docker-publish.yml:178-246](file://.github/workflows/docker-publish.yml#L178-L246)
 - [scripts/post-deployment-verification.sh:1-319](file://scripts/post-deployment-verification.sh#L1-L319)
-- [src/config/firebase.ts:148-329](file://src/config/firebase.ts#L148-L329)
+- [src/config/local-persistence.ts:148-329](file://src/config/local-persistence.ts#L148-L329)
 
 ## Conclusion
-ChordMiniApp’s deployment and operations rely on robust multi-stage Docker builds, flexible runtime configuration, and automated CI/CD pipelines. The architecture supports scalable, secure, and maintainable operations across environments, with strong emphasis on cold-start resilience, monitoring, and incident response.
+ChordMiniAppâ€™s deployment and operations rely on robust multi-stage Docker builds, flexible runtime configuration, and automated CI/CD pipelines. The architecture supports scalable, secure, and maintainable operations across environments, with strong emphasis on cold-start resilience, monitoring, and incident response.
 
 [No sources needed since this section summarizes without analyzing specific files]
 
@@ -425,18 +425,18 @@ ChordMiniApp’s deployment and operations rely on robust multi-stage Docker bui
 
 ### Appendix A: Environment Variables Reference
 - Frontend (compose):
-  - NEXT_PUBLIC_* Firebase keys, YouTube API key, base URL, audio strategy, streaming flags.
+  - NEXT_PUBLIC_* Local persistence keys, YouTube API key, base URL, audio strategy, streaming flags.
   - Server-only secrets: MUSIC_AI_API_KEY, GEMINI_API_KEY, GENIUS_API_KEY, PYTHON_API_URL.
 - Backend (compose):
   - FLASK_ENV, FLASK_DEBUG, PYTHONUNBUFFERED, PYTHONDONTWRITEBYTECODE, DEFAULT_BEAT_MODEL, DEFAULT_CHORD_MODEL, MAX_CONTENT_LENGTH, UPLOAD_TIMEOUT.
 - Runtime config:
-  - publicConfig.ts loads NEXT_PUBLIC_* from /api/config; firebase.ts initializes with runtime config.
+  - publicConfig.ts loads NEXT_PUBLIC_* from /api/config; local-persistence.ts initializes with runtime config.
 
 **Section sources**
 - [docker/docker-compose.yml:17-49](file://docker/docker-compose.yml#L17-L49)
 - [docker-compose.prod.yml:21-48](file://docker-compose.prod.yml#L21-L48)
 - [src/config/publicConfig.ts:63-108](file://src/config/publicConfig.ts#L63-L108)
-- [src/config/firebase.ts:43-115](file://src/config/firebase.ts#L43-L115)
+- [src/config/local-persistence.ts:43-115](file://src/config/local-persistence.ts#L43-L115)
 
 ### Appendix B: Manual Deployment Scripts
 - build-and-push.sh:

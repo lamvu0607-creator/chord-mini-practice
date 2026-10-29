@@ -3,7 +3,7 @@
   "title": "Ariana DeBose - This Wish (From \"Wish\") (Official Video)",
   "channelTitle": "DisneyMusicVEVO",
   "thumbnail": "https://i.ytimg.com/vi/aCofb-qQxKc/hq720.jpg?sqp=-oaymwEjCOgCEMoBSFryq4qpAxUIARUAAAAAGAElAADIQj0AgKJDeAE=&rs=AOn4CLD2mOcGHSlOUfsuDCZ91N_HTETIaQ",
-  "audioUrl": "https://firebasestorage.googleapis.com/v0/b/chordmini-d29f9.firebasestorage.app/o/audio%2Faudio_%5BaCofb-qQxKc%5D_1781654527360.mp3?alt=media&token=92b18ca1-cf8a-4482-b40d-be947df83341",
+  "audioUrl": "/api/serve-local-audio?filename=audio_%5BaCofb-qQxKc%5D.mp3",
   "beatModel": "madmom",
   "chordModel": "chord-cnn-lstm",
   "beats": [

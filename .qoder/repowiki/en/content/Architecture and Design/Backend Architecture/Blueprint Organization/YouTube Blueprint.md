@@ -63,8 +63,8 @@ AES --> DLP
 - `/api/search-youtube`: frontend search endpoint and request validation layer.
 - `/api/youtube/info`: metadata fallback endpoint.
 - `/api/extract-audio`: environment-aware extraction entry point.
-- `AudioExtractionServiceSimplified`: cache-first orchestration with Firebase Storage and Firestore metadata.
-- `browserYtDlpExtractionService`: production browser extraction, Firebase candidate upload, and finalization.
+- `AudioExtractionServiceSimplified`: cache-first orchestration with local audio storage and SQLite metadata.
+- `browserYtDlpExtractionService`: production browser extraction, Local persistence candidate upload, and finalization.
 - `public/browser-ytdlp-worker.js`: Pyodide and yt-dlp runtime that extracts YouTube media URLs through the proxy.
 - `YtMp3GoService`: deprecated rollback extraction through yt-mp3-go `/info`, `/download`, and `/events`.
 - `YtDlpService`: development extraction through `/api/ytdlp/extract`, `/api/ytdlp/download`, and `/api/ytdlp/health`.
@@ -82,7 +82,7 @@ participant Proxy as "Cloudflare/local media proxy"
 participant Finalizer as "finalize-browser-extraction"
 participant MP3 as "ytMp3GoService"
 participant DLP as "ytDlpService"
-participant Store as "Firebase"
+participant Store as "Local persistence"
 Client->>Extract : POST {videoId, videoMetadata}
 Extract->>Audio : extractAudio(videoMetadata)
 Audio->>Store : Check existing audio
@@ -129,7 +129,7 @@ YtMp3GoService --> YtMp3GoResult : "returns"
 
 ## Operational Notes
 - Production cache misses use browser yt-dlp and fixed 192 kbps MP3 finalization. It does not use `yt-mp3-go` unless the rollback strategy is explicitly configured.
-- Firebase Storage URLs are permanent after candidate validation and promotion; browser extraction never writes directly to public `audio/` storage.
+- local audio storage URLs are permanent after candidate validation and promotion; browser extraction never writes directly to public `audio/` storage.
 - yt-dlp server routes are development-oriented and blocked in production unless explicitly enabled.
 - The Cloudflare Worker source may be managed outside the tracked repository, but its public contract must remain aligned with the queue and media proxy behavior documented in YouTube Integration.
 - The deleted deleted legacy extraction files and routes should not appear in active architecture diagrams.

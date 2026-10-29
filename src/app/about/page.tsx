@@ -65,20 +65,20 @@ const AboutPage: React.FC = () => {
                 <div>
                   <h4 className="font-medium text-gray-900 dark:text-white mb-2">Frontend</h4>
                   <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
-                    <li>• Next.js 15 (React Framework)</li>
-                    <li>• TypeScript</li>
-                    <li>• Tailwind CSS</li>
-                    <li>• Framer Motion</li>
-                    <li>• Chart.js & D3.js</li>
+                    <li>â€¢ Next.js 15 (React Framework)</li>
+                    <li>â€¢ TypeScript</li>
+                    <li>â€¢ Tailwind CSS</li>
+                    <li>â€¢ Framer Motion</li>
+                    <li>â€¢ Chart.js & D3.js</li>
                   </ul>
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900 dark:text-white mb-2">Backend & ML</h4>
                   <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
-                    <li>• Python Flask (Google Cloud Run)</li>
-                    <li>• Firebase Firestore</li>
-                    <li>• Firebase Cloud Storage</li>
-                    <li>• Custom ML Models</li>
+                    <li>â€¢ Python Flask (Google Cloud Run)</li>
+                    <li>â€¢ Persistence SQLite</li>
+                    <li>â€¢ Persistence Cloud Storage</li>
+                    <li>â€¢ Custom ML Models</li>
                   </ul>
                 </div>
               </div>
@@ -93,19 +93,19 @@ const AboutPage: React.FC = () => {
                 <div>
                   <h4 className="font-medium text-gray-900 dark:text-white mb-2">Machine Learning Models</h4>
                   <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
-                    <li>• Beat-Transformer for beat detection</li>
-                    <li>• Chord-CNN-LSTM for chord recognition</li>
-                    <li>• BTC models for enhanced accuracy</li>
-                    <li>• Real-time audio processing</li>
+                    <li>â€¢ Beat-Transformer for beat detection</li>
+                    <li>â€¢ Chord-CNN-LSTM for chord recognition</li>
+                    <li>â€¢ BTC models for enhanced accuracy</li>
+                    <li>â€¢ Real-time audio processing</li>
                   </ul>
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900 dark:text-white mb-2">Platform</h4>
                   <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
-                    <li>• YouTube integration</li>
-                    <li>• Synchronized lyrics display</li>
-                    <li>• Lead sheet generation</li>
-                    <li>• Multi-language support</li>
+                    <li>â€¢ YouTube integration</li>
+                    <li>â€¢ Synchronized lyrics display</li>
+                    <li>â€¢ Lead sheet generation</li>
+                    <li>â€¢ Multi-language support</li>
                   </ul>
                 </div>
               </div>

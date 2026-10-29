@@ -8,7 +8,7 @@ Standalone Flask API for Sheet Sage melody transcription.
 - `GET /info`
 - `POST /transcribe`
 
-`POST /transcribe` accepts either multipart `file` uploads or JSON/form Firebase Storage URLs via `audioUrl` and returns `noteEvents` in the app format:
+`POST /transcribe` accepts either multipart `file` uploads or JSON/form HTTP(S) URLs via `audioUrl` and returns `noteEvents` in the app format:
 
 ```json
 {
@@ -49,7 +49,7 @@ The Docker image bundles only the melody-only assets used by the current runtime
 
 ## Cloud Run
 
-This service is intended to ship the same way as `SongFormer`: build the container locally or in Cloud Build, push the image to Artifact Registry, then deploy that image to Cloud Run.
+This service is intended to ship as a container: build the container locally or in Cloud Build, push the image to Artifact Registry, then deploy that image to Cloud Run.
 
 ```bash
 PROJECT_ID=your-gcp-project

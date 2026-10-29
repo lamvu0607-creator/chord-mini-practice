@@ -34,7 +34,7 @@ This document describes the audio processing blueprint that powers audio extract
 ## Project Structure
 The audio blueprint spans two primary layers:
 - Backend (Python Flask): Provides audio extraction endpoints and ML services for beat and chord analysis.
-- Frontend (Next.js): Implements API routes for audio duration detection, extraction, proxying, and local development audio serving; integrates with backend services and Firebase storage.
+- Frontend (Next.js): Implements API routes for audio duration detection, extraction, proxying, and local development audio serving; integrates with backend services and Local persistence storage.
 
 ```mermaid
 graph TB
@@ -93,7 +93,7 @@ FE_SVC_PROC --> FE_SVC_BEAT
 
 ## Core Components
 - Audio Extraction Blueprint (Flask): Provides YouTube audio extraction endpoints with validation and environment-aware strategies.
-- Audio Extraction Service (Frontend): Orchestrates browser yt-dlp production extraction, local yt-dlp development extraction, and explicit yt-mp3-go rollback; caches results and uploads to Firebase.
+- Audio Extraction Service (Frontend): Orchestrates browser yt-dlp production extraction, local yt-dlp development extraction, and explicit yt-mp3-go rollback; caches results and uploads to Local persistence.
 - Audio Metadata Service (Frontend): Extracts duration and metadata from URLs or blobs with multiple fallback strategies.
 - Audio Proxy Route (Frontend): Proxies audio to avoid CORS issues, with retry logic and streaming support.
 - Audio Duration Route (Frontend): Detects duration via headers, metadata, or file-size estimation with prioritized cache lookups.
@@ -117,7 +117,7 @@ The audio blueprint follows a layered architecture:
 - Frontend API routes accept requests and delegate to specialized services.
 - Extraction services choose optimal providers based on environment and metadata.
 - Backend services handle ML inference and audio processing with model selection and size-aware routing.
-- Firebase storage provides caching and persistent audio URLs.
+- Local persistence storage provides caching and persistent audio URLs.
 
 ```mermaid
 sequenceDiagram
@@ -125,12 +125,12 @@ participant Client as "Client"
 participant FE as "Frontend API"
 participant SVC as "Extraction Service"
 participant BK as "Backend Audio Blueprint"
-participant FB as "Firebase Storage"
+participant FB as "local audio storage"
 Client->>FE : POST /api/extract-audio
 FE->>SVC : extractAudio(videoMetadata, forceRedownload)
 SVC->>BK : Environment-aware extraction (browser yt-dlp/local yt-dlp/rollback)
 BK-->>SVC : audioUrl, duration, title
-SVC->>FB : Upload to Firebase (optional)
+SVC->>FB : Upload to Local persistence (optional)
 FB-->>SVC : storageUrl
 SVC-->>FE : {audioUrl, fromCache, isStreamUrl}
 FE-->>Client : {success, audioUrl, duration, title}
@@ -169,8 +169,8 @@ ExtractParams --> |Invalid| ReturnErr
 
 ### Audio Extraction Service (Frontend)
 - Strategy selection: Chooses browser yt-dlp, local yt-dlp, or explicit rollback based on environment.
-- Caching: Checks Firebase Storage and simplified cache before extraction.
-- Storage: Uploads extracted audio to Firebase and validates URL accessibility.
+- Caching: Checks local audio storage and simplified cache before extraction.
+- Storage: Uploads extracted audio to Local persistence and validates URL accessibility.
 - Fallbacks: Attempts multiple extraction methods and caches results.
 
 ```mermaid
@@ -179,7 +179,7 @@ participant FE as "Frontend"
 participant SVC as "AudioExtractionSimplified"
 participant ENV as "Environment"
 participant YT as "Extraction Provider"
-participant FB as "Firebase Storage"
+participant FB as "local audio storage"
 FE->>SVC : extractAudio(videoMetadata, forceRedownload)
 SVC->>ENV : detectEnvironment()
 ENV-->>SVC : strategy
@@ -222,7 +222,7 @@ Parse --> Result["Return AudioMetadata"]
 
 ### Audio Proxy Route (Frontend)
 - Purpose: Proxy audio to avoid CORS issues with external providers.
-- Features: Firebase-aware retries, redirect optimization, streaming, and robust error handling.
+- Features: Local persistence-aware retries, redirect optimization, streaming, and robust error handling.
 - Security: URL validation and SSRF prevention.
 
 ```mermaid
@@ -281,7 +281,7 @@ Error --> End
 ### Beat Detection Service (Frontend)
 - Integration: Calls backend ML services via API routes with rate limiting and timeouts.
 - Fallbacks: Tries madmom if Beat-Transformer fails; normalizes responses.
-- Offload: Supports processing from Firebase URLs via offload service.
+- Offload: Supports processing from Local persistence URLs via offload service.
 
 ```mermaid
 sequenceDiagram
@@ -394,11 +394,11 @@ FE_PROC --> FE_BEAT
   - Browser yt-dlp with Pyodide, ffmpeg.wasm, and the YouTube media proxy is the production path.
   - Railway/server yt-dlp is not used as an automatic production fallback; local yt-dlp remains useful in development.
   - yt-mp3-go is deprecated rollback code via `NEXT_PUBLIC_AUDIO_STRATEGY=yt-mp3-go`.
-  - Firebase Storage caching reduces repeated downloads; validation ensures accessibility.
+  - local audio storage caching reduces repeated downloads; validation ensures accessibility.
 - Duration detection:
   - Header-first strategy for speed; metadata parsing as fallback; file-size estimation for large-scale processing.
 - Proxying:
-  - Firebase-aware retries, exponential backoff for 403 errors, and streaming reads for large files.
+  - Local persistence-aware retries, exponential backoff for 403 errors, and streaming reads for large files.
 - Beat/Chord analysis:
   - Automatic detector selection based on file size; fallbacks minimize failure rates.
 - Frontend services:
@@ -408,12 +408,12 @@ FE_PROC --> FE_BEAT
 
 ## Troubleshooting Guide
 - Audio extraction failures:
-  - Verify environment strategy and service availability; check Firebase initialization and storage credentials.
+  - Verify environment strategy and service availability; check Local persistence initialization and storage credentials.
   - Use fallback extraction methods and inspect logs for detailed errors.
 - Duration detection issues:
   - Confirm URL validity; ensure headers provide duration; validate metadata parsing; use file-size estimation as last resort.
 - Proxy errors:
-  - Inspect 403 errors for Firebase upload in-progress; adjust retry counts and timeouts; validate URL encoding for special providers.
+  - Inspect 403 errors for Local persistence upload in-progress; adjust retry counts and timeouts; validate URL encoding for special providers.
 - Beat/Chord analysis:
   - Ensure backend ML services are reachable; confirm detector availability; use fallback detectors for large files.
 - Local development:

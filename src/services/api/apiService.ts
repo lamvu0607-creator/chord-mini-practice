@@ -8,7 +8,6 @@ import {
   getRateLimitMessage,
   ClientRateLimiter
 } from '@/utils/rateLimiting';
-import { getAppCheckTokenForApi } from '@/config/firebase';
 
 export interface ApiResponse<T = unknown> {
   success: boolean;
@@ -26,14 +25,12 @@ export interface ApiRequestOptions {
   maxDelay?: number;
 }
 
-const APP_CHECK_TOKEN_REUSE_MS = 45_000;
 const isDev = process.env.NODE_ENV !== 'production';
 
 class ApiService {
   private backendUrl: string;
   private frontendUrl: string;
   private clientLimiter: ClientRateLimiter;
-  private appCheckTokenCache: { token: string; expiresAt: number } | null = null;
 
   constructor() {
     this.frontendUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
@@ -52,23 +49,6 @@ class ApiService {
     }
 
     return this.frontendUrl;
-  }
-
-  private async getReusableAppCheckToken(): Promise<string | null> {
-    if (typeof window === 'undefined') {
-      return null;
-    }
-
-    const now = Date.now();
-    if (this.appCheckTokenCache && this.appCheckTokenCache.expiresAt > now) {
-      return this.appCheckTokenCache.token;
-    }
-
-    const token = await getAppCheckTokenForApi();
-    this.appCheckTokenCache = token
-      ? { token, expiresAt: now + APP_CHECK_TOKEN_REUSE_MS }
-      : null;
-    return token;
   }
 
   /**
@@ -137,17 +117,12 @@ class ApiService {
         throw new Error(`Failed to set up timeout: ${errorMessage}`);
       }
 
-      // Fetch App Check token for request attestation (non-blocking)
-      const appCheckToken = await this.getReusableAppCheckToken();
-
       const requestOptions: RequestInit = {
         ...fetchOptions,
         signal: controller.signal,
         headers: {
           // Only set Content-Type for non-FormData requests
           ...(!(fetchOptions.body instanceof FormData) && { 'Content-Type': 'application/json' }),
-          // Attach App Check token when available
-          ...(appCheckToken && { 'X-Firebase-AppCheck': appCheckToken }),
           ...fetchOptions.headers,
         },
       };

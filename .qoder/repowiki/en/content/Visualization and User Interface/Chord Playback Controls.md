@@ -318,7 +318,7 @@ Labels --> End(["Done"])
 ### PitchShiftAudioManager
 - Purpose: Initializes and manages pitch-shifted audio playback using GrainPlayerPitchShiftService, coordinating with YouTube and beat animations.
 - Key behaviors:
-  - Calls usePitchShiftAudio with YouTube player, audio element, Firebase audio URL, and playback state.
+  - Calls usePitchShiftAudio with YouTube player, audio element, Local persistence audio URL, and playback state.
   - Ensures pitch shift service is registered globally for volume control access.
 
 **Updated** Now integrates with the enhanced scrub detection mechanism featuring sophisticated threshold-based seek operations that intelligently handle major scrub jumps while maintaining seamless synchronization.
@@ -329,7 +329,7 @@ participant UI as "PitchShiftAudioManager"
 participant Hook as "usePitchShiftAudio"
 participant GPS as "GrainPlayerPitchShiftService"
 participant YMC as "YoutubeMasterClock"
-UI->>Hook : "Initialize with youtubePlayer, audioRef, firebaseAudioUrl"
+UI->>Hook : "Initialize with youtubePlayer, audioRef, local-persistenceAudioUrl"
 Hook->>GPS : "loadAudio(url, semitones, playbackRate)"
 Hook-->>UI : "isPitchShiftReady"
 Hook->>GPS : "setPlaybackRate(r), seek(t), play()"
@@ -683,7 +683,7 @@ Hook->>MS : "seekMetronomeTrack(currentTime)"
 ### Performance Monitoring
 - Purpose: Monitors and tracks performance metrics across the application for optimization and debugging.
 - Key behaviors:
-  - Tracks Firebase query reduction, filename matching accuracy, and cache performance.
+  - Tracks Local persistence query reduction, filename matching accuracy, and cache performance.
   - Monitors error frequency and warning reduction.
   - Provides performance summaries and alert notifications.
   - Exports detailed performance metrics for analysis.
@@ -695,7 +695,7 @@ classDiagram
 class PerformanceMonitor {
 -metrics : PerformanceMetrics
 -alerts : Array
-+trackFirebaseQuery(type, responseTime)
++trackLocal persistenceQuery(type, responseTime)
 +trackFilenameMatching(success, isVietnamese)
 +trackCachePerformance(type, responseTime)
 +trackErrorReduction(type)
@@ -704,10 +704,10 @@ class PerformanceMonitor {
 +exportMetrics() string
 -private updateAverageResponseTime(responseTime)
 -private updateAverageCacheResponseTime(responseTime)
--private calculateFirebaseReduction()
+-private calculateLocal persistenceReduction()
 -private calculateCacheHitRate()
 -private calculateErrorReduction()
--private checkFirebaseAlerts()
+-private checkLocal persistenceAlerts()
 -private checkFilenameAccuracyAlerts()
 -private checkCachePerformanceAlerts()
 -private checkErrorReductionAlerts()
@@ -799,7 +799,7 @@ PM["PerformanceMonitor"] --> UPSA
 - **Real-time synchronization**:
   - Clock authority model: when pitch shift is active, the YoutubeMasterClock is the master clock; all slaves follow.
   - Master clock provides re-anchor hysteresis with 0.08 second base tolerance scaled by rate.
-  - Enhanced scrub detection identifies major scrub jumps (≥0.75 seconds) requiring actual buffer seeks, while minor drifts use passive accumulator synchronization.
+  - Enhanced scrub detection identifies major scrub jumps (â‰¥0.75 seconds) requiring actual buffer seeks, while minor drifts use passive accumulator synchronization.
   - Improved scrub detection mechanism with threshold-based seek operations ensures optimal performance.
 - **Memory management**:
   - Instrument registry schedules delayed unloading of unused instruments to conserve memory.

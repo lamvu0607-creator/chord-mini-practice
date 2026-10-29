@@ -16,10 +16,10 @@
 - [SongFormer/requirements.txt](file://SongFormer/requirements.txt)
 - [SongFormer/Dockerfile](file://SongFormer/Dockerfile)
 - [sheetsage/requirements.txt](file://sheetsage/requirements.txt)
-- [src/config/firebase.ts](file://src/config/firebase.ts)
+- [src/config/local-persistence.ts](file://src/config/local-persistence.ts)
 - [src/config/api.ts](file://src/config/api.ts)
 - [src/app/layout.tsx](file://src/app/layout.tsx)
-- [firebase/firebase.json](file://firebase/firebase.json)
+- [local-persistence/local-persistence.json](file://local-persistence/local-persistence.json)
 </cite>
 
 ## Table of Contents
@@ -43,14 +43,14 @@ The repository is organized into:
 - Python backend (Flask 3.0.3) with ML/audio libraries
 - Standalone services (SongFormer, Sheetsage)
 - Docker-based build and deployment
-- Firebase configuration and rules
+- Local persistence configuration and rules
 
 ```mermaid
 graph TB
 subgraph "Frontend"
 FE_Next["Next.js 16.1.6<br/>React 19.0.0<br/>TypeScript"]
 FE_UI["Tailwind CSS + Heroui"]
-FE_Firebase["Firebase SDKs"]
+FE_Local persistence["Local persistence SDKs"]
 FE_BROWSER_AUDIO["Pyodide 0.26.2<br/>yt-dlp wheel 2026.3.17<br/>ffmpeg.wasm 0.12.10"]
 end
 subgraph "Backend"
@@ -64,10 +64,10 @@ end
 subgraph "Deployment"
 DK["Docker<br/>Multi-stage builds"]
 DC["docker-compose.yml"]
-FB["Firebase<br/>Firestore/Storage/Rules"]
+FB["Local persistence<br/>SQLite/Storage/Rules"]
 end
 FE_Next --> FE_UI
-FE_Next --> FE_Firebase
+FE_Next --> FE_Local persistence
 FE_Next --> FE_BROWSER_AUDIO
 FE_Next --> BE_Flask
 BE_Flask --> BE_ML
@@ -77,7 +77,7 @@ DK --> FE_Next
 DK --> BE_Flask
 DC --> FE_Next
 DC --> BE_Flask
-FB --> FE_Firebase
+FB --> FE_Local persistence
 ```
 
 **Diagram sources**
@@ -89,7 +89,7 @@ FB --> FE_Firebase
 - [Dockerfile:1-87](file://Dockerfile#L1-L87)
 - [python_backend/Dockerfile:1-116](file://python_backend/Dockerfile#L1-L116)
 - [docker/docker-compose.yml:10-115](file://docker/docker-compose.yml#L10-L115)
-- [firebase/firebase.json:1-10](file://firebase/firebase.json#L1-L10)
+- [local-persistence/local-persistence.json:1-10](file://local-persistence/local-persistence.json#L1-L10)
 
 **Section sources**
 - [package.json:1-135](file://package.json#L1-L135)
@@ -100,7 +100,7 @@ FB --> FE_Firebase
 - [Dockerfile:1-87](file://Dockerfile#L1-L87)
 - [python_backend/Dockerfile:1-116](file://python_backend/Dockerfile#L1-L116)
 - [docker/docker-compose.yml:1-115](file://docker/docker-compose.yml#L1-L115)
-- [firebase/firebase.json:1-10](file://firebase/firebase.json#L1-L10)
+- [local-persistence/local-persistence.json:1-10](file://local-persistence/local-persistence.json#L1-L10)
 
 ## Core Components
 - Frontend framework and toolchain
@@ -117,7 +117,7 @@ FB --> FE_Firebase
   - Sheetsage: Flask 2.0.3, madmom 0.16.1, librosa 0.7.2
 - Infrastructure and deployment
   - Docker multi-stage builds, docker-compose for local dev
-  - Firebase configuration and rules for Firestore/Storage
+  - Local persistence configuration and rules for SQLite/Storage
 
 **Section sources**
 - [package.json:37-133](file://package.json#L37-L133)
@@ -130,13 +130,13 @@ FB --> FE_Firebase
 - [Dockerfile:1-87](file://Dockerfile#L1-L87)
 - [python_backend/Dockerfile:1-116](file://python_backend/Dockerfile#L1-L116)
 - [docker/docker-compose.yml:10-115](file://docker/docker-compose.yml#L10-L115)
-- [firebase/firebase.json:1-10](file://firebase/firebase.json#L1-L10)
+- [local-persistence/local-persistence.json:1-10](file://local-persistence/local-persistence.json#L1-L10)
 
 ## Architecture Overview
 High-level runtime architecture:
 - Client (Next.js) communicates with backend services via API routes
 - ML/audio processing handled by Flask backend with optional standalone services
-- Firebase SDKs manage auth, Firestore, and Storage
+- Local persistence SDKs manage auth, SQLite, and Storage
 - Docker containers encapsulate frontend and backend for production
 
 ```mermaid
@@ -147,7 +147,7 @@ BFF["Backend-for-Frontend (BFF)"]
 PyAPI["Python Backend (Flask 3.0.3)"]
 ML["ML/Audio Pipelines<br/>TensorFlow 2.15.1<br/>PyTorch 2.6.0<br/>librosa 0.10.1<br/>Spleeter 2.3.2"]
 Ext["External Services<br/>YouTube Search<br/>Genius/Lyrics"]
-FB["Firebase SDKs<br/>Auth/DB/Storage"]
+FB["Local persistence SDKs<br/>Auth/DB/Storage"]
 Browser --> API
 API --> BFF
 BFF --> PyAPI
@@ -159,12 +159,12 @@ Browser --> FB
 **Diagram sources**
 - [src/config/api.ts:15-51](file://src/config/api.ts#L15-L51)
 - [python_backend/app.py:87-186](file://python_backend/app.py#L87-L186)
-- [src/config/firebase.ts:1-537](file://src/config/firebase.ts#L1-L537)
+- [src/config/local-persistence.ts:1-537](file://src/config/local-persistence.ts#L1-L537)
 
 **Section sources**
 - [src/config/api.ts:15-51](file://src/config/api.ts#L15-L51)
 - [python_backend/app.py:87-186](file://python_backend/app.py#L87-L186)
-- [src/config/firebase.ts:1-537](file://src/config/firebase.ts#L1-L537)
+- [src/config/local-persistence.ts:1-537](file://src/config/local-persistence.ts#L1-L537)
 
 ## Detailed Component Analysis
 
@@ -181,7 +181,7 @@ Browser --> FB
   - Dark mode, theme variants, safelist for dynamic grid columns
 - Modern web APIs and clients
   - axios, node-fetch, Tone.js, ffmpeg-static/fluent-ffmpeg, @ffmpeg/* for audio processing
-  - Firebase SDKs for auth, Firestore, Storage, App Check
+  - Local persistence SDKs for auth, SQLite, Storage, IP rate limiting
 
 ```mermaid
 flowchart TD
@@ -288,35 +288,35 @@ Post --> Output["Beat/Chord Labels"]
 - [SongFormer/Dockerfile:1-25](file://SongFormer/Dockerfile#L1-L25)
 - [sheetsage/requirements.txt:1-21](file://sheetsage/requirements.txt#L1-L21)
 
-### Firebase SDKs and Configuration
+### Local persistence SDKs and Configuration
 - Client-side initialization with runtime config loading
 - Anonymous auth with retry logic and persistence
-- App Check (reCAPTCHA v3) for client-side protection
-- Firestore and Storage rules and indexes
+- IP rate limiting (reCAPTCHA v3) for client-side protection
+- SQLite and Storage rules and indexes
 
 ```mermaid
 sequenceDiagram
 participant UI as "Client UI"
-participant FB as "Firebase SDK"
+participant FB as "Local persistence SDK"
 participant API as "Next.js /api/config"
-participant Auth as "Firebase Auth"
-UI->>FB : initializeFirebase()
+participant Auth as "Local persistence Auth"
+UI->>FB : initializeLocal persistence()
 FB->>API : GET /api/config (runtime)
-API-->>FB : Firebase config
+API-->>FB : Local persistence config
 FB->>Auth : setPersistence(browserLocal)
 FB->>Auth : signInAnonymously() with retry
 Auth-->>FB : User session
-FB-->>UI : Ready for Firestore/Storage
+FB-->>UI : Ready for SQLite/Storage
 ```
 
 **Diagram sources**
-- [src/config/firebase.ts:43-115](file://src/config/firebase.ts#L43-L115)
-- [src/config/firebase.ts:148-252](file://src/config/firebase.ts#L148-L252)
-- [firebase/firebase.json:1-10](file://firebase/firebase.json#L1-L10)
+- [src/config/local-persistence.ts:43-115](file://src/config/local-persistence.ts#L43-L115)
+- [src/config/local-persistence.ts:148-252](file://src/config/local-persistence.ts#L148-L252)
+- [local-persistence/local-persistence.json:1-10](file://local-persistence/local-persistence.json#L1-L10)
 
 **Section sources**
-- [src/config/firebase.ts:1-537](file://src/config/firebase.ts#L1-L537)
-- [firebase/firebase.json:1-10](file://firebase/firebase.json#L1-L10)
+- [src/config/local-persistence.ts:1-537](file://src/config/local-persistence.ts#L1-L537)
+- [local-persistence/local-persistence.json:1-10](file://local-persistence/local-persistence.json#L1-L10)
 
 ### Build Tools, Development Dependencies, and Deployment
 - Frontend
@@ -330,7 +330,7 @@ FB-->>UI : Ready for Firestore/Storage
   - Health checks and non-root users
 - docker-compose
   - Local dev with linked frontend/backend
-  - Environment propagation for Firebase, YouTube, and API keys
+  - Environment propagation for Local persistence, YouTube, and API keys
 
 **Section sources**
 - [package.json:33-133](file://package.json#L33-L133)
@@ -358,7 +358,7 @@ BE --> PT["PyTorch 2.6.0"]
 BE --> LR["librosa 0.10.1"]
 BE --> SP["Spleeter 2.3.2"]
 BE --> YT["yt-dlp 2025.4.30"]
-FE --> FB["Firebase SDKs"]
+FE --> FB["Local persistence SDKs"]
 ```
 
 **Diagram sources**
@@ -386,7 +386,7 @@ FE --> FB["Firebase SDKs"]
 [No sources needed since this section provides general guidance]
 
 ## Troubleshooting Guide
-- Firebase initialization failures
+- Local persistence initialization failures
   - Missing runtime config or invalid environment variables
   - Anonymous sign-in retry logic and error codes
 - Backend model availability
@@ -398,15 +398,15 @@ FE --> FB["Firebase SDKs"]
   - Ensure domains in connect-src and frame-src lists match deployment targets
 
 **Section sources**
-- [src/config/firebase.ts:62-72](file://src/config/firebase.ts#L62-L72)
-- [src/config/firebase.ts:200-252](file://src/config/firebase.ts#L200-L252)
+- [src/config/local-persistence.ts:62-72](file://src/config/local-persistence.ts#L62-L72)
+- [src/config/local-persistence.ts:200-252](file://src/config/local-persistence.ts#L200-L252)
 - [python_backend/app.py:120-147](file://python_backend/app.py#L120-L147)
 - [Dockerfile:82-86](file://Dockerfile#L82-L86)
 - [python_backend/Dockerfile:105-107](file://python_backend/Dockerfile#L105-L107)
 - [next.config.js:34-40](file://next.config.js#L34-L40)
 
 ## Conclusion
-ChordMiniApp combines a modern, performance-focused frontend (Next.js 16.1.6, React 19.0.0, TypeScript, Tailwind) with a robust Python backend (Flask 3.0.3) leveraging TensorFlow and librosa for audio analysis, and Spleeter for stem separation. Docker-based deployment ensures reproducibility, while Firebase SDKs provide scalable auth and data services. The stack balances cutting-edge capabilities with pragmatic compatibility and maintainability.
+ChordMiniApp combines a modern, performance-focused frontend (Next.js 16.1.6, React 19.0.0, TypeScript, Tailwind) with a robust Python backend (Flask 3.0.3) leveraging TensorFlow and librosa for audio analysis, and Spleeter for stem separation. Docker-based deployment ensures reproducibility, while Local persistence SDKs provide scalable auth and data services. The stack balances cutting-edge capabilities with pragmatic compatibility and maintainability.
 
 [No sources needed since this section summarizes without analyzing specific files]
 
@@ -444,8 +444,8 @@ ChordMiniApp combines a modern, performance-focused frontend (Next.js 16.1.6, Re
   - For TensorFlow/PyTorch, verify CUDA/cuDNN compatibility if GPU acceleration is desired
 - ML Libraries
   - Update Spleeter and yt-dlp together; ensure model cache paths remain valid
-- Firebase
-  - Validate reCAPTCHA site key and App Check configuration when upgrading SDKs
+- Local persistence
+  - Validate reCAPTCHA site key and IP rate limiting configuration when upgrading SDKs
 - Docker
   - Rebuild with updated base images; verify health checks and non-root user permissions
 

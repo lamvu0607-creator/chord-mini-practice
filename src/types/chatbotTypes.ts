@@ -90,36 +90,3 @@ export interface ChatbotState {
   conversationHistory: ChatMessage[];
 }
 
-/**
- * Song segmentation types
- */
-export interface SongSegment {
-  type: string; // Flexible to accept any segment type from AI analysis
-  startTime: number;
-  endTime: number;
-  startBeat?: number;
-  endBeat?: number;
-  confidence?: number;
-  label?: string; // Optional custom label (e.g., "Verse 1", "Chorus 2")
-}
-
-export interface SegmentationResult {
-  segments: SongSegment[];
-  analysis: {
-    structure: string;
-    keyChanges?: Array<{time: number, key: string}>;
-    tempo?: number;
-    timeSignature?: number;
-    coverageCheck?: string; // Confirmation of complete song coverage
-  };
-  metadata: {
-    totalDuration: number;
-    analysisTimestamp: number;
-    model: string;
-  };
-}
-
-export interface SegmentationRequest {
-  songContext: SongContext;
-  accessCode?: string;
-}

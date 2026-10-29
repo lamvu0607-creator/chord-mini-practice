@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAudioDurationFromFile } from '@/utils/audioDurationUtils';
 import { createSafeTimeoutSignal } from '@/utils/environmentUtils';
 import { getPythonApiUrl } from '@/config/serverBackend';
-import { verifyAppCheckRequest } from '@/utils/serverAppCheck';
 
 
 
@@ -17,10 +16,6 @@ export const maxDuration = 300; // 5 minutes for ML processing
 export async function POST(request: NextRequest) {
   try {
     // Verify App Check token
-    const appCheck = await verifyAppCheckRequest(request);
-    if (!appCheck.ok) {
-      return NextResponse.json({ success: false, error: appCheck.error }, { status: appCheck.status || 403 });
-    }
 
     // Get the backend URL
     const backendUrl = getPythonApiUrl();
@@ -120,7 +115,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             error: `File too large for processing`,
-            details: `The audio file (${fileSizeMB.toFixed(2)}MB) exceeds the maximum size limit. Please try with a smaller file or use the offload pipeline in production.`,
+            details: `The audio file (${fileSizeMB.toFixed(2)}MB) exceeds the maximum size limit. Please try with a smaller file.`,
             status: 413,
             suggestion: 'Try using a shorter audio clip or compress the audio file.'
           },

@@ -2,14 +2,14 @@
  * Performance Monitoring Service for ChordMiniApp
  *
  * Monitors the critical fixes deployed:
- * 1. Firebase query count reduction (target: 60-80% decrease)
+ * 1. Persistence query count reduction (target: 60-80% decrease)
  * 2. Audio filename pattern matching accuracy
  * 3. Smart caching system performance
  * 4. Error frequency and warning reduction
  */
 
 interface PerformanceMetrics {
-  firebaseQueries: {
+  persistenceQueries: {
     total: number;
     cached: number;
     failed: number;
@@ -50,7 +50,7 @@ class PerformanceMonitor {
 
   private initializeMetrics(): PerformanceMetrics {
     return {
-      firebaseQueries: {
+      persistenceQueries: {
         total: 0,
         cached: 0,
         failed: 0,
@@ -81,21 +81,21 @@ class PerformanceMonitor {
     };
   }
 
-  trackFirebaseQuery(type: 'cache_hit' | 'cache_miss' | 'error', responseTime: number): void {
-    this.metrics.firebaseQueries.total++;
+  trackPersistenceQuery(type: 'cache_hit' | 'cache_miss' | 'error', responseTime: number): void {
+    this.metrics.persistenceQueries.total++;
 
     switch (type) {
       case 'cache_hit':
-        this.metrics.firebaseQueries.cached++;
+        this.metrics.persistenceQueries.cached++;
         break;
       case 'error':
-        this.metrics.firebaseQueries.failed++;
+        this.metrics.persistenceQueries.failed++;
         break;
     }
 
     this.updateAverageResponseTime(responseTime);
-    this.calculateFirebaseReduction();
-    this.checkFirebaseAlerts();
+    this.calculatePersistenceReduction();
+    this.checkPersistenceAlerts();
     this.updateTimestamp();
   }
 
@@ -165,7 +165,7 @@ class PerformanceMonitor {
     keyMetrics: Record<string, string>;
     alerts: Array<{ type: string; message: string; timestamp: number }>;
   } {
-    const firebaseReduction = this.metrics.firebaseQueries.reductionPercentage;
+    const persistenceReduction = this.metrics.persistenceQueries.reductionPercentage;
     const filenameAccuracy = this.metrics.filenameMatching.accuracyPercentage;
     const cacheHitRate = this.calculateCacheHitRate();
     const errorReduction = this.metrics.errorTracking.errorReductionPercentage;
@@ -173,13 +173,13 @@ class PerformanceMonitor {
     let status: 'excellent' | 'good' | 'warning' | 'critical' = 'excellent';
     let summary = 'All systems performing optimally';
 
-    if (firebaseReduction < 40 || filenameAccuracy < 90 || cacheHitRate < 60) {
+    if (persistenceReduction < 40 || filenameAccuracy < 90 || cacheHitRate < 60) {
       status = 'critical';
       summary = 'Critical performance issues detected';
-    } else if (firebaseReduction < 60 || filenameAccuracy < 95 || cacheHitRate < 80) {
+    } else if (persistenceReduction < 60 || filenameAccuracy < 95 || cacheHitRate < 80) {
       status = 'warning';
       summary = 'Performance below target thresholds';
-    } else if (firebaseReduction < 70 || filenameAccuracy < 98) {
+    } else if (persistenceReduction < 70 || filenameAccuracy < 98) {
       status = 'good';
       summary = 'Performance within acceptable range';
     }
@@ -188,7 +188,7 @@ class PerformanceMonitor {
       status,
       summary,
       keyMetrics: {
-        'Firebase Query Reduction': `${firebaseReduction.toFixed(1)}%`,
+        'Persistence Query Reduction': `${persistenceReduction.toFixed(1)}%`,
         'Filename Accuracy': `${filenameAccuracy.toFixed(1)}%`,
         'Cache Hit Rate': `${cacheHitRate.toFixed(1)}%`,
         'Error Reduction': `${errorReduction.toFixed(1)}%`,
@@ -212,9 +212,9 @@ class PerformanceMonitor {
   }
 
   private updateAverageResponseTime(responseTime: number): void {
-    const total = this.metrics.firebaseQueries.total;
-    const current = this.metrics.firebaseQueries.avgResponseTime;
-    this.metrics.firebaseQueries.avgResponseTime = ((current * (total - 1)) + responseTime) / total;
+    const total = this.metrics.persistenceQueries.total;
+    const current = this.metrics.persistenceQueries.avgResponseTime;
+    this.metrics.persistenceQueries.avgResponseTime = ((current * (total - 1)) + responseTime) / total;
   }
 
   private updateAverageCacheResponseTime(responseTime: number): void {
@@ -223,12 +223,12 @@ class PerformanceMonitor {
     this.metrics.cachePerformance.avgCacheResponseTime = ((current * (total - 1)) + responseTime) / total;
   }
 
-  private calculateFirebaseReduction(): void {
-    const total = this.metrics.firebaseQueries.total;
-    const cached = this.metrics.firebaseQueries.cached;
+  private calculatePersistenceReduction(): void {
+    const total = this.metrics.persistenceQueries.total;
+    const cached = this.metrics.persistenceQueries.cached;
 
     if (total > 0) {
-      this.metrics.firebaseQueries.reductionPercentage = (cached / total) * 100;
+      this.metrics.persistenceQueries.reductionPercentage = (cached / total) * 100;
     }
   }
 
@@ -249,13 +249,13 @@ class PerformanceMonitor {
     }
   }
 
-  private checkFirebaseAlerts(): void {
-    const reduction = this.metrics.firebaseQueries.reductionPercentage;
+  private checkPersistenceAlerts(): void {
+    const reduction = this.metrics.persistenceQueries.reductionPercentage;
 
     if (reduction < 40) {
-      this.addAlert('critical', `Firebase query reduction critically low: ${reduction.toFixed(1)}%`);
+      this.addAlert('critical', `Persistence query reduction critically low: ${reduction.toFixed(1)}%`);
     } else if (reduction < 60) {
-      this.addAlert('warning', `Firebase query reduction below target: ${reduction.toFixed(1)}%`);
+      this.addAlert('warning', `Persistence query reduction below target: ${reduction.toFixed(1)}%`);
     }
   }
 

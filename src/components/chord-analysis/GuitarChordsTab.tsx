@@ -7,12 +7,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AnalysisResult } from '@/services/chord-analysis/chordRecognitionService';
 import { chordMappingService } from '@/services/chord-analysis/chordMappingService';
 import { ChordGridContainer } from '@/components/chord-analysis/ChordGridContainer';
-import { SegmentationResult } from '@/types/chatbotTypes';
-import { getSegmentationColorForBeat } from '@/utils/segmentationColors';
 import type { BeatGridTimedLyrics } from '@/components/chord-analysis/GridLyricsRow';
 import { useAnalysisResults, useShowCorrectedChords, useChordCorrections } from '@/stores/analysisStore';
 import { useCurrentBeatIndex, useCurrentTime, useIsPlaying } from '@/stores/playbackStore';
-import { useSegmentationSelector } from '@/contexts/selectors'; // Now uses Zustand internally
 import {
   useGuitarCapoFret,
   useGuitarSelectedPositions,
@@ -121,8 +118,6 @@ interface GuitarChordsTabProps {
       }>;
     };
   } | null;
-  // Segmentation props for synchronized color overlay (data only; toggle from UIContext)
-  segmentationData?: SegmentationResult | null;
   isChordPlaybackEnabled?: boolean;
   audioUrl?: string | null;
   gridLyrics?: BeatGridTimedLyrics | null;
@@ -141,7 +136,6 @@ function GuitarPlaybackBridge({
   detectedBpm,
   timeSignature,
   dynamicsAnalyzer,
-  segmentationData,
   guitarVoicing,
   targetKey,
 }: {
@@ -150,7 +144,6 @@ function GuitarPlaybackBridge({
   detectedBpm?: number;
   timeSignature: number;
   dynamicsAnalyzer: ReturnType<typeof useSharedAudioDynamics>;
-  segmentationData?: SegmentationResult | null;
   guitarVoicing: Partial<GuitarVoicingSelection>;
   targetKey?: string | null;
 }) {
@@ -167,7 +160,6 @@ function GuitarPlaybackBridge({
     detectedBpm || 120,
     timeSignature,
     dynamicsAnalyzer,
-    segmentationData,
     guitarVoicing,
     targetKey,
   );
@@ -182,7 +174,6 @@ function GuitarTablaturePlaybackView({
   guitarVoicing,
   targetKey,
   dynamicsAnalyzer,
-  segmentationData,
   gridLyrics,
 }: {
   playbackChordEvents: ChordEvent[];
@@ -191,7 +182,6 @@ function GuitarTablaturePlaybackView({
   guitarVoicing: Partial<GuitarVoicingSelection>;
   targetKey?: string | null;
   dynamicsAnalyzer: ReturnType<typeof useSharedAudioDynamics>;
-  segmentationData?: SegmentationResult | null;
   gridLyrics?: BeatGridTimedLyrics | null;
 }) {
   const currentTime = useCurrentTime();
@@ -208,7 +198,6 @@ function GuitarTablaturePlaybackView({
       guitarVoicing={guitarVoicing}
       targetKey={targetKey ?? undefined}
       dynamicsAnalyzer={dynamicsAnalyzer}
-      segmentationData={segmentationData}
       gridLyrics={gridLyrics}
     />
   );
@@ -217,9 +206,6 @@ function GuitarTablaturePlaybackView({
 function AnimatedChordDiagramView({
   progression,
   windowWidth,
-  resolvedChordGridData,
-  segmentationData,
-  showSegmentation,
   diagramConfig,
   chordDataCache,
   chordPositions,
@@ -230,9 +216,6 @@ function AnimatedChordDiagramView({
 }: {
   progression: UniqueChordProgressionItem[];
   windowWidth: number;
-  resolvedChordGridData?: ChordGridData | null;
-  segmentationData?: SegmentationResult | null;
-  showSegmentation: boolean;
   diagramConfig: DiagramConfig;
   chordDataCache: Map<string, ChordData | null>;
   chordPositions: Record<string, number>;
@@ -286,15 +269,6 @@ function AnimatedChordDiagramView({
       <div className="flex justify-center items-start py-1" style={{ minHeight: Math.max(diagramConfig.diagramHeight + 50, 100) }}>
         <AnimatePresence initial={false}>
           {visibleChordRange.map((chordInfo) => {
-            const timestamp = resolvedChordGridData?.beats[chordInfo.startIndex];
-            const segmentationColor = getSegmentationColorForBeat(
-              chordInfo.startIndex,
-              resolvedChordGridData?.beats || [],
-              segmentationData ?? null,
-              showSegmentation,
-              typeof timestamp === 'number' ? timestamp : undefined
-            );
-
             return (
               <motion.div
                 layout
@@ -327,7 +301,6 @@ function AnimatedChordDiagramView({
                     || processedChordData.soundingNameByShape.get(chordInfo.chord)
                   }
                   isFocused={chordInfo.isCurrent}
-                  segmentationColor={segmentationColor}
                   showPositionSelector={chordInfo.isCurrent}
                   onPositionChange={(positionIndex) => handlePositionChange(chordInfo.chord, positionIndex)}
                   capoFret={capoFret}
@@ -357,7 +330,6 @@ export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
   showCorrectedChords,
   chordCorrections,
   sequenceCorrections = null,
-  segmentationData = null,
   isChordPlaybackEnabled = false,
   audioUrl = null,
   gridLyrics = null,
@@ -420,8 +392,6 @@ export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
   }, [setSharedChordPosition]);
 
   // Pull analysis toggles and data from Zustand stores when not provided via props
-  // Segmentation toggle from UIStore
-  const { showSegmentation } = useSegmentationSelector();
 
   const storeAnalysisResults = useAnalysisResults();
   const storeShowCorrectedChords = useShowCorrectedChords();
@@ -464,9 +434,8 @@ export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
       bpm: detectedBpm || 120,
       timeSignature,
       totalDuration: playbackTotalDuration,
-      segmentationData,
     }),
-    [detectedBpm, segmentationData, timeSignature, playbackTotalDuration],
+    [detectedBpm, timeSignature, playbackTotalDuration],
   );
   const dynamicsAnalyzer = useSharedAudioDynamics(audioUrl, dynamicsParams);
 
@@ -723,7 +692,6 @@ export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
         detectedBpm={detectedBpm}
         timeSignature={timeSignature}
         dynamicsAnalyzer={dynamicsAnalyzer}
-        segmentationData={segmentationData}
         guitarVoicing={guitarVoicing}
         targetKey={targetKey}
       />
@@ -847,7 +815,7 @@ export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
         </div>
         {viewMode !== 'tab' && (
           <ScrollableTabContainer heightClass="h-[8.5rem] sm:h-32 md:h-40 lg:h-48">
-            <ChordGridContainer {...{ analysisResults, chordGridData, keySignature, isDetectingKey, isChatbotOpen, isLyricsPanelOpen, isUploadPage, showCorrectedChords, chordCorrections, sequenceCorrections, segmentationData, gridLyrics, plainLyrics }} />
+            <ChordGridContainer {...{ analysisResults, chordGridData, keySignature, isDetectingKey, isChatbotOpen, isLyricsPanelOpen, isUploadPage, showCorrectedChords, chordCorrections, sequenceCorrections, gridLyrics, plainLyrics }} />
           </ScrollableTabContainer>
         )}
       </div>
@@ -869,16 +837,12 @@ export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
             guitarVoicing={guitarVoicing}
             targetKey={targetKey}
             dynamicsAnalyzer={dynamicsAnalyzer}
-            segmentationData={segmentationData}
             gridLyrics={gridLyrics}
           />
         ) : !isLoadingChords && viewMode === 'animated' ? (
           <AnimatedChordDiagramView
             progression={getUniqueChordProgressionForGuitarDiagrams}
             windowWidth={windowWidth}
-            resolvedChordGridData={resolvedChordGridData}
-            segmentationData={segmentationData}
-            showSegmentation={showSegmentation}
             diagramConfig={diagramConfig}
             chordDataCache={chordDataCache}
             chordPositions={chordPositions}

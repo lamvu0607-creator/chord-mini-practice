@@ -1,4 +1,4 @@
-# Audio Processing Service
+﻿# Audio Processing Service
 
 <cite>
 **Referenced Files in This Document**
@@ -135,7 +135,7 @@ FE_ABU --> FE_AAS
 - Audio Extraction Service (frontend): Environment-aware extraction with enhanced caching and storage validation.
 - Audio Duration Utilities (frontend): Robust duration detection from File or URL with fallbacks and proxy support.
 - Audio Buffer Utilities (frontend): Enhanced WAV conversion with comprehensive bounds checking and error handling.
-- Offload Upload Service (frontend): Handles large-file offloading to Firebase Storage with security enhancements and cleanup operations.
+- Offload Upload Service (frontend): Handles large-file offloading to local audio storage with security enhancements and cleanup operations.
 - Offload Cleanup Service (frontend): Secure deletion of temporary audio files with provider validation and fallback mechanisms.
 - Offload Validation Utilities (frontend): Strict URL validation and provider detection for offload storage operations.
 
@@ -173,7 +173,7 @@ AES-->>APS : audioUrl, metadata
 APS->>AAS : analyzeAudioWithRateLimit(audioUrl, detectors)
 AAS->>OVS : Validate offload URL
 OVS-->>AAS : Validated URL
-AAS->>OUS : Upload to Firebase (if needed)
+AAS->>OUS : Upload to Local persistence (if needed)
 OUS-->>AAS : Offload URL
 AAS->>BDS : detectBeatsWithRateLimit(file, detector)
 BDS->>BR : POST /api/detect-beats
@@ -205,7 +205,7 @@ APS-->>UI : Render analysis
 ### Audio Analysis Orchestrator
 Responsibilities:
 - Coordinate beat detection and chord recognition with parallel execution and enhanced validation.
-- Handle offload paths for Firebase URLs with automatic cleanup and security validation.
+- Handle offload paths for Local persistence URLs with automatic cleanup and security validation.
 - Auto-select time signature (meter) using chord-change heuristics and worker fallbacks.
 - Normalize results and compute synchronized chords with comprehensive error handling.
 
@@ -221,7 +221,7 @@ Start(["analyzeAudioWithRateLimit"]) --> Input["Validate input<br/>File/AudioBuf
 Input --> Duration["Detect audio duration"]
 Duration --> Localhost{"isLocalBackend?"}
 Localhost --> |Yes| Parallel["Parallel beat + chord detection<br/>Enhanced error handling"]
-Localhost --> |No| Offload["Offload path (Firebase URL)<br/>Security validation"]
+Localhost --> |No| Offload["Offload path (Local persistence URL)<br/>Security validation"]
 Parallel --> Sync["Meter selection + synchronization<br/>Worker fallbacks"]
 Offload --> Sync
 Sync --> Cleanup["Cleanup temporary files<br/>Security checks"]
@@ -269,7 +269,7 @@ Responsibilities:
 ### Audio Processing Service (Frontend)
 Responsibilities:
 - End-to-end orchestration: extract, cache, analyze, and persist results with enhanced error handling.
-- Integrate with Firestore for caching and enrichment with comprehensive validation.
+- Integrate with SQLite for caching and enrichment with comprehensive validation.
 - Provide robust error handling with suggestions and user-friendly messaging.
 - Implement comprehensive error categorization and resolution strategies.
 
@@ -279,7 +279,7 @@ Responsibilities:
 ### Audio Extraction Service (Frontend)
 Responsibilities:
 - Environment-aware extraction: browser yt-dlp in production, local yt-dlp in development, and explicit yt-mp3-go rollback with enhanced validation.
-- Firebase Storage caching and validation with security checks.
+- local audio storage caching and validation with security checks.
 - Metadata caching and fallback strategies with comprehensive error handling.
 
 **Section sources**
@@ -305,7 +305,7 @@ Responsibilities:
 
 ### Offload Upload Service (Frontend)
 Responsibilities:
-- Handle large-file offloading to Firebase Storage with security enhancements.
+- Handle large-file offloading to local audio storage with security enhancements.
 - Manage temporary audio file uploads with metadata and cleanup tracking.
 - Implement comprehensive error handling for upload operations with permission validation.
 - Provide secure deletion capabilities for temporary files.
@@ -315,7 +315,7 @@ Responsibilities:
 
 ### Offload Cleanup Service (Frontend)
 Responsibilities:
-- Secure deletion of temporary audio files from Firebase Storage with provider validation.
+- Secure deletion of temporary audio files from local audio storage with provider validation.
 - Implement fallback mechanisms for deletion operations with comprehensive error handling.
 - Prevent accidental deletion of non-temporary storage objects with strict validation.
 - Handle authentication and authorization for storage operations.
@@ -326,8 +326,8 @@ Responsibilities:
 ### Offload Validation Utilities (Frontend)
 Responsibilities:
 - Strict URL validation for offload storage operations with comprehensive format checking.
-- Provider detection for Firebase Storage with hostname validation.
-- Parse Firebase Storage bucket and object path from URLs with security validation.
+- Provider detection for local audio storage with hostname validation.
+- Parse local audio storage bucket and object path from URLs with security validation.
 - Implement allowlist-based URL validation to prevent injection attacks.
 
 **Section sources**
@@ -402,7 +402,7 @@ The upload system has been improved with better management of temporary audio fi
 The system now implements strict URL validation to prevent security vulnerabilities:
 
 - **Protocol Validation**: Only HTTPS URLs are accepted for offload operations
-- **Hostname Allowlist**: Only approved Firebase Storage hosts are permitted
+- **Hostname Allowlist**: Only approved local audio storage hosts are permitted
 - **Path Validation**: URL paths are validated against security policies
 - **Injection Prevention**: Comprehensive protection against URL injection attacks
 
@@ -482,8 +482,8 @@ AAS --> ABU["audioBufferUtils.ts"]
 ## Performance Considerations
 - Parallel execution: Beat and chord detection run concurrently to reduce total latency.
 - Worker fallbacks: Meter selection and synchronization leverage web workers; main-thread fallbacks ensure resilience.
-- Offload optimization: Firebase URLs bypass browser downloads and are processed directly by backend services with enhanced security.
-- Caching: Firebase Storage and Firestore caches minimize repeated extractions and analyses.
+- Offload optimization: Local persistence URLs bypass browser downloads and are processed directly by backend services with enhanced security.
+- Caching: local audio storage and SQLite caches minimize repeated extractions and analyses.
 - Timeout handling: Safe timeout signals and rate limiting prevent UI stalls and backend overload.
 - Model selection: Backend services choose optimal models based on file size and availability.
 - Enhanced validation: Comprehensive input validation prevents unnecessary processing of invalid data.
@@ -496,7 +496,7 @@ Common issues and resolutions:
 - Backend unavailability: Check port conflicts (e.g., Apple AirTunes using port 5000) and ensure backend is reachable.
 - CORS and proxy issues: Use the built-in duration detection proxy and extraction services with enhanced validation.
 - Meter ambiguity (3/4 vs 4/4): Rely on automatic selection via chord-change heuristics; worker fallback available.
-- Offload failures: Check Firebase configuration, authentication, and storage permissions with comprehensive error messages.
+- Offload failures: Check Local persistence configuration, authentication, and storage permissions with comprehensive error messages.
 - Security violations: Verify URL validation and provider restrictions are working correctly.
 - Cleanup issues: Ensure temporary files are properly tracked and cleaned up with audit trails.
 

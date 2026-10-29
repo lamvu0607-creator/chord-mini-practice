@@ -1,25 +1,15 @@
 /**
  * Unit Tests: chordService
  *
- * Covers local direct multipart requests and explicit production offload helpers.
+ * Covers local direct multipart requests.
  */
 
-import {
-  recognizeChordsFromOffloadUrl,
-  recognizeChordsWithRateLimit,
-} from '@/services/chord-analysis/chordService';
-import { offloadUploadService } from '@/services/storage/offloadUploadService';
+import { recognizeChordsWithRateLimit } from '@/services/chord-analysis/chordService';
 import { createSafeTimeoutSignal } from '@/utils/environmentUtils';
 import {
   getChordRecognitionEndpoint,
   getSafeChordModel,
 } from '@/utils/modelFiltering';
-
-jest.mock('@/services/storage/offloadUploadService', () => ({
-  offloadUploadService: {
-    recognizeChordsFromOffloadUrl: jest.fn(),
-  },
-}));
 
 jest.mock('@/utils/environmentUtils', () => ({
   createSafeTimeoutSignal: jest.fn(),
@@ -59,7 +49,6 @@ describe('chordService', () => {
     );
 
     expect(fetchSpy).not.toHaveBeenCalled();
-    expect(offloadUploadService.recognizeChordsFromOffloadUrl).not.toHaveBeenCalled();
   });
 
   it('posts to the selected endpoint and filters invalid chord payloads for local direct flow', async () => {
@@ -122,32 +111,4 @@ describe('chordService', () => {
     await expect(recognizeChordsWithRateLimit(makeFile())).rejects.toThrow(/Port conflict/);
   });
 
-  it('returns chords from an existing offload URL', async () => {
-    (offloadUploadService.recognizeChordsFromOffloadUrl as jest.Mock).mockResolvedValue({
-      success: true,
-      data: {
-        chords: [{ start: 0, end: 1, chord: 'Am', confidence: 0.93 }],
-      },
-    });
-
-    const result = await recognizeChordsFromOffloadUrl('https://firebasestorage.googleapis.com/audio.wav');
-
-    expect(result).toEqual([{ start: 0, end: 1, chord: 'Am', confidence: 0.93 }]);
-    expect(offloadUploadService.recognizeChordsFromOffloadUrl).toHaveBeenCalledWith(
-      'https://firebasestorage.googleapis.com/audio.wav',
-      'chord-cnn-lstm',
-      { deleteAfterProcessing: true }
-    );
-  });
-
-  it('throws when offload chord payload is malformed', async () => {
-    (offloadUploadService.recognizeChordsFromOffloadUrl as jest.Mock).mockResolvedValue({
-      success: true,
-      data: { chords: null },
-    });
-
-    await expect(
-      recognizeChordsFromOffloadUrl('https://firebasestorage.googleapis.com/audio.wav')
-    ).rejects.toThrow('Invalid chord recognition response: missing or invalid chords array');
-  });
 });

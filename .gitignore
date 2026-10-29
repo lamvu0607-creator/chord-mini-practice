@@ -40,12 +40,6 @@ Thumbs.db
 .env.test.local
 .env.production.local
 
-# Firebase symlinks (actual files are in firebase/ directory)
-/firebase.json
-/firestore.rules
-/firestore.indexes.json
-/storage.rules
-
 # debug
 npm-debug.log*
 yarn-debug.log*
@@ -65,15 +59,6 @@ logs
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# Firebase
-.firebase/
-firebase-debug.log
-firebase-debug.*.log
-ui-debug.log
-.runtimeconfig.json
-serviceAccountKey.json
-firebase-adminsdk.json
 
 # PWA
 **/public/workbox-*.js
@@ -165,6 +150,11 @@ cache/
 /tmp/
 *.tmp
 
+# Runtime local audio storage (persist with a Docker volume in production)
+/storage/audio/
+/storage/db/
+/storage/backups/
+
 # Temporary player script files
 *-player-script.js
 
@@ -175,7 +165,6 @@ cache/
 .venv/
 python_backend/venv/
 **/venv/
-SongFormer/**/.git
 
 # Large binary files
 *.jar
@@ -200,8 +189,6 @@ bfg.jar
 **/pretrained_models/
 **/checkpoints/
 checkpoints/
-!SongFormer/src/SongFormer/ckpts/SongFormer.safetensors
-!SongFormer/src/SongFormer/ckpts/MusicFM/pretrained_msd.pt
 
 # API keys and sensitive information
 **/api-keys*.txt
@@ -219,8 +206,6 @@ checkpoints/
 **/.env.production
 **/.env.test
 **/.env.*.local
-**/firebase-config*.js
-**/firebase-config*.ts
 **/google-services.json
 **/GoogleService-Info.plist
 **/*.keystore
@@ -285,6 +270,9 @@ scripts/*
 !scripts/pre-deployment-checklist.sh
 !scripts/publish-repowiki-to-github-wiki.sh
 !scripts/post-deployment-verification.sh
+!scripts/backup-local-storage.mjs
+!scripts/restore-local-storage.mjs
+!scripts/import-local-archive.mjs
 
 __tests__/
 __tests__/*
@@ -295,6 +283,9 @@ __tests__/*
 !__tests__/integration/**/
 !__tests__/integration/**/*.test.ts
 !__tests__/integration/**/*.test.tsx
+!__tests__/e2e/
+!__tests__/e2e/**/*.spec.ts
+!__tests__/playwright.config.ts
 !__tests__/unit/
 !__tests__/unit/services/
 !__tests__/unit/utils/
@@ -305,3 +296,7 @@ __tests__/*
 __test-results__/
 
 cloudflare/
+
+# SCNet checkpoints (download with stems/download_weights.py)
+stems/ckpts/
+SongFormer/ckpts/*.safetensors

@@ -118,10 +118,10 @@ describe('apiKeyStorageService', () => {
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const { apiKeyStorage } = await import('@/services/cache/apiKeyStorageService');
 
-    await expect(apiKeyStorage.getApiKey('songformerAccess')).resolves.toBeNull();
+    await expect(apiKeyStorage.getApiKey('gemini')).resolves.toBeNull();
 
-    storageState.set(API_KEY_STORAGE_KEYS.SONGFORMER_ACCESS, 'not-json');
-    await expect(apiKeyStorage.getApiKey('songformerAccess')).resolves.toBeNull();
+    storageState.set(API_KEY_STORAGE_KEYS.GEMINI, 'not-json');
+    await expect(apiKeyStorage.getApiKey('gemini')).resolves.toBeNull();
     expect(errorSpy).toHaveBeenCalled();
   });
 
@@ -133,8 +133,6 @@ describe('apiKeyStorageService', () => {
     storageState.set(`${API_KEY_STORAGE_KEYS.MUSIC_AI}_meta`, '{}');
     storageState.set(API_KEY_STORAGE_KEYS.GEMINI, 'gemini');
     storageState.set(`${API_KEY_STORAGE_KEYS.GEMINI}_meta`, '{}');
-    storageState.set(API_KEY_STORAGE_KEYS.SONGFORMER_ACCESS, 'songformer');
-    storageState.set(`${API_KEY_STORAGE_KEYS.SONGFORMER_ACCESS}_meta`, '{}');
     storageState.set(API_KEY_STORAGE_KEYS.ENCRYPTION_SALT, 'salt');
 
     apiKeyStorage.removeApiKey('musicAi');

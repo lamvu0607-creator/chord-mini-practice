@@ -1,5 +1,5 @@
 import { AnalyzeAudioFileOptions } from '@/services/audio/audioProcessingService';
-import { getTranscription, TranscriptionData } from '@/services/firebase/firestoreService';
+import { getTranscription, TranscriptionData } from '@/services/persistence/transcriptionService';
 import { apiPost } from '@/config/api';
 import { LyricsData } from '@/types/musicAiTypes';
 import type { BrowserYtDlpQueueState } from '@/services/audio/browserYtDlpExtractionService';
@@ -38,7 +38,7 @@ interface AudioProcessingState {
   videoUrl: string | null;
   youtubeEmbedUrl: string | null;
   fromCache: boolean;
-  fromFirestoreCache: boolean;
+  fromPersistentCache: boolean;
   error: string | null;
   suggestion?: string | null;
   queueStatus?: 'queued' | 'active' | 'released' | 'cancelled' | 'expired' | null;
@@ -194,7 +194,7 @@ export const handleAudioAnalysis = async (deps: AudioProcessingServiceDependenci
         ...prev,
         isAnalyzing: false,
         isAnalyzed: true,
-        fromFirestoreCache: true
+        fromPersistentCache: true
       }));
 
       // Set analysis results directly

@@ -1,4 +1,4 @@
-# Operational Procedures
+﻿# Operational Procedures
 
 <cite>
 **Referenced Files in This Document**
@@ -33,7 +33,7 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document defines the operational procedures for ChordMiniApp, covering day-to-day monitoring, performance tracking, maintenance, logging, backup and disaster recovery, security operations, incident response, configuration management, and performance optimization. It synthesizes automation and operational patterns already present in the repository’s CI/CD workflows, scripts, and backend configuration to provide practical, repeatable procedures for system administration.
+This document defines the operational procedures for ChordMiniApp, covering day-to-day monitoring, performance tracking, maintenance, logging, backup and disaster recovery, security operations, incident response, configuration management, and performance optimization. It synthesizes automation and operational patterns already present in the repositoryâ€™s CI/CD workflows, scripts, and backend configuration to provide practical, repeatable procedures for system administration.
 
 ## Project Structure
 ChordMiniApp comprises:
@@ -167,7 +167,7 @@ Fail --> End
 - [.github/workflows/docker-publish.yml:19-426](file://.github/workflows/docker-publish.yml#L19-L426)
 
 ### Pre-Deployment Checklist
-- Ensures build, lint, TypeScript, environment variables (.env.example in CI), Firebase configuration, backend health, and dependency security.
+- Ensures build, lint, TypeScript, environment variables (.env.example in CI), Local persistence configuration, backend health, and dependency security.
 - Includes retry logic for backend cold starts and lenient checks for non-critical warnings.
 
 ```mermaid
@@ -175,7 +175,7 @@ flowchart TD
 A["Start"] --> B["Build & Lint & TS"]
 B --> C{"Checks Pass?"}
 C --> |No| Z["Fail"]
-C --> |Yes| D["Env Vars & Firebase"]
+C --> |Yes| D["Env Vars & Local persistence"]
 D --> E["Backend Health (Retry)"]
 E --> F{"Backend OK?"}
 F --> |No| W["Warn (Cold Start Acceptable)"]
@@ -192,14 +192,14 @@ H --> |Yes| Y["Pass"]
 - [scripts/pre-deployment-checklist.sh:1-353](file://scripts/pre-deployment-checklist.sh#L1-L353)
 
 ### Post-Deployment Verification
-- Tests frontend pages, API endpoints, Firebase integration, backend health, and performance.
+- Tests frontend pages, API endpoints, Local persistence integration, backend health, and performance.
 - Accepts backend cold start warnings and focuses on critical frontend failures.
 
 ```mermaid
 flowchart TD
 S["Start"] --> P1["Basic Pages"]
 P1 --> P2["API Endpoints"]
-P2 --> P3["Firebase Integration"]
+P2 --> P3["Local persistence Integration"]
 P3 --> P4["Backend Health"]
 P4 --> P5["Critical Flows"]
 P5 --> P6["Security Headers"]
@@ -403,7 +403,7 @@ CI --> BE
 - [.github/workflows/security-audit.yml:22-285](file://.github/workflows/security-audit.yml#L22-L285)
 
 ## Conclusion
-ChordMiniApp’s operational model leverages robust CI/CD, security automation, and verification scripts to maintain reliability. By following the procedures outlined here—monitoring, performance tuning, configuration hygiene, security patching, and incident response—you can sustain a resilient deployment across environments.
+ChordMiniAppâ€™s operational model leverages robust CI/CD, security automation, and verification scripts to maintain reliability. By following the procedures outlined hereâ€”monitoring, performance tuning, configuration hygiene, security patching, and incident responseâ€”you can sustain a resilient deployment across environments.
 
 [No sources needed since this section summarizes without analyzing specific files]
 

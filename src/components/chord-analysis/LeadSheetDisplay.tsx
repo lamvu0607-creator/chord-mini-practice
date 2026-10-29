@@ -16,7 +16,6 @@ import LyricsControls from '@/components/lyrics/LyricsControls';
 import NoLyricsMessage from '@/components/lyrics/NoLyricsMessage';
 import LyricLine from '@/components/lyrics/LyricLine';
 import { getLyricTextColors } from '@/components/lyrics/lyricsTheme';
-import { SegmentationResult } from '@/types/chatbotTypes';
 import type { LyricWordTiming } from '@/types/musicAiTypes';
 interface ChordData {
   time: number;
@@ -48,7 +47,6 @@ interface LeadSheetProps {
   onFontSizeChange: (size: number) => void;
   darkMode?: boolean;
   chords?: ChordData[]; // Optional chord data from analysis results (beat-aligned events expected)
-  segmentationData?: SegmentationResult | null; // Optional segmentation data for section labels and instrumental placeholders
   downbeatsOnly?: boolean;
   downbeatTimes?: number[];
   accidentalPreference?: 'sharp' | 'flat'; // Enharmonic spelling preference for chord labels
@@ -64,7 +62,6 @@ const LeadSheetDisplay: React.FC<LeadSheetProps> = React.memo(({
   onFontSizeChange,
   darkMode = false,
   chords = [],
-  segmentationData = null,
   downbeatsOnly = false,
   downbeatTimes = [],
   accidentalPreference
@@ -84,7 +81,6 @@ const LeadSheetDisplay: React.FC<LeadSheetProps> = React.memo(({
   const processedAndMergedLyrics = useProcessedLyrics({
     lyrics,
     beatAlignedChords: memoizedChords,
-    segmentationData,
     downbeatsOnly,
     downbeatTimes
   });
@@ -198,7 +194,6 @@ const LeadSheetDisplay: React.FC<LeadSheetProps> = React.memo(({
             selectedLanguages={selectedLanguages}
             translatedLyrics={translatedLyrics}
             processedLines={processedAndMergedLyrics}
-            segmentationData={segmentationData}
             accidentalPreference={accidentalPreference}
           />
         ))}

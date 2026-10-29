@@ -6,7 +6,6 @@ import { mergeConsecutiveChordEvents } from '@/utils/instrumentNoteGeneration';
 import type { GuitarVoicingSelection } from '@/utils/guitarVoicing';
 import { findChordEventIndexForPlayback } from '@/utils/chordEventLookup';
 import type { ChordEvent } from '@/utils/chordToMidi';
-import type { SegmentationResult } from '@/types/chatbotTypes';
 
 const PLAYBACK_EVENT_BOUNDARY_TOLERANCE = 0.08;
 const PLAYBACK_EVENT_MISS_GRACE_PERIOD = 0.12;
@@ -61,7 +60,6 @@ export function useGuitarOnlyPlayback(
   bpm: number,
   timeSignature: number = 4,
   dynamicsAnalyzer: DynamicsAnalyzer,
-  segmentationData?: SegmentationResult | null,
   guitarVoicing?: Partial<GuitarVoicingSelection>,
   targetKey?: string | null,
 ) {
@@ -171,7 +169,6 @@ export function useGuitarOnlyPlayback(
         playbackTime: currentTime,
         totalDuration,
         beatCount: currentChordEvent.beatCount,
-        segmentationData,
         signalDynamics,
         nextChordName,
       },
@@ -188,7 +185,6 @@ export function useGuitarOnlyPlayback(
     dynamicsAnalyzer,
     guitarVoicing,
     merged,
-    segmentationData,
     shouldActivate,
     targetKey,
     timeSignature,

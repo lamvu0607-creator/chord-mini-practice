@@ -30,7 +30,7 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document provides comprehensive frontend API documentation for ChordMiniApp’s React services and client interfaces. It covers the service layer architecture, including ApiService for generic HTTP requests, SegmentationAsyncService for long-running operations, SegmentationAsyncService for batch processing, and specialized services such as ChatbotService and CustomMusicAiClient. It also documents TypeScript interfaces, request/response types, error handling patterns, hook-based consumption patterns, caching strategies, and state management integration. Practical examples illustrate how components interact with services, handle loading states, and manage errors. The API client configuration, authentication token handling, and rate limiting implementation are explained, along with the parallel pipeline service for concurrent operations and the segmentation access service for job tracking.
+This document provides comprehensive frontend API documentation for ChordMiniAppâ€™s React services and client interfaces. It covers the service layer architecture, including ApiService for generic HTTP requests, SegmentationAsyncService for long-running operations, SegmentationAsyncService for batch processing, and specialized services such as ChatbotService and CustomMusicAiClient. It also documents TypeScript interfaces, request/response types, error handling patterns, hook-based consumption patterns, caching strategies, and state management integration. Practical examples illustrate how components interact with services, handle loading states, and manage errors. The API client configuration, authentication token handling, and rate limiting implementation are explained, along with the parallel pipeline service for concurrent operations and the segmentation access service for job tracking.
 
 ## Project Structure
 The frontend API layer is organized around cohesive service modules under src/services/api, supporting utilities in src/utils, configuration in src/config, and state management via zustand stores. Components consume these services through React hooks and store selectors.
@@ -94,7 +94,7 @@ S1 --> A
 - [api.ts:1-158](file://src/config/api.ts#L1-L158)
 
 ## Core Components
-- ApiService: Centralized HTTP client with built-in rate limiting, timeouts, retries, and App Check token injection. Provides convenience methods for GET/POST/FormData requests and domain-specific operations (beats, chords, lyrics).
+- ApiService: Centralized HTTP client with built-in rate limiting, timeouts, retries, and IP rate limiting token injection. Provides convenience methods for GET/POST/FormData requests and domain-specific operations (beats, chords, lyrics).
 - SegmentationAsyncService: Manages long-running jobs exceeding platform timeouts, including job creation, polling, and progress callbacks.
 - SegmentationAsyncService: Orchestrates SongFormer segmentation jobs with dynamic polling strategies, browser worker execution, and access code validation.
 - ChatbotService: Handles chatbot messaging, song context formatting, lyrics retrieval, and segmentation requests.
@@ -163,7 +163,7 @@ ApiService provides a robust HTTP client with:
 - Client-side rate limiting keyed by method+endpoint.
 - Timeout management with AbortController and detailed logging.
 - Automatic JSON parsing with fallback to text parsing.
-- App Check token injection via Firebase.
+- IP rate limiting token injection via Local persistence.
 - Built-in methods for health checks, model info, beats, chords, and lyrics retrieval.
 - Specialized methods for heavy operations with increased timeouts and disabled retries.
 
@@ -264,12 +264,12 @@ Error handling:
 
 ### ParallelPipelineService
 ParallelPipelineService optimizes audio processing throughput:
-- startParallelPipeline(options): downloads complete audio file, caches it, and starts background Firebase upload.
-- uploadToFirebaseInBackground()/uploadBlobToFirebaseInBackground(): non-blocking uploads with result caching.
+- startParallelPipeline(options): downloads complete audio file, caches it, and starts background Local persistence upload.
+- uploadToLocal persistenceInBackground()/uploadBlobToLocal persistenceInBackground(): non-blocking uploads with result caching.
 - getCachedAudioFile(videoId)/getCachedAudioMeta(videoId): cache access with TTL.
-- waitForFirebaseUpload(videoId, timeoutMs?): waits for background upload completion.
+- waitForLocal persistenceUpload(videoId, timeoutMs?): waits for background upload completion.
 - cleanupBackgroundResults(maxAgeMs?): periodic cache cleanup.
-- canUseDirectUrlWithBackend(url): validates HTTP/HTTPS URLs excluding Firebase Storage.
+- canUseDirectUrlWithBackend(url): validates HTTP/HTTPS URLs excluding local audio storage.
 - getBackendEndpointForDirectUrl(type): maps processing type to backend endpoint.
 
 **Section sources**
@@ -336,13 +336,13 @@ These types ensure strong typing across services and components, enabling safer 
 ### Caching Strategies and State Management Integration
 - Client-side caching:
   - SegmentationAsyncService: browser worker runs against worker endpoint; job status polled and cached via Axios responses.
-  - ParallelPipelineService: audioFileCache stores Blob with TTL; backgroundUploadResults tracks Firebase upload outcomes.
+  - ParallelPipelineService: audioFileCache stores Blob with TTL; backgroundUploadResults tracks Local persistence upload outcomes.
 - Store integration:
   - analysisStore.ts: manages analysis state, lyrics, key detection, chord corrections, and SheetSage results. Components subscribe via selectors for efficient re-renders.
 
 Practical usage:
 - Components update analysisStore actions during API flows (start/complete/fail).
-- ParallelPipelineService exposes getCachedAudioFile and getFirebaseUrlIfReady for immediate processing and later retrieval.
+- ParallelPipelineService exposes getCachedAudioFile and getLocal persistenceUrlIfReady for immediate processing and later retrieval.
 
 **Section sources**
 - [segmentationAsyncService.ts:120-196](file://src/services/api/segmentationAsyncService.ts#L120-L196)
@@ -412,7 +412,7 @@ Common scenarios and resolutions:
   - ApiService converts AbortError into user-friendly timeout messages.
   - Check backend availability via useStatusMonitoring.
 - Authentication and tokens:
-  - ApiService injects App Check token automatically when available.
+  - ApiService injects IP rate limiting token automatically when available.
   - CustomMusicAiClient tries multiple auth headers and endpoints.
 - Access control:
   - SegmentationAccessService provides timing-safe validation and user-facing messages.
@@ -424,7 +424,7 @@ Common scenarios and resolutions:
 - [segmentationAccessService.ts:26-63](file://src/services/api/segmentationAccessService.ts#L26-L63)
 
 ## Conclusion
-ChordMiniApp’s frontend API layer combines robust HTTP utilities, intelligent rate limiting, and specialized services for long-running jobs and AI integrations. The architecture emphasizes reliability, performance, and developer ergonomics through typed contracts, hook-based consumption, and state management. Services like ApiService, SegmentationAsyncService, SegmentationAsyncService, ChatbotService, and CustomMusicAiClient provide a cohesive foundation for building responsive and resilient audio analysis experiences.
+ChordMiniAppâ€™s frontend API layer combines robust HTTP utilities, intelligent rate limiting, and specialized services for long-running jobs and AI integrations. The architecture emphasizes reliability, performance, and developer ergonomics through typed contracts, hook-based consumption, and state management. Services like ApiService, SegmentationAsyncService, SegmentationAsyncService, ChatbotService, and CustomMusicAiClient provide a cohesive foundation for building responsive and resilient audio analysis experiences.
 
 [No sources needed since this section summarizes without analyzing specific files]
 

@@ -1,4 +1,4 @@
-# Blueprint Services
+﻿# Blueprint Services
 
 <cite>
 **Referenced Files in This Document**
@@ -64,7 +64,7 @@ J --> M["Lyrics Orchestrator"]
 ## Core Components
 - Application factory: Creates and configures the Flask app, initializes extensions, registers blueprints, and sets up a service container.
 - Blueprints: Modular route groups for each domain, each with its own routes and validators.
-- Validators: Centralized validation logic for each domain’s endpoints.
+- Validators: Centralized validation logic for each domainâ€™s endpoints.
 - Services: Domain services injected into the app and used by routes (beat detection, chord recognition, lyrics orchestration).
 - Error handlers: Centralized JSON error responses and custom exception classes.
 
@@ -142,12 +142,12 @@ CheckPath --> |"/health"| Health["Return {status: healthy}"]
 - Purpose: Beat detection, model availability tests, and model info.
 - Routes:
   - POST /api/detect-beats: Detect beats from uploaded file or path; supports detector selection and force override.
-  - POST /api/detect-beats-firebase: Detect beats from Firebase Storage URL.
+  - POST /api/detect-beats-local-persistence: Detect beats from local audio storage URL.
   - GET /api/model-info: Available detectors and defaults.
   - GET /api/test-beat-transformer, /api/test-madmom, /api/test-librosa, /api/test-all-models, /api/test-dbn-isolation: Model availability and diagnostics.
 - Validators:
   - validate_beat_detection_request(): Validates file or path, detector, force.
-  - validate_firebase_beat_detection_request(): Validates Firebase URL and detector.
+  - validate_local-persistence_beat_detection_request(): Validates Local persistence URL and detector.
   - validate_file_size(): Enforces per-detector size limits unless force is true.
 - Service integration: Uses BeatDetectionService from app.extensions.
 
@@ -193,12 +193,12 @@ R-->>C : JSON result
 - Purpose: Chord recognition across multiple models and model info/testing.
 - Routes:
   - POST /api/recognize-chords: Recognize chords from file, path, or JSON audioUrl; supports detector selection, chord dictionaries, force, and Spleeter.
-  - POST /api/recognize-chords-firebase: Recognize chords from Firebase URL.
+  - POST /api/recognize-chords-local-persistence: Recognize chords from Local persistence URL.
   - GET /api/chord-model-info: Flask chord-model discovery with available chord models and defaults.
   - GET /api/test-chord-cnn-lstm, /api/test-btc-sl, /api/test-btc-pl, /api/test-all-chord-models: Model availability and diagnostics.
 - Validators:
   - validate_chord_recognition_request(): Validates inputs, detector, force, use_spleeter, chord_dict.
-  - validate_firebase_chord_recognition_request(): Validates Firebase URL and detector.
+  - validate_local-persistence_chord_recognition_request(): Validates Local persistence URL and detector.
   - validate_file_size(): Enforces per-detector size limits unless force is true.
   - normalize_audio_url_to_path(): Converts relative URLs to absolute paths.
 - Service integration: Uses ChordRecognitionService from app.extensions.

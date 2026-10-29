@@ -1,4 +1,4 @@
-# Backend Services
+﻿# Backend Services
 
 <cite>
 **Referenced Files in This Document**
@@ -258,7 +258,7 @@ class LyricsOrchestrator {
 
 #### Beat Detection Endpoints
 - POST /api/detect-beats: Detect beats from uploaded file or existing server path; supports detector selection and force flag.
-- POST /api/detect-beats-firebase: Detect beats from Firebase Storage URL.
+- POST /api/detect-beats-local-persistence: Detect beats from local audio storage URL.
 - GET /api/model-info: Information about available beat detection models and defaults.
 - GET /api/test-beat-transformer, /api/test-madmom, /api/test-librosa: Availability and version checks.
 - GET /api/test-all-models: Comprehensive model availability report.
@@ -289,7 +289,7 @@ Routes-->>Client : JSON response
 
 #### Chord Recognition Endpoints
 - POST /api/recognize-chords: Recognize chords from uploaded file, server path, or JSON audioUrl; supports detector selection, chord dictionary, force flag, and Spleeter.
-- POST /api/recognize-chords-firebase: Recognize chords from Firebase Storage URL.
+- POST /api/recognize-chords-local-persistence: Recognize chords from local audio storage URL.
 - GET /api/chord-model-info: Flask chord-model discovery with available chord recognition models and dictionaries.
 - GET /api/test-chord-cnn-lstm, /api/test-btc-sl, /api/test-btc-pl: Model availability and info.
 - GET /api/test-all-chord-models: Comprehensive chord model availability report.
@@ -411,7 +411,7 @@ F --> |Yes| H["Invoke Handler"]
 ### Audio Processing Pipeline, Formats, and Storage
 - Audio Processing: Uses librosa, soundfile, audioread, resampy, soxr, and pydub for ingestion, resampling, and manipulation.
 - Formats: Supports MP3 and other formats handled by underlying libraries; temporary files are used for processing.
-- Storage: Local filesystem for audio assets; Firebase Storage URLs supported for ingestion via streaming download.
+- Storage: Local filesystem for audio assets; local audio storage URLs supported for ingestion via streaming download.
 - Metadata: Duration and file size are computed and returned; beat-per-measure statistics are logged for diagnostics.
 
 **Section sources**
@@ -495,14 +495,14 @@ The ChordMiniApp Python backend employs a clean, modular architecture centered o
 ### API Definitions Overview
 - Beat Detection
   - POST /api/detect-beats: multipart/form-data or audio_path; detector selection; force flag.
-  - POST /api/detect-beats-firebase: firebase_url; detector selection.
+  - POST /api/detect-beats-local-persistence: local-persistence_url; detector selection.
   - GET /api/model-info: model availability and defaults.
   - GET /api/test-beat-transformer, /api/test-madmom, /api/test-librosa: availability/version checks.
   - GET /api/test-all-models, /api/test-dbn-isolation: comprehensive diagnostics.
 
 - Chord Recognition
   - POST /api/recognize-chords: file or audio_path; detector, chord_dict, force, use_spleeter.
-  - POST /api/recognize-chords-firebase: firebase_url; detector, chord_dict.
+  - POST /api/recognize-chords-local-persistence: local-persistence_url; detector, chord_dict.
   - GET /api/chord-model-info: Flask chord-model info and dictionaries.
   - GET /api/test-chord-cnn-lstm, /api/test-btc-sl, /api/test-btc-pl, /api/test-all-chord-models: availability and info.
 

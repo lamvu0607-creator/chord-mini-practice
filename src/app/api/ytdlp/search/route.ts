@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { spawn } from 'child_process';
+import { spawnYtDlp } from '@/server/ytdlp/runner';
 
 // Allow yt-dlp in production when explicitly configured via NEXT_PUBLIC_AUDIO_STRATEGY
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -146,7 +146,7 @@ async function searchWithYtDlp(query: string, limit: number): Promise<{
       // Format: ytsearch{limit}:{query} to get specific number of results
       const searchQuery = `ytsearch${limit}:${query}`;
       
-      const ytdlp = spawn('yt-dlp', [
+      const ytdlp = spawnYtDlp([
         '--dump-json',
         '--no-download',
         '--flat-playlist',

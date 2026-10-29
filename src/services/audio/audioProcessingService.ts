@@ -5,7 +5,7 @@ import {
   saveTranscription,
   TranscriptionData,
   updateTranscriptionEnrichment,
-} from '@/services/firebase/firestoreService';
+} from '@/services/persistence/transcriptionService';
 import { normalizeThumbnailUrl } from '@/utils/youtubeMetadata';
 
 // Define error types for better type safety
@@ -25,7 +25,8 @@ export interface AudioProcessingState {
   error?: string | null;
   suggestion?: string | null;
   fromCache: boolean;
-  fromFirestoreCache: boolean;
+  fromFirestoreCache?: boolean;
+  fromPersistentCache: boolean;
   isStreamUrl?: boolean;
   streamExpiresAt?: number;
   queueStatus?: 'queued' | 'active' | 'released' | 'cancelled' | 'expired' | null;
@@ -77,7 +78,19 @@ export class AudioProcessingService {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || `HTTP error ${response.status}: Failed to extract audio`);
+        if (response.status === 403 || data?.error?.code === 'ANONYMOUS_QUOTA_EXCEEDED') {
+          try {
+            const { useAuthStore } = await import('@/stores/authStore');
+            useAuthStore.getState().setMandatoryLogin(true);
+            useAuthStore.getState().openLoginModal(true);
+          } catch (e) {
+            console.error('Failed to trigger mandatory login modal:', e);
+          }
+          const quotaMsg = data?.error?.message || 'Bạn đã sử dụng hết 1 lượt thử miễn phí. Vui lòng đăng nhập để tiếp tục.';
+          throw new Error(quotaMsg);
+        }
+        const errorMsg = typeof data?.error === 'string' ? data.error : data?.error?.message || `HTTP error ${response.status}: Failed to extract audio`;
+        throw new Error(errorMsg);
       }
 
       if (!data.success) {
@@ -407,7 +420,8 @@ export class AudioProcessingService {
       isAnalyzing: false,
       isAnalyzed: false,
       fromCache: false,
-      fromFirestoreCache: false
+      fromFirestoreCache: false,
+      fromPersistentCache: false,
     };
   }
 
@@ -495,13 +509,14 @@ export class AudioProcessingService {
 
   updateStateForAnalysisSuccess(
     state: AudioProcessingState,
-    fromFirestoreCache: boolean
+    fromPersistentCache: boolean
   ): AudioProcessingState {
     return {
       ...state,
       isAnalyzing: false,
       isAnalyzed: true,
-      fromFirestoreCache,
+      fromPersistentCache,
+      fromFirestoreCache: fromPersistentCache,
       error: undefined,
       suggestion: undefined
     };

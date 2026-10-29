@@ -1,4 +1,3 @@
-import type { SegmentationResult } from '@/types/chatbotTypes';
 import type { ChordSignalDynamics } from '@/services/audio/audioDynamicsTypes';
 import type { InstrumentName } from '@/utils/instrumentNoteGeneration';
 
@@ -18,7 +17,6 @@ export interface PlaybackTimingContext {
   totalDuration?: number;
   playbackTime?: number;
   beatCount?: number;
-  segmentationData?: SegmentationResult | null;
   signalDynamics?: ChordSignalDynamics | null;
   /** When true, piano uses one block chord instead of accompaniment patterns. */
   simplePianoBlockChord?: boolean;

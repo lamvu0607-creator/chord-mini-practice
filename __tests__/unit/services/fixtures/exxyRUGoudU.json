@@ -1,9 +1,9 @@
 {
   "videoId": "exxyRUGoudU",
-  "title": "온 맘 다해 + 주께 붙들립니다 + 전심으로 Worship Medley ambient ver. (TLMW 03 2023)",
-  "channelTitle": "Team Luke Worship [팀룩워십]",
+  "title": "ì˜¨ ë§˜ ë‹¤í•´ + ì£¼ê»˜ ë¶™ë“¤ë¦½ë‹ˆë‹¤ + ì „ì‹¬ìœ¼ë¡œ Worship Medley ambient ver. (TLMW 03 2023)",
+  "channelTitle": "Team Luke Worship [íŒ€ë£©ì›Œì‹­]",
   "thumbnail": "https://i.ytimg.com/vi/exxyRUGoudU/hqdefault.jpg",
-  "audioUrl": "https://firebasestorage.googleapis.com/v0/b/chordmini-d29f9.firebasestorage.app/o/audio%2Faudio_%5BexxyRUGoudU%5D_1782305831042.mp3?alt=media&token=be68cfd1-2648-44ce-9615-d4599c91e7e0",
+  "audioUrl": "/api/serve-local-audio?filename=audio_%5BexxyRUGoudU%5D.mp3",
   "beatModel": "madmom",
   "chordModel": "chord-cnn-lstm",
   "beats": [

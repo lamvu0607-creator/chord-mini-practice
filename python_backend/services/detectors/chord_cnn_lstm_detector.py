@@ -39,6 +39,11 @@ class ChordCNNLSTMDetectorService:
         if self._available is not None:
             return self._available
 
+        if os.environ.get('USE_CHORD_CNN_LSTM', 'true').strip().lower() in ('0', 'false', 'no', 'off'):
+            log_info("Chord-CNN-LSTM disabled via USE_CHORD_CNN_LSTM")
+            self._available = False
+            return False
+
         try:
             if not self.model_dir or not self.model_dir.exists():
                 log_error("Chord-CNN-LSTM model directory not found")

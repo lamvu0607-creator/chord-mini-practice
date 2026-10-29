@@ -35,11 +35,9 @@ import {
   useLyricsPanelOpen,
   usePitchShift,
   useRomanNumerals,
-  useShowSegmentation,
   useSimplifyChords,
   useToggleLoop,
   useToggleRomanNumerals,
-  useToggleSegmentation,
   useToggleSimplifyChords,
   useUIStore,
 } from '@/stores/uiStore';
@@ -135,27 +133,24 @@ function UIStoreHarness() {
   const isChatbotOpen = useChatbotOpen();
   const isLyricsPanelOpen = useLyricsPanelOpen();
   const { showRomanNumerals } = useRomanNumerals();
-  const showSegmentation = useShowSegmentation();
   const simplifyChords = useSimplifyChords();
   const isLoopEnabled = useIsLoopEnabled();
   const { pitchShiftSemitones, targetKey, isPitchShiftReady } = usePitchShift();
   const guitarCapoFret = useGuitarCapoFret();
   const guitarSelectedPositions = useGuitarSelectedPositions();
   const toggleRomanNumerals = useToggleRomanNumerals();
-  const toggleSegmentation = useToggleSegmentation();
   const toggleSimplifyChords = useToggleSimplifyChords();
   const toggleLoop = useToggleLoop();
 
   return (
     <div>
       <div data-testid="ui-state">
-        {activeTab}|chatbot:{String(isChatbotOpen)}|lyrics:{String(isLyricsPanelOpen)}|roman:{String(showRomanNumerals)}|seg:{String(showSegmentation)}|simple:{String(simplifyChords)}|loop:{String(isLoopEnabled)}|pitch:{pitchShiftSemitones}|target:{targetKey}|ready:{String(isPitchShiftReady)}|capo:{guitarCapoFret}|positions:{Object.keys(guitarSelectedPositions).join(',') || 'none'}
+        {activeTab}|chatbot:{String(isChatbotOpen)}|lyrics:{String(isLyricsPanelOpen)}|roman:{String(showRomanNumerals)}|simple:{String(simplifyChords)}|loop:{String(isLoopEnabled)}|pitch:{pitchShiftSemitones}|target:{targetKey}|ready:{String(isPitchShiftReady)}|capo:{guitarCapoFret}|positions:{Object.keys(guitarSelectedPositions).join(',') || 'none'}
       </div>
       <button type="button" onClick={() => useUIStore.getState().setActiveTab('lyricsChords')}>Set tab</button>
       <button type="button" onClick={() => useUIStore.getState().toggleLyricsPanel()}>Toggle lyrics grid</button>
       <button type="button" onClick={() => useUIStore.getState().toggleChatbot()}>Toggle chatbot</button>
       <button type="button" onClick={() => toggleRomanNumerals()}>Toggle roman numerals</button>
-      <button type="button" onClick={() => toggleSegmentation()}>Toggle segmentation</button>
       <button type="button" onClick={() => toggleSimplifyChords()}>Toggle simplify</button>
       <button type="button" onClick={() => toggleLoop()}>Toggle loop</button>
       <button
@@ -250,11 +245,10 @@ describe('Zustand store behavior', () => {
     expect(screen.getByTestId('ui-state')).toHaveTextContent('chatbot:true|lyrics:false');
 
     fireEvent.click(screen.getByRole('button', { name: /toggle roman numerals/i }));
-    fireEvent.click(screen.getByRole('button', { name: /toggle segmentation/i }));
     fireEvent.click(screen.getByRole('button', { name: /toggle simplify/i }));
     fireEvent.click(screen.getByRole('button', { name: /toggle loop/i }));
 
-    expect(screen.getByTestId('ui-state')).toHaveTextContent('roman:true|seg:true|simple:true|loop:true');
+    expect(screen.getByTestId('ui-state')).toHaveTextContent('roman:true|simple:true|loop:true');
 
     fireEvent.click(screen.getByRole('button', { name: /prepare pitch shift/i }));
     expect(screen.getByTestId('ui-state')).toHaveTextContent('pitch:3|target:Eb|ready:true');
@@ -271,7 +265,6 @@ describe('Zustand store behavior', () => {
       const store = useUIStore.getState();
       store.setShowRomanNumerals(true);
       store.updateRomanNumeralData({ analysis: ['I'], keyContext: 'C' });
-      store.setShowSegmentation(true);
       store.setSimplifyChords(true);
       store.setIsMelodicTranscriptionPlaybackEnabled(true);
       store.setIsLoopEnabled(true);
@@ -291,7 +284,6 @@ describe('Zustand store behavior', () => {
     const state = useUIStore.getState();
     expect(state.showRomanNumerals).toBe(false);
     expect(state.romanNumeralData).toBeNull();
-    expect(state.showSegmentation).toBe(false);
     expect(state.simplifyChords).toBe(false);
     expect(state.isMelodicTranscriptionPlaybackEnabled).toBe(false);
     expect(state.isLoopEnabled).toBe(false);
@@ -303,5 +295,32 @@ describe('Zustand store behavior', () => {
     expect(state.isProcessingPitchShift).toBe(false);
     expect(state.pitchShiftError).toBeNull();
     expect(state.targetKey).toBe(state.originalKey);
+  });
+  it('never lets stem mode and pitch shift replace the YouTube audio at the same time', () => {
+    act(() => {
+      useUIStore.getState().setIsStemModeEnabled(true);
+    });
+    expect(useUIStore.getState()).toMatchObject({ isStemModeEnabled: true, isPitchShiftEnabled: false });
+
+    act(() => {
+      useUIStore.getState().togglePitchShift();
+    });
+    expect(useUIStore.getState()).toMatchObject({ isStemModeEnabled: false, isPitchShiftEnabled: true });
+
+    act(() => {
+      useUIStore.getState().setIsStemModeEnabled(true);
+    });
+    expect(useUIStore.getState()).toMatchObject({ isStemModeEnabled: true, isPitchShiftEnabled: false });
+
+    act(() => {
+      useUIStore.getState().setIsPitchShiftEnabled(true);
+    });
+    expect(useUIStore.getState()).toMatchObject({ isStemModeEnabled: false, isPitchShiftEnabled: true });
+
+    act(() => {
+      useUIStore.getState().setIsStemModeEnabled(true);
+      useUIStore.getState().resetAnalysisUtilityBarState();
+    });
+    expect(useUIStore.getState().isStemModeEnabled).toBe(false);
   });
 });

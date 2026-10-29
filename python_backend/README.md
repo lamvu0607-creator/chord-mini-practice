@@ -58,8 +58,6 @@ The API implements production-grade rate limiting to ensure fair usage and syste
 - `POST /api/recognize-chords` - Chord recognition using Chord-CNN-LSTM
 - `POST /api/recognize-chords-btc-sl` - BTC Supervised Learning chord recognition
 - `POST /api/recognize-chords-btc-pl` - BTC Pseudo-Label chord recognition
-- `POST /api/detect-beats-firebase` - Beat detection from Firebase Storage URLs
-- `POST /api/recognize-chords-firebase` - Chord recognition from Firebase Storage URLs
 
 ### Moderate Processing Endpoints (10 requests per minute)
 - `POST /api/genius-lyrics` - Genius.com lyrics fetching

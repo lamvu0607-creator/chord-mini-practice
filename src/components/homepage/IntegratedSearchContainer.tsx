@@ -146,7 +146,7 @@ const IntegratedSearchContainer: React.FC<IntegratedSearchContainerProps> = ({
             <Tooltip
               content={
                 <div className="px-1 py-2">
-                  <div className="text-sm">Upload audio files (MP3, WAV, FLAC) up to 20MB</div>
+                  <div className="text-sm">Upload audio files (MP3, WAV, FLAC) up to 100MB, or cut a section to analyze</div>
                 </div>
               }
             >

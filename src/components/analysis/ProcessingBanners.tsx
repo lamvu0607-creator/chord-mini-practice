@@ -35,7 +35,7 @@ interface ProcessingBannersProps {
   analysisResults: AnalysisResult | null;
   audioDuration: number;
   audioUrl?: string;
-  fromFirestoreCache?: boolean;
+  fromPersistentCache?: boolean;
   videoId?: string; // Optional for cache-aware duration detection
   beatDetector?: 'madmom' | 'beat-transformer' | 'auto'; // Beat detection model
 
@@ -57,7 +57,7 @@ const ProcessingBanners: React.FC<ProcessingBannersProps> = ({
   onRefreshExtraction,
   audioDuration: _audioDuration,
   audioUrl,
-  fromFirestoreCache,
+  fromPersistentCache,
   videoId,
   beatDetector,
   error,
@@ -86,7 +86,7 @@ const ProcessingBanners: React.FC<ProcessingBannersProps> = ({
       {/* Processing Status Banner - triggers HeroUI toasts based on processing stage */}
       <ProcessingStatusBanner
         fromCache={fromCache}
-        fromFirestoreCache={fromFirestoreCache}
+        fromPersistentCache={fromPersistentCache}
         audioUrl={audioUrl}
         videoId={videoId}
         beatDetector={beatDetector}

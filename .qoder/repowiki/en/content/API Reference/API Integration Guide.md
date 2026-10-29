@@ -1,4 +1,4 @@
-# API Integration Guide
+﻿# API Integration Guide
 
 <cite>
 **Referenced Files in This Document**
@@ -109,7 +109,7 @@ BE_App --> BE_Chord
 - [python_backend/blueprints/chords/routes.py:43-144](file://python_backend/blueprints/chords/routes.py#L43-L144)
 
 ## Architecture Overview
-The frontend integrates with the backend through Next.js API routes that proxy to the Python backend. The frontend sets appropriate headers, attaches App Check tokens when available, and applies client-side rate limiting and retries. The backend enforces server-side rate limits, validates requests, and returns structured JSON responses.
+The frontend integrates with the backend through Next.js API routes that proxy to the Python backend. The frontend sets appropriate headers, attaches IP rate limiting tokens when available, and applies client-side rate limiting and retries. The backend enforces server-side rate limits, validates requests, and returns structured JSON responses.
 
 ```mermaid
 sequenceDiagram
@@ -152,7 +152,7 @@ Key behaviors:
 - Timeout management with AbortController and detailed logging.
 - Retry logic with exponential backoff and jitter for transient failures.
 - Structured response handling with typed ApiResponse.
-- App Check token injection for request attestation.
+- IP rate limiting token injection for request attestation.
 
 Important defaults and overrides:
 - Default timeout is 2 minutes; ML endpoints override to 13+ minutes.
@@ -222,9 +222,9 @@ Security considerations:
 **Section sources**
 - [python_backend/blueprints/chords/routes.py:43-144](file://python_backend/blueprints/chords/routes.py#L43-L144)
 
-### Authentication Headers and App Check
-- Frontend injects X-Firebase-AppCheck header when available.
-- Backend routes can leverage App Check for request attestation.
+### Authentication Headers and IP rate limiting
+- Frontend injects X-Local persistence-RateLimit header when available.
+- Backend routes can leverage IP rate limiting for request attestation.
 
 **Section sources**
 - [src/services/api/apiService.ts:106-121](file://src/services/api/apiService.ts#L106-L121)
@@ -337,7 +337,7 @@ The ChordMiniApp API integrates the frontend and backend through a robust config
 
 ### Frontend Configuration and Headers
 - Base URLs are resolved at runtime from environment variables.
-- App Check token is attached automatically when available.
+- IP rate limiting token is attached automatically when available.
 - CORS mode and credentials are configured for external backend requests.
 - Reference: [src/config/serverBackend.ts:23-51](file://src/config/serverBackend.ts#L23-L51), [src/services/api/apiService.ts:106-121](file://src/services/api/apiService.ts#L106-L121), [src/config/api.ts:84-88](file://src/config/api.ts#L84-L88)
 

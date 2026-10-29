@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSafeTimeoutSignal } from '@/utils/environmentUtils';
 import { getAudioDurationFromFile } from '@/utils/audioDurationUtils';
 import { getPythonApiUrl } from '@/config/serverBackend';
-import { verifyAppCheckRequest } from '@/utils/serverAppCheck';
 
 /**
  * Beat Detection API Route
@@ -17,10 +16,6 @@ export const maxDuration = 300; // 5 minutes for ML processing
 export async function POST(request: NextRequest) {
   try {
     // Verify App Check token
-    const appCheck = await verifyAppCheckRequest(request);
-    if (!appCheck.ok) {
-      return NextResponse.json({ success: false, error: appCheck.error }, { status: appCheck.status || 403 });
-    }
 
     // Get the backend URL
     const backendUrl = getPythonApiUrl();
@@ -57,11 +52,13 @@ export async function POST(request: NextRequest) {
     console.log(`🔄 Using direct processing for file: ${file.name}`);
 
     // Log audio duration for debugging before sending to backend ML service
-    try {
-      const duration = await getAudioDurationFromFile(file);
-      console.log(`🎵 Audio duration detected: ${duration.toFixed(1)} seconds - proceeding with beat detection analysis`);
-    } catch (durationError) {
-      console.warn(`⚠️ Could not detect audio duration for debugging: ${durationError}`);
+    if (typeof Audio !== 'undefined') {
+      try {
+        const duration = await getAudioDurationFromFile(file);
+        console.log(`🎵 Audio duration detected: ${duration.toFixed(1)} seconds - proceeding with beat detection analysis`);
+      } catch (durationError) {
+        console.warn(`⚠️ Could not detect audio duration for debugging: ${durationError}`);
+      }
     }
 
     // Create a safe timeout signal that works across environments

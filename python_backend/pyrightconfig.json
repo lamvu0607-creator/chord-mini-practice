@@ -1,0 +1,11 @@
+{
+  "include": [
+    "."
+  ],
+  "venvPath": "C:\\Users\\ADMIN\\miniconda3\\envs",
+  "venv": "chord-app",
+  "extraPaths": [
+    ".",
+    "C:\\Users\\ADMIN\\miniconda3\\envs\\chord-app\\Lib\\site-packages"
+  ]
+}

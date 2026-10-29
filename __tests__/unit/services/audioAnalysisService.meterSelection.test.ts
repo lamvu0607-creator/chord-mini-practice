@@ -2,11 +2,6 @@ import { analyzeAudioWithRateLimit } from '@/services/audio/audioAnalysisService
 import { detectBeatsWithRateLimit } from '@/services/audio/beatDetectionService';
 import { recognizeChordsWithRateLimit } from '@/services/chord-analysis/chordService';
 import { getAudioDurationFromFile } from '@/utils/audioDurationUtils';
-import { isLocalBackend } from '@/utils/backendConfig';
-
-jest.mock('@/utils/backendConfig', () => ({
-  isLocalBackend: jest.fn(),
-}));
 
 jest.mock('@/utils/audioDurationUtils', () => ({
   getAudioDurationFromFile: jest.fn(),
@@ -14,16 +9,6 @@ jest.mock('@/utils/audioDurationUtils', () => ({
 
 jest.mock('@/utils/analysisDurationLimit', () => ({
   getAnalysisDurationLimitReason: jest.fn(() => null),
-}));
-
-jest.mock('@/services/storage/offloadUploadService', () => ({
-  offloadUploadService: {
-    uploadToOffload: jest.fn(),
-    recognizeChordsFromOffloadUrl: jest.fn(),
-    detectBeatsFromOffloadUrl: jest.fn(),
-    deleteOffload: jest.fn(),
-    getFileSizeString: jest.fn(() => '1.00MB'),
-  },
 }));
 
 jest.mock('@/services/audio/beatDetectionService', () => ({
@@ -59,7 +44,6 @@ describe('audioAnalysisService meter candidate selection', () => {
     jest.spyOn(console, 'warn').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    (isLocalBackend as jest.Mock).mockReturnValue(true);
     (getAudioDurationFromFile as jest.Mock).mockResolvedValue(12);
   });
 

@@ -29,7 +29,7 @@ export interface AnalyzePageChromeProps {
     analysisResults: AnalysisResult | null;
     audioDuration: number;
     audioUrl?: string;
-    fromFirestoreCache: boolean;
+    fromPersistentCache: boolean;
     videoId: string;
     beatDetector: BeatDetectorType;
     error: string | null;
@@ -103,7 +103,6 @@ export interface AnalyzeResultsPaneProps {
   fontSize: number;
   onFontSizeChange: Dispatch<SetStateAction<number>>;
   theme: string;
-  segmentationData: unknown;
   sequenceCorrections: unknown;
   chordGridData: unknown;
   isChatbotOpen: boolean;
@@ -147,7 +146,6 @@ export interface AnalyzeFloatingDockSectionProps {
     currentBeatIndex: number;
     chords: unknown[];
     beats: unknown[];
-    segmentationData: unknown;
     toggleVideoMinimization: () => void;
     toggleFollowMode: () => void;
     toggleMetronomeWithSync: () => Promise<boolean>;
@@ -201,7 +199,6 @@ export interface AnalyzePageViewModel {
   keySignature: string | null;
   currentBeatIndex: number;
   chordGridData: unknown;
-  segmentationData: unknown;
   audioUrl: string | null;
   bpm: number;
   timeSignature: number;
@@ -249,15 +246,6 @@ export interface AnalyzePageViewModel {
       onSearch: () => void;
       onApplyCandidate: (candidate: LRCLibCandidate) => void;
     };
-    segmentation: {
-      isVisible: boolean;
-      hasData: boolean;
-      isLoading: boolean;
-      disabled?: boolean;
-      disabledReason?: string;
-      errorMessage?: string | null;
-      onToggle: () => void;
-    };
     metronome: {
       isEnabled: boolean;
       toggleMetronomeWithSync: () => Promise<boolean>;
@@ -285,7 +273,6 @@ export interface UseAnalyzePageStoreSyncParams {
   isTranscribingLyrics: boolean;
   lyricsError: string | null;
   videoTitle: string;
-  showSegmentation: boolean;
   isChatbotOpen: boolean;
   isLyricsPanelOpen: boolean;
   isPlaying: boolean;
@@ -300,7 +287,6 @@ export interface UseAnalyzePageStoreSyncParams {
 
 export interface UseAnalyzePageLifecycleResetParams {
   videoId: string;
-  resetSegmentation: () => void;
   setIsMelodicTranscriptionPlaybackEnabled: (enabled: boolean) => void;
   setIsFollowModeEnabled: Dispatch<SetStateAction<boolean>>;
   setIsCountdownEnabled: Dispatch<SetStateAction<boolean>>;

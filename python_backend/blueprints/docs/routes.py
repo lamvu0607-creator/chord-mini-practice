@@ -250,8 +250,8 @@ def api_docs_json():
                         "/api/recognize-chords",
                         "/api/recognize-chords-btc-sl",
                         "/api/recognize-chords-btc-pl",
-                        "/api/detect-beats-firebase",
-                        "/api/recognize-chords-firebase"
+                        "/api/detect-beats",
+                        "/api/recognize-chords"
                     ],
                     "description": "CPU-intensive ML model inference endpoints"
                 },

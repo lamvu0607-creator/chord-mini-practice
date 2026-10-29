@@ -1,4 +1,4 @@
-# API Integration
+﻿# API Integration
 
 <cite>
 **Referenced Files in This Document**
@@ -47,13 +47,13 @@ API_Route["/api/transcribe-sheetsage<br/>route.ts"]
 end
 subgraph "Backend"
 SS_Backend["Sheet Sage Backend<br/>/transcribe, /health"]
-Firestore["Firestore Cache<br/>melody/{videoId}"]
+SQLite["SQLite Cache<br/>melody/{videoId}"]
 end
 FE_Client --> API_Route
 FE_Cache --> API_Route
 FE_Hook --> API_Route
 API_Route --> SS_Backend
-API_Route --> Firestore
+API_Route --> SQLite
 FE_Store --> FE_Client
 FE_Store --> FE_Hook
 ```
@@ -73,10 +73,10 @@ FE_Store --> FE_Hook
 - [analysisStore.ts:45-98](file://src/stores/analysisStore.ts#L45-L98)
 
 ## Core Components
-- SheetsageTranscriptionClient: resolves audio source, builds multipart/form-data, and posts to the Next.js API route. It supports direct uploads and offloaded uploads via Firebase.
+- SheetsageTranscriptionClient: resolves audio source, builds multipart/form-data, and posts to the Next.js API route. It supports direct uploads and offloaded uploads via Local persistence.
 - SheetSageCacheClient: retrieves cached melody transcription for a given videoId.
 - useSheetSageBackendAvailability: polls the Next.js API health endpoint to determine backend availability and errors.
-- Next.js API route: validates App Check, extracts audio from form data, forwards to Sheet Sage backend, caches normalized results, and handles timeouts and errors.
+- Next.js API route: validates IP rate limiting, extracts audio from form data, forwards to Sheet Sage backend, caches normalized results, and handles timeouts and errors.
 - Types: SheetSageNoteEvent and SheetSageResult define the response schema.
 
 **Section sources**
@@ -95,7 +95,7 @@ participant FE as "Frontend"
 participant Client as "SheetSageTranscriptionClient"
 participant API as "Next.js /api/transcribe-sheetsage"
 participant Backend as "Sheet Sage Backend"
-participant Cache as "Firestore Cache"
+participant Cache as "SQLite Cache"
 FE->>Client : requestSheetSageTranscription(audioFile/audioUrl, videoId)
 Client->>Client : resolveSheetSageAudioFile()
 alt Offload upload path
@@ -181,22 +181,22 @@ Behavior:
 
 ### Next.js API Route: POST /api/transcribe-sheetsage
 Responsibilities:
-- Validate App Check token.
+- Validate IP rate limiting token.
 - Extract audio from FormData or offload URL.
 - Forward to Sheet Sage backend with a safe timeout.
-- Normalize and cache results in Firestore.
+- Normalize and cache results in SQLite.
 - Return standardized JSON responses.
 
 Key logic:
-- App Check verification.
+- IP rate limiting verification.
 - Audio resolution: supports direct file or offload URL with validation and optional deletion.
 - Timeout: uses a configurable proxy timeout for backend requests.
-- Caching: normalizes noteEvents and metadata, then persists to Firestore under melody/{videoId}.
+- Caching: normalizes noteEvents and metadata, then persists to SQLite under melody/{videoId}.
 - Error mapping: translates fetch failures and timeouts into user-friendly messages.
 
 ```mermaid
 flowchart TD
-ReqStart(["POST /api/transcribe-sheetsage"]) --> Verify["Verify App Check"]
+ReqStart(["POST /api/transcribe-sheetsage"]) --> Verify["Verify IP rate limiting"]
 Verify --> FormData["Parse FormData"]
 FormData --> HasOffload{"Has offload_url?"}
 HasOffload --> |Yes| ValidateOffload["Validate offload URL"]
@@ -209,7 +209,7 @@ Forward --> Ok{"response.ok?"}
 Ok --> |No| Err["Return {success:false, error}"]
 Ok --> |Yes| Normalize["Normalize result for cache"]
 Normalize --> MaybeCache{"videoId valid and data present?"}
-MaybeCache --> |Yes| Persist["Persist to Firestore melody/{videoId}"]
+MaybeCache --> |Yes| Persist["Persist to SQLite melody/{videoId}"]
 MaybeCache --> |No| Skip["Skip cache"]
 Persist --> Done["Return {success:true, data}"]
 Skip --> Done
@@ -226,7 +226,7 @@ Skip --> Done
 - Content-Type: multipart/form-data
 - Fields:
   - file: audio file (direct upload)
-  - offload_url: signed Firebase Storage URL (offload path)
+  - offload_url: signed local audio storage URL (offload path)
   - delete_offload: "0"/"false"/"no" to skip deletion after processing
   - videoId: optional YouTube video identifier for caching
 - Response:
@@ -259,7 +259,7 @@ Note: The API route normalizes noteEvents and metadata before caching.
 
 ### Cache Management
 - Retrieval: GET /api/melody-cache?videoId={id} returns cached SheetSageResult or null.
-- Persistence: On successful transcription with a valid videoId, the API route normalizes and persists the result to Firestore under melody/{videoId}.
+- Persistence: On successful transcription with a valid videoId, the API route normalizes and persists the result to SQLite under melody/{videoId}.
 - Normalization: Filters and sorts noteEvents, clamps pitch and velocity to MIDI range, ensures positive offsets, and sets derived fields.
 
 **Section sources**
@@ -269,7 +269,7 @@ Note: The API route normalizes noteEvents and metadata before caching.
 
 ### Offload Upload Pipeline
 - Decision: OffloadUploadService.shouldUseOffloadUpload determines when to offload based on environment and configuration.
-- Upload: Uploads File to Firebase Storage and returns a download URL.
+- Upload: Uploads File to local audio storage and returns a download URL.
 - Processing: Posts the offload URL to the Next.js route; deletes the offload file after processing if requested.
 - Progress: Provides callbacks for upload and total processing time.
 
@@ -278,18 +278,18 @@ sequenceDiagram
 participant FE as "Frontend"
 participant Client as "SheetSageTranscriptionClient"
 participant Offload as "OffloadUploadService"
-participant Firebase as "Firebase Storage"
+participant Local persistence as "local audio storage"
 participant API as "Next.js /api/transcribe-sheetsage"
 participant Backend as "Sheet Sage Backend"
 FE->>Client : requestSheetSageTranscription(audioFile, videoId)
 Client->>Offload : shouldUseOffloadUpload(size)
 alt Use offload
-Offload->>Firebase : uploadBytesResumable
-Firebase-->>Offload : downloadURL
+Offload->>Local persistence : uploadBytesResumable
+Local persistence-->>Offload : downloadURL
 Offload->>API : POST /api/transcribe-sheetsage<br/>offload_url, delete_offload, videoId
 API->>Backend : POST /transcribe
 Backend-->>API : {success, data}
-API->>Firebase : DELETE offload URL (optional)
+API->>Local persistence : DELETE offload URL (optional)
 API-->>Client : {success, data}
 else Direct upload
 Client->>API : POST /api/transcribe-sheetsage<br/>FormData(file, videoId)
@@ -322,12 +322,12 @@ end
 - [useSheetSageBackendAvailability.ts:4-58](file://src/hooks/sheetsage/useSheetSageBackendAvailability.ts#L4-L58)
 
 ## Dependency Analysis
-- Frontend clients depend on Next.js API route for orchestration and on Firebase for offload storage when applicable.
+- Frontend clients depend on Next.js API route for orchestration and on Local persistence for offload storage when applicable.
 - Next.js route depends on:
-  - App Check verification
+  - IP rate limiting verification
   - Offload validation and cleanup
   - Sheet Sage backend URL resolution
-  - Firestore for caching
+  - SQLite for caching
 - Backend Sheet Sage service is invoked via a proxied POST with a timeout.
 
 ```mermaid
@@ -336,7 +336,7 @@ Client["SheetSageTranscriptionClient"] --> Route["/api/transcribe-sheetsage"]
 CacheClient["SheetSageCacheClient"] --> Route
 Hook["useSheetSageBackendAvailability"] --> Route
 Route --> Backend["Sheet Sage Backend"]
-Route --> Firestore["Firestore Cache"]
+Route --> SQLite["SQLite Cache"]
 Route --> Offload["Offload Validation/Cleanup"]
 Route --> Config["serverBackend config"]
 ```
@@ -358,13 +358,13 @@ Route --> Config["serverBackend config"]
 
 ## Performance Considerations
 - Large audio files:
-  - Offload upload is automatically used in production environments when Firebase is configured.
+  - Offload upload is automatically used in production environments when Local persistence is configured.
   - The offload pipeline reduces serverless request size limits and improves reliability.
 - Timeouts:
   - Proxy timeout is configurable via SHEETSAGE_BACKEND_TIMEOUT_MS with a default of 10 minutes.
   - Health checks use a shorter timeout for readiness checks.
 - Caching:
-  - Normalized results are persisted to Firestore for reuse; retrieval uses a dedicated endpoint.
+  - Normalized results are persisted to SQLite for reuse; retrieval uses a dedicated endpoint.
 - Network resilience:
   - Offload deletion is best-effort; failures are logged but do not block the main flow.
 - UI responsiveness:

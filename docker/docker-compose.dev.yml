@@ -11,56 +11,53 @@ services:
       dockerfile: Dockerfile
       target: runner
     container_name: chordmini-frontend
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
+    volumes:
+      - frontend-audio:/app/storage/audio
+      - frontend-db:/app/storage/db
     environment:
       - PORT=3000
       - HOSTNAME=0.0.0.0
       - NODE_ENV=${NODE_ENV:-production}
       - NEXT_TELEMETRY_DISABLED=${NEXT_TELEMETRY_DISABLED:-1}
-      - NEXT_PUBLIC_FIREBASE_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY:-}
-      - NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:-}
-      - NEXT_PUBLIC_FIREBASE_PROJECT_ID=${NEXT_PUBLIC_FIREBASE_PROJECT_ID:-}
-      - NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET:-}
-      - NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID:-}
-      - NEXT_PUBLIC_FIREBASE_APP_ID=${NEXT_PUBLIC_FIREBASE_APP_ID:-}
-      - NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=${NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID:-}
       - NEXT_PUBLIC_YOUTUBE_API_KEY=${NEXT_PUBLIC_YOUTUBE_API_KEY:-}
       - NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
       - NEXT_PUBLIC_AUDIO_STRATEGY=${NEXT_PUBLIC_AUDIO_STRATEGY:-auto}
+      - NEXT_PUBLIC_AUDIO_STORAGE_PROVIDER=${NEXT_PUBLIC_AUDIO_STORAGE_PROVIDER:-local}
+      - LOCAL_AUDIO_STORAGE_DIR=${LOCAL_AUDIO_STORAGE_DIR:-/app/storage/audio}
+      - LOCAL_AUDIO_MAX_UPLOAD_MB=${LOCAL_AUDIO_MAX_UPLOAD_MB:-100}
+      - LOCAL_AUDIO_QUOTA_GB=${LOCAL_AUDIO_QUOTA_GB:-20}
+      - SQLITE_DATABASE_PATH=${SQLITE_DATABASE_PATH:-/app/storage/db/chordmini.sqlite}
+      - INTERNAL_FRONTEND_URL=http://frontend:3000
       - NEXT_PUBLIC_ENABLE_SERVICE_WORKER=${NEXT_PUBLIC_ENABLE_SERVICE_WORKER:-false}
       - NEXT_PUBLIC_ENABLE_TRUE_STREAMING=${NEXT_PUBLIC_ENABLE_TRUE_STREAMING:-false}
-      - NEXT_PUBLIC_SEGMENTATION_ACCESS_REQUEST_EMAIL=${NEXT_PUBLIC_SEGMENTATION_ACCESS_REQUEST_EMAIL:-phantrongnghia510@gmail.com}
-      - NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY=${NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY:-}
       - NEXT_DISABLE_DEV_OVERLAY=${NEXT_DISABLE_DEV_OVERLAY:-true}
-      - AUDIO_PROXY_FIREBASE_REDIRECT_ENABLED=${AUDIO_PROXY_FIREBASE_REDIRECT_ENABLED:-false}
       - PYTHON_API_URL=${PYTHON_API_URL:-http://backend:8080}
       # Backend URL used by the app's API health check.
       - NEXT_PUBLIC_PYTHON_API_URL=${NEXT_PUBLIC_PYTHON_API_URL:-http://backend:8080}
-      - SONGFORMER_API_URL=${SONGFORMER_API_URL:-http://backend:8080}
-      - SHEETSAGE_API_URL=${SHEETSAGE_API_URL:-http://backend:8080}
-      - SONGFORMER_BACKEND_TIMEOUT_MS=${SONGFORMER_BACKEND_TIMEOUT_MS:-600000}
-      - SONGFORMER_CALLBACK_BASE_URL=${SONGFORMER_CALLBACK_BASE_URL:-http://localhost:3000}
+      - SHEETSAGE_API_URL=${SHEETSAGE_API_URL:-http://sheetsage:8082}
       - SHEETSAGE_BACKEND_TIMEOUT_MS=${SHEETSAGE_BACKEND_TIMEOUT_MS:-600000}
+      - STEMS_API_URL=${STEMS_API_URL:-http://stems:8083}
+      - STEMS_BACKEND_TIMEOUT_MS=${STEMS_BACKEND_TIMEOUT_MS:-1800000}
+      - STEMS_QUOTA_GB=${STEMS_QUOTA_GB:-10}
       - MUSIC_AI_API_KEY=${MUSIC_AI_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GENIUS_API_KEY=${GENIUS_API_KEY:-}
-      - SEGMENTATION_ACCESS_CODE=${SEGMENTATION_ACCESS_CODE:-}
       - CRON_SECRET=${CRON_SECRET:-replace_with_random_secret}
-      - SEGMENTATION_STALE_JOB_CLEANUP_LIMIT=${SEGMENTATION_STALE_JOB_CLEANUP_LIMIT:-200}
-      - FIREBASE_SERVICE_ACCOUNT_KEY=${FIREBASE_SERVICE_ACCOUNT_KEY:-}
-      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}
-      - APPCHECK_ENFORCE=${APPCHECK_ENFORCE:-0}
       - USE_MOCK_MUSIC_AI=${USE_MOCK_MUSIC_AI:-false}
-      - USE_FIREBASE_EMULATOR=${USE_FIREBASE_EMULATOR:-false}
     depends_on:
       backend:
+        condition: service_healthy
+      sheetsage:
+        condition: service_healthy
+      stems:
         condition: service_healthy
     networks:
       - chordmini-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/persistence/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -73,8 +70,8 @@ services:
       dockerfile: Dockerfile
       target: runtime
     container_name: chordmini-backend
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=False
@@ -86,22 +83,20 @@ services:
       - DEFAULT_CHORD_MODEL=chord-cnn-lstm
       - MAX_CONTENT_LENGTH=104857600
       - UPLOAD_TIMEOUT=600
-      # Rate limiting configuration
-      - REDIS_URL=redis://redis:6379/0
+      - STORAGE_AUDIO_DIR=/app/storage/audio
       # Model configuration
       - USE_BEAT_TRANSFORMER=true
       - USE_CHORD_CNN_LSTM=true
       - USE_BTC_SL=true
       - USE_BTC_PL=true
     volumes:
+      # Mount shared audio directory for zero-copy local reading
+      - frontend-audio:/app/storage/audio
       # Optional: Mount models directory for development
       # - ../python_backend/models:/app/models:ro
       # Mount cache directory for model caching
       - backend-cache:/tmp/model_cache
       - backend-logs:/app/logs
-    depends_on:
-      redis:
-        condition: service_healthy
     networks:
       - chordmini-network
     restart: unless-stopped
@@ -112,24 +107,80 @@ services:
       retries: 3
       start_period: 90s
 
-  # Redis for rate limiting and caching
-  redis:
-    image: redis:7-alpine
-    container_name: chordmini-redis
-    ports:
-      - "6379:6379"
+  # SheetSage Backend - Melody & Pitch Transcription Service
+  sheetsage:
+    build:
+      context: ../sheetsage
+      dockerfile: Dockerfile
+    container_name: chordmini-sheetsage
+    expose:
+      - "8082"
+    environment:
+      - PORT=8082
+      - STORAGE_AUDIO_DIR=/app/storage/audio
+      - SHEETSAGE_INTERNAL_AUDIO_HOSTS=frontend,localhost,127.0.0.1
+      - SHEETSAGE_CACHE_DIR=/app/cache
+      - SHEETSAGE_PRELOAD=false
+      - PYTHONUNBUFFERED=1
     volumes:
-      - redis-data:/data
+      - frontend-audio:/app/storage/audio:ro
+      - sheetsage-cache:/app/cache
     networks:
       - chordmini-network
     restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
+      test: ["CMD", "curl", "-f", "http://localhost:8082/"]
+      interval: 30s
+      timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 60s
+
+  # Stems - SCNet music source separation (vocals / drums / bass / other)
+  stems:
+    build:
+      context: ../stems
+      dockerfile: Dockerfile
+    container_name: chordmini-stems
+    gpus: all
+    expose:
+      - "8083"
+    environment:
+      - PORT=8083
+      - STORAGE_AUDIO_DIR=/app/storage/audio
+      - STEMS_CKPT_DIR=/app/ckpts
+      - STEMS_MODEL=${STEMS_MODEL:-scnet_xl_ihf}
+      - STEMS_DEVICE=${STEMS_DEVICE:-cuda}
+      - STEMS_OVERLAP=${STEMS_OVERLAP:-2}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Reads source audio and writes stems/<sourceId>/*.flac into the shared audio volume
+      - frontend-audio:/app/storage/audio
+      - ../stems/ckpts:/app/ckpts:ro
+    networks:
+      - chordmini-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  nginx:
+    image: nginx:alpine
+    container_name: chordmini-nginx
+    ports:
+      - "3000:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      frontend:
+        condition: service_healthy
+    networks:
+      - chordmini-network
+    restart: unless-stopped
 
 networks:
   chordmini-network:
@@ -138,10 +189,15 @@ networks:
 volumes:
   backend-cache:
     name: chordmini-backend-cache
+  frontend-audio:
+    name: chordmini-frontend-audio
+    driver: local
+  frontend-db:
+    name: chordmini-frontend-db
     driver: local
   backend-logs:
     name: chordmini-backend-logs
     driver: local
-  redis-data:
-    name: chordmini-redis-data
+  sheetsage-cache:
+    name: chordmini-sheetsage-cache
     driver: local

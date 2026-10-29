@@ -5,10 +5,10 @@
  * GrainPlayer uses granular synthesis to enable INDEPENDENT pitch and playback speed control.
  *
  * Features:
- * - Independent pitch shifting (±12 semitones) via `detune` property
+ * - Independent pitch shifting (Â±12 semitones) via `detune` property
  * - Independent speed control (0.25x - 2.0x) via `playbackRate` property
  * - No manual compensation needed - both parameters work independently
- * - Audio buffer loading from Firebase Storage URLs
+ * - Audio buffer loading from local audio cache URLs
  * - Playback controls (play, pause, seek)
  * - Memory management and proper cleanup
  * - Lazy loading of Tone.js library (~150KB) for better initial bundle size
@@ -44,11 +44,11 @@ function getToneSync(): typeof import('tone') | null {
  * Read the shared AudioContext's `currentTime` (the "heard now" clock).
  *
  * `Tone.now()` returns `audioContext.currentTime + lookAhead` (default 0.1 s)
- * — a FUTURE moment at which scheduled events will fire. For anything that
+ * â€” a FUTURE moment at which scheduled events will fire. For anything that
  * needs to represent "what the user is hearing right now", we must use the
  * raw `currentTime`, not `Tone.now()`. Mixing the two clocks causes the
- * counter to lead the actual audio output by `lookAhead × playbackRate`,
- * which is the root cause of the non-1×-rate drift between the
+ * counter to lead the actual audio output by `lookAhead Ã— playbackRate`,
+ * which is the root cause of the non-1Ã—-rate drift between the
  * pitch-shifted audio and (beat grid + YouTube iframe).
  */
 function _getAudioContextCurrentTime(): number | null {
@@ -67,7 +67,7 @@ function _getAudioContextCurrentTime(): number | null {
 }
 
 /**
- * DIAGNOSTIC TAG — kept as a constant for any future structured logging.
+ * DIAGNOSTIC TAG â€” kept as a constant for any future structured logging.
  * All prior `console.debug` calls have been removed to reduce console noise;
  * re-add selectively when investigating specific bugs.
  */
@@ -77,7 +77,7 @@ const _DIAG_TAG = '[pitch-diag/service]';
  * Read the AudioContext's current run-state (`running` / `suspended` /
  * `closed`). Exposed so the surrounding hooks can cross-reference service
  * state against context state when explaining "animation frozen at current
- * beat" — a suspended context is the #1 candidate for "_isPlaying=true but
+ * beat" â€” a suspended context is the #1 candidate for "_isPlaying=true but
  * no audio heard and lastUpdateTime delta stays 0".
  */
 export function getAudioContextState(): AudioContextState | 'unknown' {
@@ -140,11 +140,11 @@ export class GrainPlayerPitchShiftService {
   // position so the slave re-anchor loop in `usePitchShiftAudio` can compute
   // drift vs. the master. We do this with a PASSIVE wall-clock accumulator
   // (anchor + rate), NOT a setInterval:
-  //   • `_playAnchorWallTime` — performance.now()/1000 captured at the last
+  //   â€¢ `_playAnchorWallTime` â€” performance.now()/1000 captured at the last
   //     play / seek / rate-change
-  //   • `_playAnchorPosition` — media-time the grain started playing at
+  //   â€¢ `_playAnchorPosition` â€” media-time the grain started playing at
   //     that anchor
-  //   • live position = anchor + (wallNow − anchorWall) × _playbackRate
+  //   â€¢ live position = anchor + (wallNow âˆ’ anchorWall) Ã— _playbackRate
   //
   // This eliminates the original freeze bug (no `_currentTime >= _duration`
   // auto-pause branch, no `setInterval`) AND fixes the constant-re-seek
@@ -169,9 +169,9 @@ export class GrainPlayerPitchShiftService {
   }
 
   /**
-   * Compute the live playback position from the anchor + wall-clock × rate.
+   * Compute the live playback position from the anchor + wall-clock Ã— rate.
    * When not playing (or anchor not set), return the frozen `_currentTime`.
-   * Clamped to `[0, _duration]` when duration is known, else `[0, ∞)`.
+   * Clamped to `[0, _duration]` when duration is known, else `[0, âˆž)`.
    */
   private _computeLivePosition(): number {
     if (!this._isPlaying || this._playAnchorWallTime === null) {
@@ -190,7 +190,7 @@ export class GrainPlayerPitchShiftService {
   private pendingSeekTime: number | null = null;
 
   /**
-   * Diagnostic log helper — body removed to reduce console noise.
+   * Diagnostic log helper â€” body removed to reduce console noise.
    * Re-add logging selectively when investigating specific bugs.
    */
   private _diag(_tag: string, _extra?: Record<string, unknown>): void {
@@ -223,21 +223,21 @@ export class GrainPlayerPitchShiftService {
       }
       this.isInitialized = true;
     } catch (error) {
-      console.error('❌ Failed to initialize GrainPlayer service:', error);
+      console.error('âŒ Failed to initialize GrainPlayer service:', error);
       throw error;
     }
   }
 
   /**
-   * Load audio from Firebase Storage URL and apply pitch shift.
+   * Load audio from local audio cache URL and apply pitch shift.
    *
-   * @param audioUrl        Firebase Storage URL for the audio file
+   * @param audioUrl        local audio cache URL for the audio file
    * @param semitones       Pitch shift amount in semitones (-12 to +12)
    * @param initialPlaybackRate  Playback speed to construct the GrainPlayer
    *                             with. MUST be passed on re-initialization to
    *                             prevent the player starting at the class default
    *                             (1.0) and then transitioning via setPlaybackRate
-   *                             — the Tone.js grain scheduler may ingest buffer
+   *                             â€” the Tone.js grain scheduler may ingest buffer
    *                             metadata at the default rate before switching.
    */
   async loadAudio(audioUrl: string, semitones: number = 0, initialPlaybackRate?: number): Promise<void> {
@@ -257,7 +257,7 @@ export class GrainPlayerPitchShiftService {
       const finalUrl = isBlobUrl
         ? audioUrl
         : buildAudioProxyUrl(audioUrl, {
-            // Tone.js loads this from the browser, so a Firebase redirect would
+            // Tone.js loads this from the browser, so a Persistence redirect would
             // send the request back to storage and reintroduce the CORS issue the
             // proxy route is meant to avoid.
             forceProxy: true,
@@ -283,7 +283,7 @@ export class GrainPlayerPitchShiftService {
       // Create a limiter to prevent clipping
       this.limiter = new Tone.Limiter(-1);
 
-      // SIGNAL CHAIN: GrainPlayer → LowPass → Gain → Limiter → Destination
+      // SIGNAL CHAIN: GrainPlayer â†’ LowPass â†’ Gain â†’ Limiter â†’ Destination
       this.lowPassFilter.connect(this.gainNode);
       this.gainNode.connect(this.limiter);
       this.limiter.toDestination();
@@ -315,9 +315,9 @@ export class GrainPlayerPitchShiftService {
       const overlap = 0.1;    // 100ms crossfade (50% overlap - industry standard)
 
       // If an initial playback rate was provided (e.g. during
-      // OFF→ON re-init while the slider is at 2.0×), prefer it over the
+      // OFFâ†’ON re-init while the slider is at 2.0Ã—), prefer it over the
       // class default so the GrainPlayer never constructs at rate 1.0
-      // and then flips to the desired rate via setPlaybackRate — the
+      // and then flips to the desired rate via setPlaybackRate â€” the
       // grain scheduler may have already pre-computed at rate 1.0.
       if (initialPlaybackRate !== undefined) {
         this._playbackRate = initialPlaybackRate;
@@ -326,7 +326,7 @@ export class GrainPlayerPitchShiftService {
       this.grainPlayer = new Tone.GrainPlayer({
         url: finalUrl,
         grainSize: grainSize,  // 200ms grains
-        overlap: overlap,      // 100ms crossfade duration ✅
+        overlap: overlap,      // 100ms crossfade duration âœ…
         detune: semitones * 100, // Convert semitones to cents
         playbackRate: this._playbackRate,
         loop: false,
@@ -334,7 +334,7 @@ export class GrainPlayerPitchShiftService {
           this.handlePlayerLoad();
         },
         onerror: (error: Error) => {
-          console.error('❌ Tone.js GrainPlayer load error:', error);
+          console.error('âŒ Tone.js GrainPlayer load error:', error);
           throw new Error('Failed to load audio file');
         }
       });
@@ -348,7 +348,7 @@ export class GrainPlayerPitchShiftService {
       // BEFORE the `onload` callback (`handlePlayerLoad`) has run to populate
       // `_duration` from the buffer. If we resolve solely on `loaded=true`,
       // the caller can race in with `seek(initialTime)` while `_duration` is
-      // still 0 — `seek()` then clamps `_currentTime = min(initialTime, 0) = 0`,
+      // still 0 â€” `seek()` then clamps `_currentTime = min(initialTime, 0) = 0`,
       // the 50 ms tracking tick clamps every advance against the same 0, and
       // the auto-stop branch (`_currentTime >= _duration`) immediately calls
       // `pause()`, flipping `_isPlaying` back to false. From the rAF loop's
@@ -390,7 +390,7 @@ export class GrainPlayerPitchShiftService {
 
 
     } catch (error) {
-      console.error('❌ Failed to load audio:', error);
+      console.error('âŒ Failed to load audio:', error);
       throw error;
     }
   }
@@ -498,17 +498,17 @@ export class GrainPlayerPitchShiftService {
     try {
       if (!this._isPlaying) {
         // TONE.JS GRAINPLAYER RATE-SCALED OFFSET COMPENSATION
-        // ────────────────────────────────────────────────────
+        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // GrainPlayer._start() converts the `offset` argument to initial
         // clock ticks via `offset / (grainSize / playbackRate)`, which
-        // evaluates to `offset × playbackRate / grainSize`. The very first
-        // grain is then scheduled at buffer position `ticks × grainSize`
-        // = `offset × playbackRate`. At 1.0× the multiplier is identity so
-        // the bug is invisible; at 1.5× asking for buffer position 30 lands
-        // at 45, at 2.0× it lands at 60, etc.
+        // evaluates to `offset Ã— playbackRate / grainSize`. The very first
+        // grain is then scheduled at buffer position `ticks Ã— grainSize`
+        // = `offset Ã— playbackRate`. At 1.0Ã— the multiplier is identity so
+        // the bug is invisible; at 1.5Ã— asking for buffer position 30 lands
+        // at 45, at 2.0Ã— it lands at 60, etc.
         //
         // We compensate by pre-dividing the offset by the current playbackRate
-        // so the grain scheduler's internal `× playbackRate` yields the
+        // so the grain scheduler's internal `Ã— playbackRate` yields the
         // intended buffer position. See GrainPlayer.js _start + _tick in
         // node_modules/tone/build/esm/source/buffer/GrainPlayer.js.
         const compensatedOffset = this._playbackRate > 0
@@ -587,7 +587,7 @@ export class GrainPlayerPitchShiftService {
 
       // Update current time. DEFENSIVE: when `_duration` is still 0 (rare race
       // where seek arrives before the buffer's duration has been read), don't
-      // collapse `_currentTime` to 0 — that would freeze the rAF clock at the
+      // collapse `_currentTime` to 0 â€” that would freeze the rAF clock at the
       // first beat. Treat unknown duration as unbounded; the
       // pre-loadAudio-resolution guard plus auto-clamp on the next tick will
       // re-anchor once `_duration` is known.
@@ -608,7 +608,7 @@ export class GrainPlayerPitchShiftService {
         // usePitchShiftAudio will continuously verify this service against
         // the master clock after the restart.
         //
-        // RATE-SCALED OFFSET COMPENSATION — see play() for full explanation.
+        // RATE-SCALED OFFSET COMPENSATION â€” see play() for full explanation.
         // Tone.js GrainPlayer._start() multiplies the offset by playbackRate
         // when converting to clock ticks, so we divide here to cancel it.
         const compensatedOffset = this._playbackRate > 0
@@ -626,14 +626,14 @@ export class GrainPlayerPitchShiftService {
       }
       this._diag('seek.exit', { appliedTime: this._currentTime, resumedPlayback: wasPlaying });
     } catch (error) {
-      console.error('❌ Failed to seek:', error);
+      console.error('âŒ Failed to seek:', error);
       this._diag('seek.error', { message: (error as Error)?.message });
     }
   }
 
   /**
    * Synchronize the passive accumulator anchors to match the master clock
-   * WITHOUT seeking (no stop/restart → no audio gap).
+   * WITHOUT seeking (no stop/restart â†’ no audio gap).
    *
    * Called by the master clock's ReAnchorListener every time the master
    * re-anchors to a new position (YouTube progress, user seek, etc.). This
@@ -656,14 +656,14 @@ export class GrainPlayerPitchShiftService {
   /**
    * Set playback rate (speed) for the GrainPlayer.
    *
-   * GrainPlayer's `playbackRate` property is INDEPENDENT of pitch — the
+   * GrainPlayer's `playbackRate` property is INDEPENDENT of pitch â€” the
    * key advantage of the grain-based architecture. Tone.js schedules grains
    * ahead of time (200 ms grainSize, 100 ms overlap). When the rate changes
    * live (without a stop/restart), pre-scheduled grains play at the OLD
    * rate for up to 200 ms while new grains start at the NEW rate. This
-   * produces a brief cross-fade between old and new rates — perceptually
+   * produces a brief cross-fade between old and new rates â€” perceptually
    * smoother than a position jump caused by the AudioContext scheduling
-   * lag of a stop→start cycle.
+   * lag of a stopâ†’start cycle.
    *
    * IMPORTANT: We deliberately do NOT call stop()/start() here. A stop/start
    * cycle resets the grain scheduler and anchors at synchronous wall-clock,
@@ -680,7 +680,7 @@ export class GrainPlayerPitchShiftService {
 
     const previousRate = this._playbackRate;
     if (Math.abs(previousRate - rate) < 0.001) {
-      return; // idempotent — prevents needless stop/start cycles
+      return; // idempotent â€” prevents needless stop/start cycles
     }
 
     try {
@@ -705,7 +705,7 @@ export class GrainPlayerPitchShiftService {
    * Get current playback state
    *
    * CLOCK AUTHORITY (post-unification): `currentTime` is the LIVE extrapolated
-   * position (anchor + wall-clock × rate). Callers that want the frozen
+   * position (anchor + wall-clock Ã— rate). Callers that want the frozen
    * "last seek target" can read via `getState()` while `isPlaying=false`;
    * while playing, this returns a moving value so the slave re-anchor loop
    * in `usePitchShiftAudio` measures real drift vs. the master, not just the
@@ -724,8 +724,8 @@ export class GrainPlayerPitchShiftService {
    * Get the LIVE current time.
    *
    * CLOCK AUTHORITY (post-unification): returns the passive-accumulator
-   * position (anchor + wall-clock × rate) while playing, or the frozen
-   * `_currentTime` while paused. Preserved for backward compatibility —
+   * position (anchor + wall-clock Ã— rate) while playing, or the frozen
+   * `_currentTime` while paused. Preserved for backward compatibility â€”
    * new code should prefer `youtubeMasterClock.getLivePosition()`.
    */
   getCurrentTimeLive(): number {
@@ -754,7 +754,7 @@ export class GrainPlayerPitchShiftService {
       try {
         this.grainPlayer.dispose();
       } catch (error) {
-        console.warn('⚠️ Error disposing GrainPlayer:', error);
+        console.warn('âš ï¸ Error disposing GrainPlayer:', error);
       }
       this.grainPlayer = null;
     }
@@ -763,7 +763,7 @@ export class GrainPlayerPitchShiftService {
       try {
         this.gainNode.dispose();
       } catch (error) {
-        console.warn('⚠️ Error disposing gain node:', error);
+        console.warn('âš ï¸ Error disposing gain node:', error);
       }
       this.gainNode = null;
     }
@@ -772,7 +772,7 @@ export class GrainPlayerPitchShiftService {
       try {
         this.lowPassFilter.dispose();
       } catch (error) {
-        console.warn('⚠️ Error disposing low-pass filter:', error);
+        console.warn('âš ï¸ Error disposing low-pass filter:', error);
       }
       this.lowPassFilter = null;
     }
@@ -781,7 +781,7 @@ export class GrainPlayerPitchShiftService {
       try {
         this.limiter.dispose();
       } catch (error) {
-        console.warn('⚠️ Error disposing limiter:', error);
+        console.warn('âš ï¸ Error disposing limiter:', error);
       }
       this.limiter = null;
     }

@@ -333,7 +333,7 @@ HeroPianoVisualizerMock --> PianoKeyboard
 ## Troubleshooting Guide
 - Search container not appearing: Verify Suspense boundary is wrapping the lazy loader and that the underlying component is imported dynamically.
 - Hero demos not animating: Confirm mouse events trigger hover states and that requestAnimationFrame loops are active.
-- Recent videos not loading: Check Firebase initialization and query modes; ensure Intersection Observer conditions are met and that hasMore flags are correctly managed.
+- Recent videos not loading: Check Local persistence initialization and query modes; ensure Intersection Observer conditions are met and that hasMore flags are correctly managed.
 - Animation stuttering: Review CSS will-change usage and ensure GPU-accelerated properties are applied; avoid layout thrashing in animations.
 
 **Section sources**

@@ -10,7 +10,7 @@ import {
 } from '@/utils/guitarVoicing';
 
 import { TIMING_EPSILON } from '../constants';
-import { hashPatternSeed } from '../segmentContext';
+import { hashPatternSeed } from '../patternSeed';
 import { clamp01, easeInOutSineCurve, mix, resolveFullness, resolveMotion, resolveQuietness } from '../signalDynamics';
 import type { ScheduledNote } from '../types';
 

@@ -75,7 +75,7 @@ describe('safeServerAudioFetch', () => {
       headers: {
         get: jest.fn((name: string) =>
           name.toLowerCase() === 'location'
-            ? 'https://storage.googleapis.com/chordmini/audio.mp3'
+            ? 'https://archive.org/download/chordmini/audio.mp3'
             : null
         ),
       },

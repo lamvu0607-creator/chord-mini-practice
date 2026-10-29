@@ -45,7 +45,6 @@ const contentSecurityPolicy = [
 ].join('; ');
 
 const broadFilesystemTraceExcludes = [
-  './SongFormer/**/*',
   './python_backend/**/*',
   './sheetsage/**/*',
   './scripts/**/*',
@@ -127,10 +126,14 @@ const nextConfig = {
     },
   },
 
-  // Target modern browsers to reduce bundle size
+  // Target modern browsers to reduce bundle size and configure upload limits
   experimental: {
     optimizePackageImports: ['firebase', '@firebase/app', '@firebase/firestore', '@firebase/auth'],
     nextScriptWorkers: false,
+    proxyClientMaxBodySize: '150mb',
+    serverActions: {
+      bodySizeLimit: '150mb',
+    },
   },
 
   // Image optimization

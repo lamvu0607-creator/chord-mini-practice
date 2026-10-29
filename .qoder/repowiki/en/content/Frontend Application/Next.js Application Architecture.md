@@ -28,7 +28,7 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document describes the Next.js application architecture for the ChordMini project. It covers the app router configuration, dynamic routing strategy, page structure, root layout with metadata and performance optimizations, provider system including Firebase initialization, error boundaries, and performance monitoring, global styling with CSS variables and Tailwind CSS, build configuration, TypeScript setup, and environment-specific optimizations. Practical examples are included for routing, metadata management, and performance techniques such as critical CSS and DNS prefetching.
+This document describes the Next.js application architecture for the ChordMini project. It covers the app router configuration, dynamic routing strategy, page structure, root layout with metadata and performance optimizations, provider system including Local persistence initialization, error boundaries, and performance monitoring, global styling with CSS variables and Tailwind CSS, build configuration, TypeScript setup, and environment-specific optimizations. Practical examples are included for routing, metadata management, and performance techniques such as critical CSS and DNS prefetching.
 
 ## Project Structure
 The application follows Next.js App Router conventions with a strict separation of pages under src/app. Key areas:
@@ -107,7 +107,7 @@ RL["Root Layout<br/>layout.tsx"]
 PR["Providers<br/>providers.tsx"]
 EB["ClientErrorBoundary<br/>ClientErrorBoundary.tsx"]
 PM["PerformanceMonitor<br/>PerformanceMonitor.tsx"]
-FO["FirebaseInitializer<br/>FirebaseInitializer.tsx"]
+FO["Local persistenceInitializer<br/>Local persistenceInitializer.tsx"]
 SW["ServiceWorkerRegistration<br/>ServiceWorkerRegistration.tsx"]
 CC["CriticalCSS<br/>CriticalCSS.tsx"]
 end
@@ -139,7 +139,7 @@ The root layout defines:
 - Metadata: title template, description, keywords, author, publisher, icons, Open Graph, Twitter, verification, canonical.
 - Fonts: Google Fonts loaded with font-display swap and CSS variables for fallbacks.
 - Critical CSS: Inline critical above-the-fold styles to reduce render-blocking.
-- Performance: DNS prefetch links for external domains, CriticalCSS component, Critical and Desktop performance optimizers, Service Worker registration, Firebase initializer, and development-only performance monitor and dev indicator hider.
+- Performance: DNS prefetch links for external domains, CriticalCSS component, Critical and Desktop performance optimizers, Service Worker registration, Local persistence initializer, and development-only performance monitor and dev indicator hider.
 - Providers: HeroUI provider, toast provider, processing provider, theme provider.
 - Error boundary: ClientErrorBoundary wraps children to catch client-side errors.
 - Footer: Always rendered at the end of main content.
@@ -153,7 +153,7 @@ Head --> Body["Body with font classes"]
 Body --> Providers["Wrap with Providers<br/>HeroUI + Toast + Processing + Theme"]
 Providers --> Perf["Load Performance Optimizers<br/>Critical + Desktop"]
 Perf --> SW["ServiceWorkerRegistration"]
-SW --> FB["FirebaseInitializer"]
+SW --> FB["Local persistenceInitializer"]
 FB --> DevMon{"NODE_ENV == development?"}
 DevMon --> |Yes| Monitor["PerformanceMonitor"]
 DevMon --> |No| SkipMon["Skip"]
@@ -245,7 +245,7 @@ GCSS --> Components["Custom Components<br/>animations, scrollbars, toggles"]
   - Image optimization with remote patterns and quality tiers.
   - Security headers: CORS, CSP, COOP/COEP, CORP.
   - Redirects (e.g., GitHub link).
-  - Webpack splitChunks for framework, Next.js, Firebase, UI, Charts, Audio, State, Utils, and styles.
+  - Webpack splitChunks for framework, Next.js, Local persistence, UI, Charts, Audio, State, Utils, and styles.
   - Tree shaking and module concatenation.
   - Source maps and devtool configuration.
   - Page extensions and trailing slash.
@@ -331,7 +331,7 @@ graph TB
 subgraph "Webpack SplitChunks Groups"
 FW["framework-react"]
 FN["framework-next"]
-VF["vendor-firebase"]
+VF["vendor-local-persistence"]
 VUI["vendor-ui"]
 VC["vendor-charts"]
 VA["vendor-audio"]
@@ -355,7 +355,7 @@ RL --> SEO["SEO Artifacts<br/>robots.ts + sitemap.ts"]
 ## Performance Considerations
 - Critical CSS: Inlined critical above-the-fold styles in head to reduce render-blocking.
 - DNS prefetch: Pre-resolves external domains for YouTube, Google APIs, and Vercel.
-- Bundle splitting: Carefully tuned cache groups for frameworks, Firebase, UI, charts, audio, state, utilities, and styles.
+- Bundle splitting: Carefully tuned cache groups for frameworks, Local persistence, UI, charts, audio, state, utilities, and styles.
 - Tree shaking and module concatenation: Enabled for better dead code elimination and reduced overhead.
 - Source maps: Hidden source maps in production with fallback templates for webpack chunks.
 - Image optimization: Remote patterns and quality tiers configured.
@@ -372,7 +372,7 @@ RL --> SEO["SEO Artifacts<br/>robots.ts + sitemap.ts"]
 ## Troubleshooting Guide
 - Client-side errors: Wrapped by ClientErrorBoundary to prevent app crashes and surface user-friendly messages.
 - Development overlays: Hidden via DevIndicatorHider in development to avoid UI clutter.
-- Firebase readiness: Managed by FirebaseInitializer to ensure services initialize before use.
+- Local persistence readiness: Managed by Local persistenceInitializer to ensure services initialize before use.
 - Performance monitoring: PerformanceMonitor is conditionally rendered in development to track metrics.
 - CORS and CSP: Security headers configured globally to support YouTube embeds and ad networks while maintaining safety.
 

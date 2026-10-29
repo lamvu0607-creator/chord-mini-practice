@@ -18,7 +18,6 @@ import {
   ScrollingChordStrip,
   getUniformTimelineBeatWidth,
 } from '@/components/piano-visualizer/ScrollingChordStrip';
-import type { SegmentationResult } from '@/types/chatbotTypes';
 import type { ChordCellProps } from '@/components/chord-analysis/ChordCell';
 import type { BeatGridTimedLyrics } from '@/components/chord-analysis/GridLyricsRow';
 
@@ -38,7 +37,6 @@ interface GuitarTablatureProps {
   beatRomanNumerals?: Map<number, React.ReactElement | string>;
   beatModulations?: Map<number, ChordCellProps['modulationInfo']>;
   uncorrectedChords?: string[];
-  segmentationData?: SegmentationResult | null;
   gridLyrics?: BeatGridTimedLyrics | null;
   className?: string;
 }
@@ -468,7 +466,6 @@ export const GuitarTablature = React.memo<GuitarTablatureProps>(({
   beatRomanNumerals,
   beatModulations,
   uncorrectedChords,
-  segmentationData,
   gridLyrics = null,
   className = '',
 }) => {
@@ -552,7 +549,6 @@ export const GuitarTablature = React.memo<GuitarTablatureProps>(({
         startTime: event.startTime,
         totalDuration: playbackTotalDuration,
         timeSignature,
-        segmentationData,
         signalDynamics,
         guitarVoicing,
         targetKey,
@@ -605,7 +601,6 @@ export const GuitarTablature = React.memo<GuitarTablatureProps>(({
     dynamicsAnalyzer,
     guitarVoicing,
     pixelsPerSecond,
-    segmentationData,
     targetKey,
     timeSignature,
   ]);
@@ -705,7 +700,6 @@ export const GuitarTablature = React.memo<GuitarTablatureProps>(({
         beatRomanNumerals={beatRomanNumerals}
         beatModulations={beatModulations}
         uncorrectedChords={uncorrectedChords}
-        segmentationData={segmentationData}
         gridLyrics={gridLyrics}
       />
 

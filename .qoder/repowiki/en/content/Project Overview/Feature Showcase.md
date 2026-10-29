@@ -52,7 +52,7 @@ High-level structure relevant to features:
 graph TB
 FE["Next.js Frontend<br/>src/app, src/components"] --> BE["Python Backend<br/>python_backend/app.py"]
 FE --> SHEETSAGE["Sheet Sage Service<br/>sheetsage/"]
-FE --> FIREBASE["Firebase Storage/DB"]
+FE --> PERSISTENCE["local audio storage/DB"]
 BE --> MODELS["Beat/Chord Models<br/>Beat-Transformer, Chord-CNN-LSTM"]
 FE --> MIDI["MIDI Export Utils<br/>src/utils/midiExport.ts"]
 ```
@@ -96,7 +96,7 @@ participant API as "Python Backend"
 participant DET as "Detectors<br/>Beat/Chord"
 participant LYR as "Lyrics Service"
 participant SG as "Sheet Sage"
-participant FB as "Firebase"
+participant FB as "Local persistence"
 U->>FE : "Upload or select YouTube"
 FE->>API : "POST /api/extract-audio"
 API->>DET : "Run beat/chord/key detection"
@@ -304,7 +304,7 @@ FE --> SG["Sheet Sage Client<br/>sheetSageTranscriptionClient.ts"]
 FE --> MIDI["MIDI Export<br/>midiExport.ts"]
 API --> DET["Beat/Chord Detectors"]
 API --> LYR["Lyrics Services"]
-API --> FB["Firebase"]
+API --> FB["Local persistence"]
 ```
 
 **Diagram sources**
@@ -341,7 +341,7 @@ API --> FB["Firebase"]
 - Sheet Sage
   - Check backend availability and network access
   - Use offload upload for large files
-- Firebase
+- Local persistence
   - Verify storage rules and temp folder cleanup configuration
   - Ensure anonymous auth is enabled for local development
 

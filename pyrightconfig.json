@@ -1,0 +1,20 @@
+{
+  "include": [
+    "python_backend"
+  ],
+  "venvPath": "C:\\Users\\ADMIN\\miniconda3\\envs",
+  "venv": "chord-app",
+  "extraPaths": [
+    "python_backend",
+    "C:\\Users\\ADMIN\\miniconda3\\envs\\chord-app\\Lib\\site-packages"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "python_backend",
+      "extraPaths": [
+        "python_backend",
+        "C:\\Users\\ADMIN\\miniconda3\\envs\\chord-app\\Lib\\site-packages"
+      ]
+    }
+  ]
+}

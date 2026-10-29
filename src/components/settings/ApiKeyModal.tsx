@@ -5,8 +5,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { ApiKeyModalProps, API_KEY_HELP_URLS } from '@/types/apiKeyTypes';
 import { HiLightBulb, HiGift, HiInformationCircle } from 'react-icons/hi2';
 
-const SEGMENTATION_ACCESS_REQUEST_EMAIL = process.env.NEXT_PUBLIC_SEGMENTATION_ACCESS_REQUEST_EMAIL || 'phantrongnghia510@gmail.com';
-
 const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
   isOpen,
   onClose,
@@ -39,7 +37,7 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
     e.preventDefault();
     
     if (!apiKey.trim()) {
-      setError(service === 'songformerAccess' ? 'Please enter an access code' : 'Please enter an API key');
+      setError('Please enter an API key');
       return;
     }
 
@@ -50,10 +48,7 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
       await onKeySubmitted(apiKey.trim());
       // Modal will be closed by parent component on success
     } catch (error) {
-      const fallbackMessage = service === 'songformerAccess'
-        ? 'Failed to validate access code'
-        : 'Failed to validate API key';
-      setError(error instanceof Error ? error.message : fallbackMessage);
+      setError(error instanceof Error ? error.message : 'Failed to validate API key');
     } finally {
       setIsValidating(false);
     }
@@ -88,20 +83,6 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
           fieldLabel: 'API Key',
           submitLabel: 'Save API Key',
           helpLabel: 'How to get a Gemini API key →',
-        };
-      case 'songformerAccess':
-        return {
-          name: 'Song Segmentation',
-          description: 'First-time SongFormer segmentation requests are protected by an access code because backend runs are expensive. Completed cached results remain available without a code.',
-          features: 'new SongFormer segmentation requests',
-          helpUrl: `mailto:${SEGMENTATION_ACCESS_REQUEST_EMAIL}`,
-          placeholder: 'Enter your SongFormer access code...',
-          keyFormat: 'Access codes are case-sensitive',
-          freeInfo: `Request access through ${SEGMENTATION_ACCESS_REQUEST_EMAIL}`,
-          freeIcon: <HiInformationCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />,
-          fieldLabel: 'Access Code',
-          submitLabel: 'Save Access Code',
-          helpLabel: 'Request access code via email →',
         };
       default:
         return {

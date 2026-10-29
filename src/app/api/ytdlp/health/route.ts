@@ -5,7 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { spawn } from 'child_process';
+import { spawnYtDlp } from '@/server/ytdlp/runner';
 
 // Allow yt-dlp in production when explicitly configured via NEXT_PUBLIC_AUDIO_STRATEGY
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -55,7 +55,7 @@ interface HealthResult {
 
 async function checkYtDlpHealth(): Promise<HealthResult> {
   return new Promise((resolve) => {
-    const ytdlp = spawn('yt-dlp', ['--version']);
+    const ytdlp = spawnYtDlp(['--version']);
     let stdout = '';
     let stderr = '';
 

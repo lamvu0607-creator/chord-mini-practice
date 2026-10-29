@@ -87,13 +87,13 @@ export default function ChangelogPage() {
       title: 'Client-Side Extraction Migration, Status Refresh, UI Polish',
       description: 'Moves production YouTube audio extraction into the browser, refreshes public status monitoring, and ships focused UI polish.',
       features: [
-        'IMPROVED: Production YouTube audio extraction now runs in the browser with Pyodide, yt-dlp, ffmpeg.wasm, and fixed 192 kbps MP3 output before Firebase finalization.',
+        'IMPROVED: Production YouTube audio extraction now runs in the browser with Pyodide, yt-dlp, ffmpeg.wasm, and fixed 192 kbps MP3 output before Persistence finalization.',
         'IMPROVED: Status page now monitors Gemini API availability instead of deprecated server-side YouTube extraction probes.',
         'UI: Extraction errors now show as toasts to avoid analyze-page layout shifts.',
         'UI: Current beat cells now use a softer blue border highlight with blue active text.'
       ],
       technical: [
-        'NEW: Browser extraction uploads private Firebase audio candidates and promotes only validated MP3 files through the finalizer route.',
+        'NEW: Browser extraction uploads private Persistence audio candidates and promotes only validated MP3 files through the finalizer route.',
         'REFACTOR: yt-mp3-go remains available only as a rollback strategy via NEXT_PUBLIC_AUDIO_STRATEGY=yt-mp3-go.',
         'IMPROVED: Removed temporary extraction probe scripts and updated documentation for the browser extraction pipeline.',
         'IMPROVED: Optimized beat animation and theme switching transition in CSS for smoother performance.'
@@ -108,16 +108,16 @@ export default function ChangelogPage() {
       title: 'TanStack Query Migration, Segment Alignment Solver, Audio Extraction Hardening',
       description: 'Migrates data-fetching to TanStack Query, replaces the legacy ad-hoc beat alignment pipeline with a unified segment alignment solver, and hardens audio extraction reliability.',
       features: [
-        'NEW: Segment alignment solver — a dynamic-programming optimizer that replaces the sequential chain of leading-expansion, beat-4 bias, beat-2 bias, and tempo-change corrections with a single unified scoring pass over the chord grid.',
+        'NEW: Segment alignment solver â€” a dynamic-programming optimizer that replaces the sequential chain of leading-expansion, beat-4 bias, beat-2 bias, and tempo-change corrections with a single unified scoring pass over the chord grid.',
         'IMPROVED: Chord-to-beat snap threshold changed from 35 % to 50 % of beat duration, reducing off-by-one alignment errors on syncopated tracks.',
         'IMPROVED: Leading beat-2 bias correction prevents the legacy scorer from locking chord starts onto beat 2 when beat 1 would yield a higher downbeat share.',
         'FIX: Audio extraction retry strategy now performs a same-quality retry with a 3 s delay before falling back to low quality, recovering from transient file-availability races in yt-mp3-go.',
         'FIX: yt-mp3-go file-availability retries (3 attempts, 2 s apart) after the server reports job completion, preventing false failures from slow disk flushes.',
       ],
       technical: [
-        'NEW: TanStack Query integration — model info, recent videos pagination, cached lyrics, and Sheet Sage availability queries migrated from ad-hoc fetch/SWR to useQuery/useInfiniteQuery with centralized query keys and stale-time management.',
+        'NEW: TanStack Query integration â€” model info, recent videos pagination, cached lyrics, and Sheet Sage availability queries migrated from ad-hoc fetch/SWR to useQuery/useInfiniteQuery with centralized query keys and stale-time management.',
         'NEW: Ramped tempo-change detection allows up to 4 transition beats before confirming a boundary, improving alignment on songs with gradual tempo shifts.',
-        'IMPROVED: Firestore key-detection cache writes migrated from gRPC client SDK to REST-based Admin SDK, eliminating stale connection errors in containerized environments (Railway).',
+        'IMPROVED: SQLite key-detection cache writes migrated from gRPC client SDK to REST-based Admin SDK, eliminating stale connection errors in containerized environments (Railway).',
         'IMPROVED: Leading silence suppression now requires at least 2 full measures of natural silence before skipping expansion, preventing premature suppression in 3/4 time.',
         'REFACTOR: Removed the legacy external extraction service and API route; audio extraction now defaults to browser yt-dlp with server finalization, while yt-mp3-go remains rollback-only.',
         'REFACTOR: Legacy gridCompaction.ts is isolated for comparison tests; production grid assembly calls alignmentSolver.ts.',
@@ -152,16 +152,16 @@ export default function ChangelogPage() {
       title: 'Guitar tablature, Backend inference from URL, Pitch-shift sync hardening',
       features: [
         'NEW: Guitar tablature display in Guitar Chords tab, showing fret numbers and string positions for each chord.',
-        'FIX: Pitch-shift toggle off→on at non-default playback speeds (e.g. 1.5×, 2×) now resumes at the correct YouTube timeline position instead of jumping ahead by position × speed.',
+        'FIX: Pitch-shift toggle offâ†’on at non-default playback speeds (e.g. 1.5Ã—, 2Ã—) now resumes at the correct YouTube timeline position instead of jumping ahead by position Ã— speed.',
         'IMPROVED: Pitch-shifted audio, YouTube iframe, and beat-grid animation now stay tightly in sync at any playback rate, eliminating audible and visual drift.',
         'IMPROVED: Optimized and eliminated redundant computation in playback generation.'
       ],
       technical: [
         'NEW: Guitar tablature is implemented in-app with React and native SVG (six-string staff, fret number pills, sustain tails, strum-direction arrows). No dedicated tab engraving npm package (e.g. VexFlow, alphaTab).',
-        'NEW: Tab timing matches guitar soundfont playback by driving the staff from the same chord timeline (ChordEvent), mergeConsecutiveChordEvents, generateNotesForInstrument for guitar, scheduled-note clustering, and resolveGuitarVoicing—aligned with the smplr-based soundfont pipeline.',
+        'NEW: Tab timing matches guitar soundfont playback by driving the staff from the same chord timeline (ChordEvent), mergeConsecutiveChordEvents, generateNotesForInstrument for guitar, scheduled-note clustering, and resolveGuitarVoicingâ€”aligned with the smplr-based soundfont pipeline.',
         'NEW: The chord strip above the staff reuses ScrollingChordStrip and getUniformTimelineBeatWidth from the piano visualizer; shared DynamicsAnalyzer input keeps picked vs strummed patterns consistent with signal-aware playback.',
         'NEW: Introduced a YouTube Master Clock (youtubeMasterClock.ts) as the single source of truth for playback position and rate, with a passive wall-clock accumulator, counter-snap on rate changes, and a 40 ms slave re-anchor loop driving the pitch-shifted GrainPlayer, HTMLAudioElement, and beat resolver.',
-        'FIX: Compensated a Tone.js GrainPlayer internal quirk where the start() offset is silently multiplied by playbackRate when converted to clock ticks — the service now divides the requested offset by the active rate so the first grain lands at the intended buffer position.',
+        'FIX: Compensated a Tone.js GrainPlayer internal quirk where the start() offset is silently multiplied by playbackRate when converted to clock ticks â€” the service now divides the requested offset by the active rate so the first grain lands at the intended buffer position.',
         'IMPROVED: Memoized SVG subcomponents and strum-column plus arrow layout computed in useMemo limit reconciliation work while playback time updates mostly adjust transform/RAF scrolling.',
         'IMPROVED: Beat and Chord backend endpoints in production now accept direct URL input for backend inference, eliminating uploading to BFF.',
         'REFACTOR: Main analysis page is refactored for ease of future maintenance and feature additions.'
@@ -184,7 +184,7 @@ export default function ChangelogPage() {
         'IMPROVED: Modularized utility internals by splitting chord formatting, instrument note generation, and MusicXML export into folder-based modules.',
         'IMPROVED: Expanded MusicXML pipeline separation for absolute events, quantization, score layout, rendering, voice assignment, and piano export.',
         'IMPROVED: Updated tests and TypeScript/Jest configuration to match the modular export structure and new sheet-music regression coverage.',
-        'IMPROVED: Refreshed Firebase storage and setup docs/rules in support of current upload and cache handling flows.',
+        'IMPROVED: Refreshed Persistence storage and setup docs/rules in support of current upload and cache handling flows.',
         'REFACTOR: Restructured the sheet music export, audio generation, chord formatting pipeline for better maintainability and performance.',
         'IMPROVED: Added safe guards against unintendedly long analysis, capped at MAX_ANALYSIS_DURATION_MINUTES (currently 12 minutes).'
       ],
@@ -203,7 +203,7 @@ export default function ChangelogPage() {
         'UI: Unified HeroUI for tooltips',
         'FIX: Minor rendering issue in sheet music display for certain note patterns',
         'FIX: Patched melody playback not updating correctly to match with audio playback',
-        'ARCHITECTURE: Moved blob service from Vercel to Firebase Storage for more cost-effective'
+        'ARCHITECTURE: Moved blob service from Vercel to local audio cache for more cost-effective'
       ],
       technical: [
         'FIX: Resolved a minor rendering issue in the sheet music display for certain note patterns',
@@ -212,7 +212,7 @@ export default function ChangelogPage() {
         'IMPROVED: Used SSE for production audio extraction'
       ],
       breaking: [
-        'Migrated blob storage from Vercel to Firebase Storage for cost reduction; expect changes to blob handling and cleanup behavior'
+        'Migrated blob storage from Vercel to local audio cache for cost reduction; expect changes to blob handling and cleanup behavior'
       ]
     },
 
@@ -223,7 +223,7 @@ export default function ChangelogPage() {
       description: 'Adds an experimental melody-transcription workflow powered by a standalone Sheet Sage service, plus playback, caching, export, and deployment updates.',
       features: [
         'NEW: Experimental melody transcription with Sheet Sage for piano-roll overlay and live melodic playback inside the Piano Visualizer.',
-        'NEW: Melody playback toggle with dedicated mixer controls, estimation toast, and Firebase caching for repeated YouTube analysis loads.',
+        'NEW: Melody playback toggle with dedicated mixer controls, estimation toast, and Persistence caching for repeated YouTube analysis loads.',
         'NEW: MIDI export now includes the visible melody line whenever melody notes are shown in the Piano Visualizer.',
         'IMPROVED: Beat-Transformer is now marked as a local-development model for the online app, similar to the experimental BTC variants.',
         'NEW: Sheet music display for piano roll notes, implemented with OpenSheetMusicDisplay and available as a toggle in the Piano Visualizer. In early experimental mode, expect changes to the feature and its implementation.'
@@ -292,7 +292,7 @@ export default function ChangelogPage() {
         'New Feature: Added the ability to filter the "Recently Analyzed" song history by musical key.'
       ],
       technical: [
-        'PERFORMANCE: Backfilled Firestore homepage metadata and added indexed primary-variant querying for cheaper recent-transcription loads with enharmonic-aware key search.'
+        'PERFORMANCE: Backfilled SQLite homepage metadata and added indexed primary-variant querying for cheaper recent-transcription loads with enharmonic-aware key search.'
       ],
       breaking: [
         'No dependence on Vercel image optimization for cost reduction.'
@@ -305,8 +305,8 @@ export default function ChangelogPage() {
       title: 'Analyze Flow & Playback UX Checks (In Development)',
       description: 'Current working tree includes analyze-flow refactors plus playback UX performance/alignment improvements and verification updates.',
       features: [
-        'IMPROVED: Lyrics playback — stable display props, active-line-only time updates, and word-timing-aware chord placement',
-        'IMPROVED: Guitar/piano playback UI — memoized guitar diagram focus updates and lighter piano key highlighting',
+        'IMPROVED: Lyrics playback â€” stable display props, active-line-only time updates, and word-timing-aware chord placement',
+        'IMPROVED: Guitar/piano playback UI â€” memoized guitar diagram focus updates and lighter piano key highlighting',
         'FIX: Pitch-shifted chord labels now stay aligned between the beat chord grid and guitar chord diagrams',
         'FIX: Addressed capo, guitar diagrams and chord labels regression',
         'NEW: Guitar chord diagrams now preserve supported common slash-chord inversions before falling back to root-position shapes',
@@ -333,10 +333,10 @@ export default function ChangelogPage() {
       description: 'Introduces song segmentation overlays, segmentation-shaped playback dynamics, smoother piano visualizer rendering, and sax/manual playback improvements.',
       features: [
         'NEW: Song segmentation overlays with section-aware labeling for intro, verse, chorus, bridge, and outro workflows',
-        'NEW: Segmentation-aware dynamics contour — playback now rises naturally through builds, peaks in the later second-half chorus, and tapers smoothly in the outro',
+        'NEW: Segmentation-aware dynamics contour â€” playback now rises naturally through builds, peaks in the later second-half chorus, and tapers smoothly in the outro',
         'NEW: Homepage beat chord grid demo toggle for previewing segmentation overlays',
-        'IMPROVED: Saxophone playback — manual sax volume now works outside instrumental sections while still auto-lifting during instrumental passages',
-        'IMPROVED: Segmentation toggle UX — clearer action-focused wording and better availability messaging',
+        'IMPROVED: Saxophone playback â€” manual sax volume now works outside instrumental sections while still auto-lifting during instrumental passages',
+        'IMPROVED: Segmentation toggle UX â€” clearer action-focused wording and better availability messaging',
       ],
       technical: [
         'PERFORMANCE: Piano visualizer timing now applies soft drift correction instead of re-anchoring every parent time update',
@@ -355,23 +355,23 @@ export default function ChangelogPage() {
       title: 'Piano Visualizer & MIDI Export',
       description: 'New Piano Visualizer tab with falling notes, 88-key keyboard, scrolling chord timeline, multi-instrument support, and MIDI export. Unified chord rendering across all tabs.',
       features: [
-        'NEW: Piano Visualizer tab — falling notes canvas with 88-key piano keyboard and real-time note highlighting',
+        'NEW: Piano Visualizer tab â€” falling notes canvas with 88-key piano keyboard and real-time note highlighting',
         'NEW: Scrolling chord timeline strip with sweep line, measure separators, and playback-synced highlighting',
-        'NEW: Multi-instrument visualization — falling notes colored per instrument (Piano, Guitar, Violin, Flute, Bass)',
-        'NEW: MIDI export — download chord progressions as Standard MIDI Type 1 files with instrument-specific voicing',
+        'NEW: Multi-instrument visualization â€” falling notes colored per instrument (Piano, Guitar, Violin, Flute, Bass)',
+        'NEW: MIDI export â€” download chord progressions as Standard MIDI Type 1 files with instrument-specific voicing',
         'NEW: Speed presets (Slow/Normal/Fast) to control piano roll look-ahead window',
         'NEW: Roman numeral analysis displayed in chord timeline strip',
-        'IMPROVED: Unified chord rendering — ScrollingChordStrip now reuses ChordCell component for consistent formatting, roman numerals, and enharmonic corrections across all tabs',
-        'UI: Merged hero section demos — combined Chord Grid + Lyrics into single interactive demo',
+        'IMPROVED: Unified chord rendering â€” ScrollingChordStrip now reuses ChordCell component for consistent formatting, roman numerals, and enharmonic corrections across all tabs',
+        'UI: Merged hero section demos â€” combined Chord Grid + Lyrics into single interactive demo',
         'UI: Replaced Lyrics Sync hero demo with Piano Visualizer demo on homepage',
       ],
       technical: [
-        'FIX: Enharmonic spelling — bass notes like B♭ no longer incorrectly display as A♯ when flat preference is active',
-        'FIX: Superscript chord symbols (e.g. ⁷) no longer clipped by overflow in chord strip cells',
+        'FIX: Enharmonic spelling â€” bass notes like Bâ™­ no longer incorrectly display as Aâ™¯ when flat preference is active',
+        'FIX: Superscript chord symbols (e.g. â·) no longer clipped by overflow in chord strip cells',
         'FIX: Accidental preference computation now applies consistently regardless of chord correction toggle state',
-        'NEW: chordToMidi.ts — shared utility for chord-to-MIDI conversion, chord timeline building, and MIDI range detection',
-        'NEW: midiExport.ts — zero-dependency MIDI file encoder with multi-track instrument voicing',
-        'IMPROVED: ChordCell compact mode — new prop removes min-height constraints for use in chord strip',
+        'NEW: chordToMidi.ts â€” shared utility for chord-to-MIDI conversion, chord timeline building, and MIDI range detection',
+        'NEW: midiExport.ts â€” zero-dependency MIDI file encoder with multi-track instrument voicing',
+        'IMPROVED: ChordCell compact mode â€” new prop removes min-height constraints for use in chord strip',
       ],
       breaking: []
     },
@@ -401,11 +401,11 @@ export default function ChangelogPage() {
       title: 'App improvements (In Development)',
       description: 'Faster homepage data fetch and improved responsive layout.',
       features: [
-        'PERFORMANCE: Recently Transcribed — multi-page accumulation + batched audio metadata queries + SWR-style cache revalidation + increased TTL (15m)',
+        'PERFORMANCE: Recently Transcribed â€” multi-page accumulation + batched audio metadata queries + SWR-style cache revalidation + increased TTL (15m)',
         'UI: Homepage grid uses 3/2/1 columns (desktop/tablet/mobile) for Recently Transcribed'
       ],
       technical: [
-        "Firestore: orderBy(createdAt desc) with multi-page accumulation; audioFiles batched via where(documentId(), 'in', [...])",
+        "SQLite: orderBy(createdAt desc) with multi-page accumulation; audioFiles batched via where(documentId(), 'in', [...])",
         'Caching: Recently Transcribed now uses TanStack Query infinite-query caching with a 15-minute stale window and longer garbage-collection window'
       ],
       breaking: []
@@ -443,7 +443,7 @@ export default function ChangelogPage() {
         'NEW: Visual feedback with blue backgrounds for loop range and beat numbering overlay',
         'NEW: Automatic looping - YouTube player seeks back to start beat when end beat is reached',
         'PERFORMANCE: Migrated from Context API to Zustand for all state management',
-        'PERFORMANCE: Bundle size reduced by 7.1% for YouTube analysis page (50.4 kB → 46.8 kB)',
+        'PERFORMANCE: Bundle size reduced by 7.1% for YouTube analysis page (50.4 kB â†’ 46.8 kB)',
         'PERFORMANCE: Expected 50-70% reduction in unnecessary re-renders',
         'FIX: Toggle buttons (Roman Numerals, Simplify Chords) now work with single click during playback',
         'FIX: Audio playback now works correctly in local audio upload page',
@@ -511,8 +511,8 @@ export default function ChangelogPage() {
       ],
       technical: [
         'ARCHITECTURE: Tone.js integration for professional-grade pitch shifting with granular synthesis',
-        'ARCHITECTURE: Pitch compensation formula (12 × log₂(rate)) for tempo changes without pitch changes',
-        'ARCHITECTURE: Audio-source agnostic design supporting YouTube, Firebase Storage, and blob URLs',
+        'ARCHITECTURE: Pitch compensation formula (12 Ã— logâ‚‚(rate)) for tempo changes without pitch changes',
+        'ARCHITECTURE: Audio-source agnostic design supporting YouTube, local audio cache, and blob URLs',
         'ARCHITECTURE: Singleton pitch shift service with proper cleanup and memory management',
         'PERFORMANCE: Playback state synchronization (play/pause/seek) between YouTube and pitch-shifted audio',
         'PERFORMANCE: Beat-aligned time tracking with independent interval-based updates',
@@ -579,7 +579,7 @@ export default function ChangelogPage() {
         'NEW: Audio Mixer - Play back chord audio alongside video with beat-aligned, synchronized chord sounds',
       ],
       technical: [
-        'ARCHITECTURE: Centralized audio analysis orchestrator (audioAnalysisService.ts) coordinating beat detection, chord recognition, and synchronization with Firebase offload support',
+        'ARCHITECTURE: Centralized audio analysis orchestrator (audioAnalysisService.ts) coordinating beat detection, chord recognition, and synchronization with Persistence offload support',
         'REFACTOR: Backward-compatible facade (chordRecognitionService.ts) delegates to the orchestrator to reduce duplication and simplify imports',
       ],
       breaking: [
@@ -639,7 +639,7 @@ export default function ChangelogPage() {
       title: 'Enharmonic Inversion Fixes & Beat Detection Optimization',
       description: 'Critical fixes for enharmonic chord inversions and madmom beat detection optimization for songs starting at 0 seconds',
       features: [
-        'FIX: Enharmonic Inversion Corrections - Fixed enharmonic spelling for chord inversions with flats (Eb/3 → Eb/G, Bb/3 → Bb/D) and sharps (G#/3 → G#/B#)',
+        'FIX: Enharmonic Inversion Corrections - Fixed enharmonic spelling for chord inversions with flats (Eb/3 â†’ Eb/G, Bb/3 â†’ Bb/D) and sharps (G#/3 â†’ G#/B#)',
         'FIX: Madmom Beat Detection Optimization - Fixed madmom models skipping optimal shift calculations for songs with first beat detected at or near 0 seconds',
         'PERFORMANCE: Chord Grid Alignment - Improved chord-to-downbeat alignment for songs that start immediately with strong beats',
         'MINOR FIX: 6 beats per measure now displayed as 6/8 time signature'
@@ -647,9 +647,9 @@ export default function ChangelogPage() {
       technical: [
         'Enhanced enharmonic inversion logic to properly handle flat and sharp chord inversions with correct bass note spelling',
         'Fixed calculatePaddingAndShift function to separate padding calculation from shift optimization logic',
-        'Removed aggressive early return condition (≤0.05s) that prevented shift calculation for songs starting at 0 seconds',
+        'Removed aggressive early return condition (â‰¤0.05s) that prevented shift calculation for songs starting at 0 seconds',
         'Maintained shift calculation for optimal chord alignment regardless of first beat timing',
-        'Cleaned up debug console logs from useScrollAndAnimation, Firebase services, and analysis components'
+        'Cleaned up debug console logs from useScrollAndAnimation, Persistence services, and analysis components'
       ],
       breaking: []
     },
@@ -659,8 +659,8 @@ export default function ChangelogPage() {
       title: 'Guitar Chord Diagram Database Integration & Synchronization Fixes',
       description: 'Critical fixes for guitar chord diagram accuracy and chord-lyrics synchronization with official database integration',
       features: [
-        'SYNC FIX: Chord-Lyrics Synchronization (Partial Fix) - Added musical note symbols (♪) for each chord change to improve sync between chords and lyrics sections, addressing sync issues for chords',
-        'PERFORMANCE: Enharmonic Correction Optimization - Fixed enharmonic chord matching logic and optimized performance from O(n²) to O(n) complexity using hash map lookups',
+        'SYNC FIX: Chord-Lyrics Synchronization (Partial Fix) - Added musical note symbols (â™ª) for each chord change to improve sync between chords and lyrics sections, addressing sync issues for chords',
+        'PERFORMANCE: Enharmonic Correction Optimization - Fixed enharmonic chord matching logic and optimized performance from O(nÂ²) to O(n) complexity using hash map lookups',
         'BUG FIX: Chord Padding Click Issue - Fixed non-clickable chord padding for "N.C." (No Chord) vs "N/C" notation handling',
         'FIX: Replaced hardcoded chord database with official @tombatossals/chords-db database, ensuring accurate chord fingering patterns for all supported chord types',
         'FIX: Replaced unformatted chord labels under guitar chord diagrams with formatted forms matching beat chord grid'
@@ -668,10 +668,10 @@ export default function ChangelogPage() {
       technical: [
         'Integrated official @tombatossals/chords-db/lib/guitar.json with 2069+ accurate chord fingering patterns',
         'Enhanced chord name parsing to support both colon notation (C:minor) from ML models and standard notation (Cm)',
-        'Fixed enharmonic mapping to match database keys: C# → Csharp, F# → Fsharp for proper chord lookup',
+        'Fixed enharmonic mapping to match database keys: C# â†’ Csharp, F# â†’ Fsharp for proper chord lookup',
         'Implemented comprehensive suffix mapping for both ML model outputs and standard chord notation',
         'Removed hardcoded FALLBACK_CHORD_DATABASE with incorrect fret positions and fingering patterns',
-        'Added support for Unicode musical symbols (♯, ♭) and enhanced chord parsing regex patterns'
+        'Added support for Unicode musical symbols (â™¯, â™­) and enhanced chord parsing regex patterns'
       ],
       breaking: [
         'Guitar Chord Diagram Database Integration - Replaced hardcoded fallback chord database with official @tombatossals/chords-db database, ensuring accurate chord fingering patterns for all supported chord types'
@@ -840,21 +840,21 @@ export default function ChangelogPage() {
       title: 'Music.AI Caching & UI Polish',
       description: 'Critical fixes for Music.AI lyrics caching, React performance optimizations, and enhanced user interface with globe icon for translations',
       features: [
-        'CACHING: Fixed Music.AI lyrics caching to Firestore - no more expensive repeated API calls',
+        'CACHING: Fixed Music.AI lyrics caching to SQLite - no more expensive repeated API calls',
         'CACHING: Implemented unauthenticated public caching for ML model outputs (lyrics transcriptions)',
-        'CACHING: Updated Firestore security rules to support safe public caching of transcription results',
+        'CACHING: Updated SQLite security rules to support safe public caching of transcription results',
         'PERFORMANCE: Fixed React "Maximum update depth exceeded" errors in lyrics & chord tab',
         'PERFORMANCE: Added proper memoization with useMemo and useCallback to prevent infinite re-renders',
         'PERFORMANCE: Optimized useEffect dependency arrays to eliminate unnecessary component updates',
-        'UI: Added professional globe icon (🌐) to translate lyrics button with light/dark mode support',
+        'UI: Added professional globe icon (ðŸŒ) to translate lyrics button with light/dark mode support',
         'UI: Enhanced visual consistency with custom SVG icon integration',
         'CLEANUP: Removed all remaining console logs with emoji prefixes for production-ready code',
         'CLEANUP: Eliminated debug logs from AnalyzePage, AudioProcessing, Metronome, and Auth services',
         'STABILITY: Fixed build issues with dynamic imports and improved error handling in cache routes'
       ],
       technical: [
-        'Firebase authentication issue resolved for server-side API routes',
-        'Firestore security rules updated to allow unauthenticated writes to lyrics collection',
+        'Persistence authentication issue resolved for server-side API routes',
+        'SQLite security rules updated to allow unauthenticated writes to lyrics collection',
         'React hooks optimized with proper dependency management',
         'LeadSheetDisplay component performance significantly improved',
         'Source map errors eliminated from production builds'
@@ -891,7 +891,7 @@ export default function ChangelogPage() {
       features: [
         'NEW: Guitar Chords tab with interactive chord diagram visualization',
         'Animated chord progression view that adapts to your screen size',
-        'Professional musical notation with proper sharp (♯) and flat (♭) symbols',
+        'Professional musical notation with proper sharp (â™¯) and flat (â™­) symbols',
         'Enhanced chord recognition with support for complex chord types',
         'Smoother animations and improved visual experience',
         'Comprehensive credits section acknowledging open-source contributions'
@@ -947,7 +947,7 @@ export default function ChangelogPage() {
         'Synchronized metronome with Web Audio API',
         'Dark/light mode theme support',
         'API key management with client-side encryption',
-        'Firebase caching for analysis results and translations',
+        'Persistence caching for analysis results and translations',
         'Karaoke-style lyrics with letter-by-letter synchronization',
         'Enharmonic chord correction with toggle functionality',
         'Lead sheet layout with professional music notation',
@@ -968,7 +968,7 @@ export default function ChangelogPage() {
             Release Notes
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-            Follow the journey of our product. Here’s a detailed log of every feature, fix, and improvement we’ve shipped.
+            Follow the journey of our product. Hereâ€™s a detailed log of every feature, fix, and improvement weâ€™ve shipped.
           </p>
         </div>
 
@@ -978,7 +978,7 @@ export default function ChangelogPage() {
             <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 rounded-full opacity-75 group-hover:opacity-100 blur transition duration-300"></div>
             <div className="relative flex items-center justify-center px-8 py-4 bg-black dark:bg-gray-900 rounded-full border border-gray-700">
               <span className="text-white font-mono text-sm md:text-base tracking-wide">
-                🎵 PITCH SHIFTING & REAL INSTRUMENT SOUNDFONTS NOW AVAILABLE! →
+                ðŸŽµ PITCH SHIFTING & REAL INSTRUMENT SOUNDFONTS NOW AVAILABLE! â†’
               </span>
             </div>
           </div>

@@ -9,7 +9,7 @@ import { DEFAULT_AUDIO_MIXER_SETTINGS } from '@/config/audioDefaults';
 export interface AudioMixerSettings {
   masterVolume: number; // 0-100
   youtubeVolume: number; // 0-100 (YouTube video playback)
-  pitchShiftedAudioVolume: number; // 0-100 (Pitch-shifted audio from Firebase/local upload)
+  pitchShiftedAudioVolume: number; // 0-100 (Pitch-shifted audio from Persistence/local upload)
   chordPlaybackVolume: number; // 0-100
   pianoVolume: number; // 0-100
   guitarVolume: number; // 0-100

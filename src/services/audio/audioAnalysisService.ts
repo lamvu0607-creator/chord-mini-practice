@@ -2,15 +2,13 @@
  * Audio Analysis Orchestrator Service
  *
  * Coordinates chord recognition and beat detection, including large-file
- * handling with Firebase offload uploads. Maintains existing signatures.
+ * handling with local audio persistence. Maintains existing signatures.
  */
 
 import { getAudioDurationFromFile } from '@/utils/audioDurationUtils';
 import { getAnalysisDurationLimitReason } from '@/utils/analysisDurationLimit';
 import { buildAudioProxyUrl } from '@/utils/audioProxyUrl';
-import { isFirebaseStorageUrl } from '@/utils/urlValidationUtils';
 
-import { offloadUploadService } from '@/services/storage/offloadUploadService';
 import { detectBeatsFromFile, detectBeatsWithRateLimit } from '@/services/audio/beatDetectionService';
 import { synchronizeChords } from '@/utils/chordSynchronization';
 import { recognizeChordsWithRateLimit } from '@/services/chord-analysis/chordService';
@@ -66,8 +64,8 @@ function scoreDownbeatAlignment(chordSeries: string[], timeSignature: number): {
     // For 4/4 (simple time): also evaluate half-bar alignment (beats 1 & 3).
     // Many 4/4 songs change chords every 2 beats. Without this, those changes
     // on beat 3 are penalised and can cause false preference for 3/4.
-    // The half-bar score is discounted by 0.5× because period-2 has 50%
-    // strong positions vs 25% for period-4, making random alignment 2× more
+    // The half-bar score is discounted by 0.5Ã— because period-2 has 50%
+    // strong positions vs 25% for period-4, making random alignment 2Ã— more
     // likely. Without this discount, 6/8 songs (compound triple) would be
     // incorrectly classified as 4/4.
     if (timeSignature === 4) {
@@ -114,16 +112,16 @@ async function fetchFileFromUrl(url: string, videoId?: string): Promise<File> {
       const cachedFile = getCachedAudioFile(videoId);
 
       if (cachedFile) {
-        console.log(`🚀 Using cached complete audio file for analysis (${(cachedFile.size / 1024 / 1024).toFixed(2)}MB)`);
+        console.log(`ðŸš€ Using cached complete audio file for analysis (${(cachedFile.size / 1024 / 1024).toFixed(2)}MB)`);
 
         // Convert Blob to File with proper name and type
         const fileName = `${videoId}.${cachedFile.type.includes('mp4') ? 'm4a' : 'mp3'}`;
         return new File([cachedFile], fileName, { type: cachedFile.type || 'audio/mpeg' });
       } else {
-        console.log(`⚠️ No cached file found for ${videoId}, proceeding with URL fetch`);
+        console.log(`âš ï¸ No cached file found for ${videoId}, proceeding with URL fetch`);
       }
     } catch (cacheError) {
-      console.warn(`⚠️ Cache lookup failed for ${videoId}:`, cacheError);
+      console.warn(`âš ï¸ Cache lookup failed for ${videoId}:`, cacheError);
     }
   }
 
@@ -140,190 +138,29 @@ async function fetchFileFromUrl(url: string, videoId?: string): Promise<File> {
   const blob = await response.blob();
   if (blob.size === 0) throw new Error('Audio file is empty or corrupted');
   if (blob.size > 100 * 1024 * 1024) throw new Error('Audio file is too large (>100MB). Please use a smaller file.');
-  return new File([blob], 'audio.wav', { type: 'audio/wav' });
-}
+  const contentType = response.headers.get('content-type') || blob.type || '';
+  let extension = 'mp3';
+  let mimeType = 'audio/mpeg';
 
-async function handleOffloadPath(
-  audioSource: File | string,
-  beatDetector: 'auto' | 'madmom' | 'beat-transformer',
-  chordDetector: ChordDetectorType,
-  audioDuration?: number,
-  _videoId?: string
-): Promise<AnalysisResult> {
-  let offloadUrl: string | null = null;
-  const shouldDeleteOffloadUrl = typeof audioSource !== 'string';
-  const fileSizeLabel = typeof audioSource === 'string'
-    ? 'existing offload URL'
-    : offloadUploadService.getFileSizeString(audioSource.size);
-
-  try {
-    offloadUrl = typeof audioSource === 'string'
-      ? audioSource
-      : await offloadUploadService.uploadToOffload(audioSource);
-
-    const [chordOutcome, beatOutcome] = await Promise.allSettled([
-      (async (): Promise<ChordDetectionResult[]> => {
-        const chordOffload = await offloadUploadService.recognizeChordsFromOffloadUrl(offloadUrl!, chordDetector, {
-          deleteAfterProcessing: false,
-        });
-        if (!chordOffload.success) {
-          const err = chordOffload.error || 'Unknown offload upload error';
-          throw new Error(`Offload chord processing failed (${fileSizeLabel}): ${err}. Please try again or check your internet connection.`);
-        }
-
-        const chordResp = chordOffload.data as { success: boolean; chords?: ChordDetectionResult[] };
-        if (!chordResp.chords || !Array.isArray(chordResp.chords)) {
-          throw new Error('Invalid chord recognition response: chords array not found or not an array');
-        }
-
-        return chordResp.chords as ChordDetectionResult[];
-      })(),
-      (async (): Promise<BeatDetectionBackendResponse> => {
-        try {
-          const beatOffload = await offloadUploadService.detectBeatsFromOffloadUrl(offloadUrl!, beatDetector, {
-            deleteAfterProcessing: false,
-            audioDuration,
-          });
-          if (!beatOffload.success) {
-            console.warn(`⚠️ Firebase offload beat detection failed: ${beatOffload.error}, using empty beats array`);
-            return { beats: [], bpm: undefined, time_signature: undefined, success: true } as BeatDetectionBackendResponse;
-          }
-
-          const normalizedBeatResults = beatOffload.data as BeatDetectionBackendResponse;
-
-          // Normalize time_signature from string "6/4" to numeric 6 for production offload path
-          const tsRaw = normalizedBeatResults.time_signature;
-          const tsNum = typeof tsRaw === 'number' ? tsRaw
-            : (typeof tsRaw === 'string'
-              ? (tsRaw.includes('/') ? parseInt(tsRaw.split('/')[0], 10) : parseInt(tsRaw, 10))
-              : undefined);
-          if (typeof tsNum === 'number' && !isNaN(tsNum)) {
-            normalizedBeatResults.time_signature = tsNum;
-          }
-
-          if (!normalizedBeatResults.beats || !Array.isArray(normalizedBeatResults.beats)) {
-            console.warn('⚠️ Invalid beat detection response from offload upload, using empty beats array');
-            return { beats: [], bpm: undefined, time_signature: undefined, success: true } as BeatDetectionBackendResponse;
-          }
-
-          return normalizedBeatResults;
-        } catch (e) {
-          console.warn(`⚠️ Beat detection failed for offload upload: ${e}, using empty beats array`);
-          return { beats: [], bpm: undefined, time_signature: undefined, success: true } as BeatDetectionBackendResponse;
-        }
-      })(),
-    ]);
-
-    if (chordOutcome.status !== 'fulfilled' || beatOutcome.status !== 'fulfilled') {
-      const errors = [chordOutcome, beatOutcome]
-        .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-        .map((result) => result.reason instanceof Error ? result.reason.message : String(result.reason));
-      throw new Error(errors.join(' | '));
-    }
-
-    const chordResults = chordOutcome.value;
-    const beatResults = beatOutcome.value;
-
-    // If backend provided dual downbeat candidates (Madmom), auto-select best (3/4 vs 4/4) using chord-change heuristic
-    try {
-      const candidates = beatResults.downbeat_candidates as Record<string, number[]> | undefined;
-      if (candidates) {
-        beatGridDebugLog('MeterSelection', 'Candidate set detected (offload path)', {
-          beatCount: Array.isArray(beatResults.beats) ? beatResults.beats.length : 0,
-          timeSignatureBeforeSelection: beatResults.time_signature,
-          ...getDownbeatCandidateCounts(candidates),
-        });
-
-        try {
-          const worker = getChordAnalysisWorker();
-          if (worker) {
-            const result = await worker.chooseMeterAndDownbeats(
-              chordResults,
-              beatResults.beats as number[],
-              candidates
-            );
-            beatResults.downbeats = result.downbeats;
-            beatResults.time_signature = result.timeSignature;
-            console.log(`Auto-selected meter (worker): → ${result.timeSignature}/4`);
-            beatGridDebugLog('MeterSelection', 'Worker selected meter (offload path)', {
-              winner: result.timeSignature,
-              downbeatCount: result.downbeats.length,
-            });
-          } else {
-            const beatsForSync: BeatInfo[] = (beatResults.beats as number[]).map((t) => ({ time: t, strength: 0.8 }));
-            const tempSync = synchronizeChords(chordResults, beatsForSync);
-            const chordSeries = tempSync.map((s) => s.chord);
-            const s3 = scoreDownbeatAlignment(chordSeries, 3);
-            const s4 = scoreDownbeatAlignment(chordSeries, 4);
-            const winner: 3 | 4 = s3.score > s4.score ? 3 : 4;
-            beatResults.downbeats = candidates[String(winner)] || [];
-            beatResults.time_signature = winner;
-            console.log(`Auto-selected meter (main thread fallback): → ${winner}/4`);
-            beatGridDebugLog('MeterSelection', 'Main-thread fallback selected meter (offload path)', {
-              winner,
-              s3,
-              s4,
-              chordSeriesSample: chordSeries.slice(0, 24),
-            });
-          }
-        } catch (workerErr) {
-          console.warn('Worker computation failed, using main thread fallback:', workerErr);
-          const beatsForSync: BeatInfo[] = (beatResults.beats as number[]).map((t) => ({ time: t, strength: 0.8 }));
-          const tempSync = synchronizeChords(chordResults, beatsForSync);
-          const chordSeries = tempSync.map((s) => s.chord);
-          const s3 = scoreDownbeatAlignment(chordSeries, 3);
-          const s4 = scoreDownbeatAlignment(chordSeries, 4);
-          const winner: 3 | 4 = s3.score > s4.score ? 3 : 4;
-          beatResults.downbeats = candidates[String(winner)] || [];
-          beatResults.time_signature = winner;
-          console.log(`Auto-selected meter (main thread fallback): → ${winner}/4`);
-          beatGridDebugLog('MeterSelection', 'Fallback after worker error selected meter (offload path)', {
-            winner,
-            s3,
-            s4,
-            workerError: workerErr instanceof Error ? workerErr.message : String(workerErr),
-          });
-        }
-      }
-    } catch (selErr) {
-      console.warn('Downbeat candidate selection (offload path) skipped due to error:', selErr);
-    }
-
-    const beats = toBeatInfo(beatResults);
-    let synchronizedChords;
-    try {
-      const worker = getChordAnalysisWorker();
-      if (worker) {
-        synchronizedChords = await worker.synchronizeChords(chordResults, beats);
-      } else {
-        synchronizedChords = synchronizeChords(chordResults, beats);
-      }
-      if (!synchronizedChords || !Array.isArray(synchronizedChords)) throw new Error('Chord synchronization failed: invalid result format');
-    } catch (e) {
-      console.error('Error in offload chord synchronization:', e);
-      synchronizedChords = beats.map((_, index) => ({ chord: 'N/C', beatIndex: index }));
-    }
-
-    return {
-      chords: chordResults,
-      beats,
-      downbeats: beatResults.downbeats || [],
-      downbeats_with_measures: [],
-      synchronizedChords,
-      chordModel: chordDetector,
-      beatModel: beatDetector,
-      audioDuration,
-      beatDetectionResult: {
-        time_signature: typeof beatResults.time_signature === 'number' ? beatResults.time_signature : undefined,
-        bpm: typeof beatResults.bpm === 'number' ? beatResults.bpm : (typeof (beatResults as unknown as { BPM?: number }).BPM === 'number' ? (beatResults as unknown as { BPM?: number }).BPM : undefined),
-        beatShift: 0
-      }
-    };
-  } finally {
-    if (offloadUrl && shouldDeleteOffloadUrl) {
-      await offloadUploadService.deleteOffload(offloadUrl);
-    }
+  if (contentType.includes('webm') || url.includes('.webm')) {
+    extension = 'webm';
+    mimeType = 'audio/webm';
+  } else if (contentType.includes('wav') || url.includes('.wav')) {
+    extension = 'wav';
+    mimeType = 'audio/wav';
+  } else if (contentType.includes('ogg') || url.includes('.ogg')) {
+    extension = 'ogg';
+    mimeType = 'audio/ogg';
+  } else if (contentType.includes('mp4') || contentType.includes('m4a') || url.includes('.m4a')) {
+    extension = 'm4a';
+    mimeType = 'audio/mp4';
+  } else if (contentType.includes('flac') || url.includes('.flac')) {
+    extension = 'flac';
+    mimeType = 'audio/flac';
   }
+
+  const filename = `${videoId || 'audio'}.${extension}`;
+  return new File([blob], filename, { type: mimeType });
 }
 
 export async function analyzeAudioWithRateLimit(
@@ -332,12 +169,6 @@ export async function analyzeAudioWithRateLimit(
   chordDetector: ChordDetectorType = 'chord-cnn-lstm',
   videoId?: string
 ): Promise<AnalysisResult> {
-  const { isLocalBackend } = await import('@/utils/backendConfig');
-  const isLocalhost = isLocalBackend();
-
-  if (!isLocalhost && typeof audioInput === 'string' && isFirebaseStorageUrl(audioInput)) {
-    return handleOffloadPath(audioInput, beatDetector, chordDetector, undefined, videoId);
-  }
 
   let audioFile: File;
   let audioDuration: number | undefined;
@@ -346,10 +177,10 @@ export async function analyzeAudioWithRateLimit(
     if (audioInput.size === 0) throw new Error('Audio file is empty or corrupted');
     if (audioInput.size > 100 * 1024 * 1024) throw new Error('Audio file is too large (>100MB). Please use a smaller file.');
     audioFile = audioInput;
-    try { audioDuration = await getAudioDurationFromFile(audioFile); } catch (e) { console.warn(`⚠️ Could not detect audio duration: ${e}`); }
+    try { audioDuration = await getAudioDurationFromFile(audioFile); } catch (e) { console.warn(`âš ï¸ Could not detect audio duration: ${e}`); }
   } else if (typeof audioInput === 'string') {
     audioFile = await fetchFileFromUrl(audioInput, videoId);
-    try { audioDuration = await getAudioDurationFromFile(audioFile); } catch (e) { console.warn(`⚠️ Could not detect audio duration: ${e}`); }
+    try { audioDuration = await getAudioDurationFromFile(audioFile); } catch (e) { console.warn(`âš ï¸ Could not detect audio duration: ${e}`); }
   } else if (audioInput instanceof AudioBuffer) {
     if (!audioInput || audioInput.length === 0) throw new Error('AudioBuffer is empty or invalid');
     if (audioInput.duration === 0) throw new Error('AudioBuffer has zero duration');
@@ -366,10 +197,6 @@ export async function analyzeAudioWithRateLimit(
   const analysisDurationLimitReason = getAnalysisDurationLimitReason(audioDuration);
   if (analysisDurationLimitReason) {
     throw new Error(analysisDurationLimitReason);
-  }
-
-  if (!isLocalhost) {
-    return handleOffloadPath(audioFile, beatDetector, chordDetector, audioDuration, videoId);
   }
 
   // PERFORMANCE OPTIMIZATION: Parallelize beat detection and chord recognition
@@ -440,7 +267,7 @@ export async function analyzeAudioWithRateLimit(
           );
           beatResults.downbeats = result.downbeats;
           beatResults.time_signature = result.timeSignature;
-          console.log(`Auto-selected meter (worker): → ${result.timeSignature}/4`);
+          console.log(`Auto-selected meter (worker): â†’ ${result.timeSignature}/4`);
           beatGridDebugLog('MeterSelection', 'Worker selected meter (rate-limit path)', {
             winner: result.timeSignature,
             downbeatCount: result.downbeats.length,
@@ -454,7 +281,7 @@ export async function analyzeAudioWithRateLimit(
           const winner: 3 | 4 = s3.score > s4.score ? 3 : 4;
           beatResults.downbeats = candidates[String(winner)] || beatResults.downbeats || [];
           beatResults.time_signature = winner;
-          console.log(`Auto-selected meter (main thread fallback): → ${winner}/4`);
+          console.log(`Auto-selected meter (main thread fallback): â†’ ${winner}/4`);
           beatGridDebugLog('MeterSelection', 'Main-thread fallback selected meter (rate-limit path)', {
             winner,
             s3,
@@ -472,7 +299,7 @@ export async function analyzeAudioWithRateLimit(
         const winner: 3 | 4 = s3.score > s4.score ? 3 : 4;
         beatResults.downbeats = candidates[String(winner)] || beatResults.downbeats || [];
         beatResults.time_signature = winner;
-        console.log(`Auto-selected meter (main thread fallback): → ${winner}/4`);
+        console.log(`Auto-selected meter (main thread fallback): â†’ ${winner}/4`);
         beatGridDebugLog('MeterSelection', 'Fallback after worker error selected meter (rate-limit path)', {
           winner,
           s3,
@@ -528,12 +355,6 @@ export async function analyzeAudio(
   chordDetector: ChordDetectorType = 'chord-cnn-lstm',
   videoId?: string
 ): Promise<AnalysisResult> {
-  const { isLocalBackend } = await import('@/utils/backendConfig');
-  const isLocalhost = isLocalBackend();
-
-  if (!isLocalhost && typeof audioInput === 'string' && isFirebaseStorageUrl(audioInput)) {
-    return handleOffloadPath(audioInput, beatDetector, chordDetector, undefined, videoId);
-  }
 
   let audioFile: File;
   let audioDuration: number | undefined;
@@ -559,10 +380,6 @@ export async function analyzeAudio(
     audioDuration = audioInput.duration;
   } else {
     throw new Error('Invalid audio input: must be either AudioBuffer or URL string');
-  }
-
-  if (!isLocalhost) {
-    return handleOffloadPath(audioFile, beatDetector, chordDetector, audioDuration, videoId);
   }
 
   console.log(`Detecting beats using ${beatDetector} model...`);
@@ -624,7 +441,7 @@ export async function analyzeAudio(
           );
           beatResults.downbeats = result.downbeats;
           beatResults.time_signature = result.timeSignature;
-          console.log(`Auto-selected meter (worker): → ${result.timeSignature}/4`);
+          console.log(`Auto-selected meter (worker): â†’ ${result.timeSignature}/4`);
           beatGridDebugLog('MeterSelection', 'Worker selected meter (analyzeAudio path)', {
             winner: result.timeSignature,
             downbeatCount: result.downbeats.length,
@@ -638,7 +455,7 @@ export async function analyzeAudio(
           const winner: 3 | 4 = s3.score > s4.score ? 3 : 4;
           beatResults.downbeats = candidates[String(winner)] || beatResults.downbeats || [];
           beatResults.time_signature = winner;
-          console.log(`Auto-selected meter (main thread fallback): → ${winner}/4`);
+          console.log(`Auto-selected meter (main thread fallback): â†’ ${winner}/4`);
           beatGridDebugLog('MeterSelection', 'Main-thread fallback selected meter (analyzeAudio path)', {
             winner,
             s3,
@@ -656,7 +473,7 @@ export async function analyzeAudio(
         const winner: 3 | 4 = s3.score > s4.score ? 3 : 4;
         beatResults.downbeats = candidates[String(winner)] || beatResults.downbeats || [];
         beatResults.time_signature = winner;
-        console.log(`Auto-selected meter (main thread fallback): → ${winner}/4`);
+        console.log(`Auto-selected meter (main thread fallback): â†’ ${winner}/4`);
         beatGridDebugLog('MeterSelection', 'Fallback after worker error selected meter (analyzeAudio path)', {
           winner,
           s3,

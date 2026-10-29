@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollingChordStrip } from '@/components/piano-visualizer/ScrollingChordStrip';
+import type { ActiveInstrument } from '@/components/piano-visualizer/FallingNotesCanvas';
 import SheetMusicDisplay from '@/components/piano-visualizer/SheetMusicDisplay';
 import { exportChordEventsToMidi, downloadMidiFile } from '@/utils/midiExport';
 import { getAudioMixerService, type AudioMixerSettings } from '@/services/chord-playback/audioMixerService';
@@ -17,7 +18,7 @@ import {
   useTargetKey,
 } from '@/stores/uiStore';
 import type { GuitarVoicingSelection } from '@/utils/guitarVoicing';
-import { INSTRUMENT_COLORS, MELODIC_TRANSCRIPTION_COLOR } from './constants';
+import { HARMONY_TRANSCRIPTION_COLOR, INSTRUMENT_COLORS, MELODIC_TRANSCRIPTION_COLOR } from './constants';
 import { areMixerSettingsEqual } from './helpers';
 import { PianoRollPanel } from './PianoRollPanel';
 import { PianoVisualizerHeader } from './PianoVisualizerHeader';
@@ -34,7 +35,6 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
   showCorrectedChords,
   chordCorrections,
   sequenceCorrections = null,
-  segmentationData = null,
   currentTime = 0,
   isPlaying = false,
   isChordPlaybackEnabled = false,
@@ -148,7 +148,6 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
     sequenceCorrections,
     analysisResults: mergedAnalysisResults,
     audioUrl,
-    segmentationData,
     sheetSageResult,
     showMelodicOverlay,
     pitchShiftSemitones,
@@ -175,7 +174,6 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
     sequenceCorrections,
     detectedBpm: timelineModel.detectedBpm,
     timeSignature: timelineModel.timeSignature,
-    segmentationData,
     signalAnalysis: timelineModel.signalAnalysis,
     simplePianoBlockChords,
     includeMelodyInSheetMusic: showMelodicOverlay,
@@ -189,11 +187,15 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
 
   const legendInstruments = useMemo(() => {
     if (showMelodicOverlay && timelineModel.melodyOverlayNotes.length > 0) {
-      return [...effectiveActiveInstruments, { name: 'Melody', color: MELODIC_TRANSCRIPTION_COLOR }];
+      const extra: ActiveInstrument[] = [{ name: 'Melody Lead', color: MELODIC_TRANSCRIPTION_COLOR }];
+      if (timelineModel.melodyOverlayNotes.some((n) => n.color === HARMONY_TRANSCRIPTION_COLOR)) {
+        extra.push({ name: 'Harmony (Bè)', color: HARMONY_TRANSCRIPTION_COLOR });
+      }
+      return [...effectiveActiveInstruments, ...extra];
     }
 
     return effectiveActiveInstruments;
-  }, [effectiveActiveInstruments, showMelodicOverlay, timelineModel.melodyOverlayNotes.length]);
+  }, [effectiveActiveInstruments, showMelodicOverlay, timelineModel.melodyOverlayNotes]);
 
   const handleActiveNotesChange = useCallback((notes: Set<number>, colors: Map<number, string>) => {
     const signature = Array.from(notes)
@@ -219,7 +221,6 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
     timelineModel.detectedBpm || 120,
     timelineModel.timeSignature,
     timelineModel.dynamicsAnalyzer,
-    segmentationData,
     guitarVoicing,
     targetKey,
     simplePianoBlockChords,
@@ -238,7 +239,6 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
       instruments,
       bpm: timelineModel.detectedBpm || undefined,
       timeSignature: timelineModel.timeSignature,
-      segmentationData,
       signalAnalysis: timelineModel.signalAnalysis,
       additionalTracks,
     });
@@ -246,7 +246,6 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
       downloadMidiFile(midiData, 'piano-visualizer.mid');
     }
   }, [
-    segmentationData,
     sheetSageResult,
     showMelodicOverlay,
     timelineModel.activeInstruments,
@@ -292,7 +291,6 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
         beatRomanNumerals={timelineModel.beatRomanNumerals}
         beatModulations={timelineModel.beatModulations}
         uncorrectedChords={resolvedChordGridData?.chords}
-        segmentationData={segmentationData}
         gridLyrics={gridLyrics}
       />
 
@@ -318,7 +316,6 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
           effectiveActiveInstruments={effectiveActiveInstruments}
           detectedBpm={timelineModel.detectedBpm}
           timeSignature={timelineModel.timeSignature}
-          segmentationData={segmentationData}
           guitarVoicing={guitarVoicing}
           targetKey={targetKey}
           dynamicsAnalyzer={timelineModel.dynamicsAnalyzer}

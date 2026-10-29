@@ -1,4 +1,4 @@
-# Flask Application Architecture
+﻿# Flask Application Architecture
 
 <cite>
 **Referenced Files in This Document**
@@ -394,8 +394,8 @@ Fallback --> End
 
 ### Blueprints and Routes
 Key routes demonstrate rate limiting, validation, and service orchestration:
-- Beats routes: detect-beats, detect-beats-firebase, model-info, and model availability tests
-- Chords routes: recognize-chords, recognize-chords-firebase, model-info, and model availability tests
+- Beats routes: detect-beats, detect-beats-local-persistence, model-info, and model availability tests
+- Chords routes: recognize-chords, recognize-chords-local-persistence, model-info, and model availability tests
 
 Both sets of routes:
 - Use limiter limits from configuration

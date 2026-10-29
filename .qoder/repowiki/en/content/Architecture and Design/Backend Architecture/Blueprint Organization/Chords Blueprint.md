@@ -216,7 +216,7 @@ NextRoute-->>Client : JSON response
     - Auto: conservative 50 MB
 - File handling:
   - Accepts uploaded file, existing audio_path, or audioUrl
-  - Streams Firebase URLs to temporary files for processing
+  - Streams Local persistence URLs to temporary files for processing
   - Cleans up temporary files in finally blocks
 
 **Section sources**
@@ -427,7 +427,7 @@ The chord recognition blueprint integrates a robust backend with flexible model 
   - BTC-PL: 50 MB
   - Auto: 50 MB (conservative)
 - Temporary file management:
-  - Streamed downloads for Firebase URLs
+  - Streamed downloads for Local persistence URLs
   - Cleanup in finally blocks to prevent orphaned files
 
 **Section sources**

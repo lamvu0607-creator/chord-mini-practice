@@ -1,4 +1,4 @@
-# Context Providers and React Hooks
+﻿# Context Providers and React Hooks
 
 <cite>
 **Referenced Files in This Document**
@@ -206,14 +206,14 @@ This hook coordinates audio extraction, analysis, caching, and enrichment. It ma
 
 Highlights:
 - Dependency injection pattern: constructs a dependency object with callbacks and state setters
-- Cache-first strategy: checks Firebase for cached audio and analysis results
+- Cache-first strategy: checks Local persistence for cached audio and analysis results
 - Correction and enrichment: merges sequence corrections and Roman numeral data
 - Effect-driven lifecycle: guards against stale requests and cleans up on unmount
 
 ```mermaid
 sequenceDiagram
 participant Orchestrator as "useAnalyzePageOrchestrator"
-participant Cache as "Firebase Cache"
+participant Cache as "Local persistence Cache"
 participant Extract as "extractAudioFromYouTube"
 participant Analyze as "handleAudioAnalysis"
 participant ProcCtx as "ProcessingContext"

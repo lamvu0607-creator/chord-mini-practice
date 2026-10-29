@@ -51,66 +51,9 @@ describe('midiExport dynamics integration', () => {
       bpm: 120,
       timeSignature: 4,
       totalDuration: 12,
-      segmentationData: undefined,
     });
 
     setParamsSpy.mockRestore();
-  });
-
-  it('passes segmentation data through to the export dynamics analyzer', () => {
-    const setParamsSpy = jest.spyOn(DynamicsAnalyzer.prototype, 'setParams');
-    const segmentationData = {
-      segments: [{ label: 'Chorus', startTime: 0, endTime: 8 }],
-      metadata: { totalDuration: 8 },
-    } as any;
-    const events: ChordEvent[] = [
-      { chordName: 'C', notes: parseChordToMidiNotes('C'), startTime: 0, endTime: 4, beatIndex: 0 },
-      { chordName: 'G', notes: parseChordToMidiNotes('G'), startTime: 4, endTime: 8, beatIndex: 4 },
-    ];
-
-    exportChordEventsToMidi(events, { bpm: 120, timeSignature: 4, segmentationData });
-
-    expect(setParamsSpy).toHaveBeenCalledWith(expect.objectContaining({ segmentationData }));
-
-    setParamsSpy.mockRestore();
-  });
-
-  it('encodes segmentation-driven dynamic loudness into exported MIDI note velocities', () => {
-    const events: ChordEvent[] = [
-      { chordName: 'C', notes: parseChordToMidiNotes('C'), startTime: 0, endTime: 2, beatIndex: 0 },
-      { chordName: 'Am', notes: parseChordToMidiNotes('Am'), startTime: 2, endTime: 4, beatIndex: 4 },
-      { chordName: 'F', notes: parseChordToMidiNotes('F'), startTime: 4, endTime: 6, beatIndex: 8 },
-      { chordName: 'G', notes: parseChordToMidiNotes('G'), startTime: 6, endTime: 8, beatIndex: 12 },
-      { chordName: 'C', notes: parseChordToMidiNotes('C'), startTime: 8, endTime: 10, beatIndex: 16 },
-      { chordName: 'G', notes: parseChordToMidiNotes('G'), startTime: 10, endTime: 12, beatIndex: 20 },
-    ];
-    const segmentationData = {
-      segments: [
-        { label: 'Intro', startTime: 0, endTime: 2 },
-        { label: 'Verse', startTime: 2, endTime: 6 },
-        { label: 'Chorus', startTime: 6, endTime: 10 },
-        { label: 'Outro', startTime: 10, endTime: 12 },
-      ],
-      metadata: { totalDuration: 12 },
-    } as any;
-
-    const baseMidi = exportChordEventsToMidi(events, {
-      bpm: 120,
-      timeSignature: 4,
-      instruments: [{ name: 'piano', color: '#fff' }],
-    });
-    const segmentedMidi = exportChordEventsToMidi(events, {
-      bpm: 120,
-      timeSignature: 4,
-      instruments: [{ name: 'piano', color: '#fff' }],
-      segmentationData,
-    });
-
-    const baseVelocities = extractNoteOnVelocities(baseMidi);
-    const segmentedVelocities = extractNoteOnVelocities(segmentedMidi);
-
-    expect(segmentedVelocities.length).toBe(baseVelocities.length);
-    expect(segmentedVelocities).not.toEqual(baseVelocities);
   });
 
   it('exports piano MIDI with the shared patterned scheduling instead of a single block chord', () => {

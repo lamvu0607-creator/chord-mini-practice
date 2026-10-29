@@ -145,8 +145,6 @@ class ApiKeyStorageService {
         return API_KEY_STORAGE_KEYS.MUSIC_AI;
       case 'gemini':
         return API_KEY_STORAGE_KEYS.GEMINI;
-      case 'songformerAccess':
-        return API_KEY_STORAGE_KEYS.SONGFORMER_ACCESS;
       default:
         return API_KEY_STORAGE_KEYS.GEMINI;
     }
@@ -261,9 +259,6 @@ class ApiKeyStorageService {
       config.gemini = await this.getApiKey('gemini') || undefined;
     }
 
-    if (this.hasApiKey('songformerAccess')) {
-      config.songformerAccess = await this.getApiKey('songformerAccess') || undefined;
-    }
     
     return config;
   }
@@ -280,7 +275,6 @@ class ApiKeyStorageService {
 
     this.removeApiKey('musicAi');
     this.removeApiKey('gemini');
-    this.removeApiKey('songformerAccess');
     storage.removeItem(API_KEY_STORAGE_KEYS.ENCRYPTION_SALT);
     this.encryptionKey = null;
 

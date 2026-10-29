@@ -74,8 +74,8 @@ YT_BP --> |"Routes"| YT_VAL
 
 ## Core Components
 - YouTube search blueprint: Provides YouTube search endpoints using Piped API with fallback strategies. The blueprint module exists but is not registered in the Flask app factory.
-- YouTube info proxy: A Next.js route that validates inputs, attempts extraction via the backend, and falls back to YouTube’s oEmbed API if needed.
-- Browser extraction service: The production cache-miss path that runs Pyodide/yt-dlp and ffmpeg.wasm in the browser, uploads a private Firebase candidate, and uses Cloudflare queue leases when an external proxy is configured.
+- YouTube info proxy: A Next.js route that validates inputs, attempts extraction via the backend, and falls back to YouTubeâ€™s oEmbed API if needed.
+- Browser extraction service: The production cache-miss path that runs Pyodide/yt-dlp and ffmpeg.wasm in the browser, uploads a private Local persistence candidate, and uses Cloudflare queue leases when an external proxy is configured.
 - yt-dlp development endpoints: Next.js routes that wrap yt-dlp for audio download and video info extraction during development.
 
 Key validation utilities:
@@ -94,7 +94,7 @@ Key validation utilities:
 The YouTube integration follows a hybrid approach:
 - Frontend Next.js routes handle user-facing requests and act as proxies to backend services.
 - The backend YouTube blueprint module exists but is not registered, so its routes are inactive.
-- The info route prioritizes backend extraction, falling back to YouTube’s oEmbed API when necessary.
+- The info route prioritizes backend extraction, falling back to YouTubeâ€™s oEmbed API when necessary.
 - yt-dlp endpoints are available in development and provide local extraction capabilities.
 - Production audio extraction uses `/api/extract-audio` as the stable API; when browser extraction is required, the client acquires a Cloudflare proxy queue lease before making YouTube media requests.
 
@@ -241,7 +241,7 @@ Bounds --> Params["Return validated params"]
 
 ## Dependency Analysis
 - The Flask app is created via an application factory and registers blueprints. The YouTube blueprint module is imported but not registered, so its routes are inactive.
-- The YouTube info route depends on the backend’s audio extraction endpoint (/api/extract-audio) and falls back to YouTube oEmbed.
+- The YouTube info route depends on the backendâ€™s audio extraction endpoint (/api/extract-audio) and falls back to YouTube oEmbed.
 - The yt-dlp routes depend on yt-dlp being installed and available in PATH during development.
 
 ```mermaid

@@ -26,7 +26,7 @@ const HelpPage: React.FC = () => {
     },
     {
       question: "Is my data stored or shared?",
-      answer: "ChordMini processes audio locally and uses Firebase for caching analysis results to improve performance. No personal data is shared with third parties. See our Privacy Policy for details."
+      answer: "ChordMini processes audio locally and uses Persistence for caching analysis results to improve performance. No personal data is shared with third parties. See our Privacy Policy for details."
     },
     {
       question: "Why is processing taking a long time?",

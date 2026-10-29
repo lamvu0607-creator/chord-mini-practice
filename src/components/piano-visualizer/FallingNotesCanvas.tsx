@@ -13,7 +13,6 @@ import {
   type PositionedVisualNote,
 } from '@/utils/instrumentNoteGeneration';
 import type { GuitarVoicingSelection } from '@/utils/guitarVoicing';
-import type { SegmentationResult } from '@/types/chatbotTypes';
 import type { SheetSageVisualNote } from '@/utils/sheetSagePlayback';
 
 // Re-export ActiveInstrument so existing consumers don't break
@@ -50,8 +49,6 @@ interface FallingNotesCanvasProps {
   bpm?: number;
   /** Time signature (e.g. 3 for 3/4, defaults to 4) */
   timeSignature?: number;
-  /** Optional song segmentation for section-aware piano patterns */
-  segmentationData?: SegmentationResult | null;
   /** Shared guitar diagram selection used to resolve guitar strumming voicings */
   guitarVoicing?: Partial<GuitarVoicingSelection>;
   /** Enharmonic target key for capo-transposed guitar shapes */
@@ -190,7 +187,6 @@ export const FallingNotesCanvas: React.FC<FallingNotesCanvasProps> = React.memo(
   activeInstruments = [],
   bpm,
   timeSignature,
-  segmentationData,
   guitarVoicing,
   targetKey,
   signalDynamicsSource,
@@ -280,7 +276,6 @@ export const FallingNotesCanvas: React.FC<FallingNotesCanvasProps> = React.memo(
       activeInstruments,
       bpm,
       timeSignature,
-      segmentationData,
       guitarVoicing,
       targetKey,
       signalDynamicsSource,
@@ -292,7 +287,6 @@ export const FallingNotesCanvas: React.FC<FallingNotesCanvasProps> = React.memo(
     activeInstruments,
     bpm,
     timeSignature,
-    segmentationData,
     guitarVoicing,
     targetKey,
     signalDynamicsSource,

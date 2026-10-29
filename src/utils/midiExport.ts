@@ -16,7 +16,6 @@
 
 import type { ChordEvent } from './chordToMidi';
 import { DynamicsAnalyzer } from '@/services/audio/dynamicsAnalyzer';
-import type { SegmentationResult } from '@/types/chatbotTypes';
 import type { AudioDynamicsAnalysisResult } from '@/services/audio/audioDynamicsTypes';
 import type { SheetSageNoteEvent } from '@/types/sheetSage';
 import {
@@ -218,7 +217,6 @@ function generateInstrumentMidiNotes(
   bpm: number,
   channel: number,
   timeSignature: number = 4,
-  segmentationData?: SegmentationResult | null,
   signalAnalysis?: AudioDynamicsAnalysisResult | null,
 ): MidiNoteEvent[] {
   const midiEvents: MidiNoteEvent[] = [];
@@ -234,7 +232,6 @@ function generateInstrumentMidiNotes(
     bpm,
     timeSignature,
     totalDuration: totalSongDuration,
-    segmentationData,
   });
   dynamics.setSignalAnalysis(signalAnalysis ?? null);
 
@@ -264,7 +261,6 @@ function generateInstrumentMidiNotes(
       startTime,
       totalDuration: totalSongDuration,
       timeSignature,
-      segmentationData,
       signalDynamics,
     });
 
@@ -315,8 +311,6 @@ export interface MidiExportOptions {
   timeSignature?: number;
   /** Explicit BPM — if omitted, estimated from average beat duration */
   bpm?: number;
-  /** Optional song segmentation used for section-aware velocity shaping */
-  segmentationData?: SegmentationResult | null;
   /** Optional analyzed signal contours so export matches signal-driven playback patterns */
   signalAnalysis?: AudioDynamicsAnalysisResult | null;
   /** Additional raw note tracks, used for melody overlays currently shown in the visualizer */
@@ -399,14 +393,12 @@ export function exportChordEventsToMidi(
   instrumentList.slice(0, maxPlayableTracks).forEach((inst, idx) => {
     const channel = idx >= 9 ? idx + 1 : idx; // skip channel 9 (GM drums)
     const program = GM_PROGRAMS[inst.name.toLowerCase()] ?? 0;
-    const segmentationData = options?.segmentationData;
     const midiNotes = generateInstrumentMidiNotes(
       events,
       inst.name.toLowerCase(),
       bpm,
       channel,
       timeSignature,
-      segmentationData,
       options?.signalAnalysis,
     );
     const displayName = inst.name.charAt(0).toUpperCase() + inst.name.slice(1);

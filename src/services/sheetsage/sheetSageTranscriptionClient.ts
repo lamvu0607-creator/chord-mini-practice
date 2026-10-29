@@ -1,10 +1,7 @@
 import type { SheetSageResult } from '@/types/sheetSage';
-import { offloadUploadService } from '@/services/storage/offloadUploadService';
 import { getCachedSheetSageMelody } from '@/services/sheetsage/sheetSageCacheClient';
 import { buildAudioProxyUrl } from '@/utils/audioProxyUrl';
 import { isLocalBackend } from '@/utils/backendConfig';
-import { isFirebaseStorageUrl } from '@/utils/urlValidationUtils';
-import { getAppCheckTokenForApi } from '@/config/firebase';
 
 const SHEETSAGE_CACHE_RECOVERY_ATTEMPTS = 30;
 const SHEETSAGE_CACHE_RECOVERY_DELAY_MS = 3000;
@@ -17,13 +14,9 @@ function buildSourceFilename(sourceName: string | undefined | null): string {
 }
 
 async function buildSheetSageRequestHeaders(contentType?: string): Promise<HeadersInit> {
-  const appCheckToken = await getAppCheckTokenForApi();
   const headers: HeadersInit = {};
   if (contentType) {
     headers['Content-Type'] = contentType;
-  }
-  if (appCheckToken) {
-    headers['X-Firebase-AppCheck'] = appCheckToken;
   }
   return headers;
 }
@@ -119,14 +112,13 @@ export async function requestSheetSageTranscription(
   videoId?: string | null,
 ): Promise<SheetSageResult> {
   try {
-    const shouldUseDirectFirebaseUrl = (
+    const shouldUseDirectAudioUrl = (
       !audioFile
       && typeof audioUrl === 'string'
-      && isFirebaseStorageUrl(audioUrl)
       && !isLocalBackend()
     );
 
-    if (shouldUseDirectFirebaseUrl) {
+    if (shouldUseDirectAudioUrl) {
       const response = await fetch('/api/transcribe-sheetsage', {
         method: 'POST',
         headers: await buildSheetSageRequestHeaders('application/json'),
@@ -145,19 +137,6 @@ export async function requestSheetSageTranscription(
     }
 
     const sourceFile = await resolveSheetSageAudioFile(audioFile, audioUrl, videoId);
-
-    if (offloadUploadService.shouldUseOffloadUpload(sourceFile.size)) {
-      const offloadResult = await offloadUploadService.transcribeSheetSageOffloadUpload(
-        sourceFile,
-        videoId || undefined,
-      );
-
-      if (!offloadResult.success || !offloadResult.data) {
-        throw new Error(offloadResult.error || 'Sheet Sage transcription failed');
-      }
-
-      return offloadResult.data as SheetSageResult;
-    }
 
     const formData = new FormData();
     formData.append('file', sourceFile, sourceFile.name);

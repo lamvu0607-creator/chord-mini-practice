@@ -1,7 +1,7 @@
 jest.mock('@/config/serverBackend', () => ({
   getPythonApiUrl: jest.fn(() => 'https://python.example.com'),
-  getSongformerApiUrl: jest.fn(() => 'https://songformer.example.com'),
   getSheetSageApiUrl: jest.fn(() => 'https://sheetsage.example.com'),
+  getStemsApiUrl: jest.fn(() => 'https://stems.example.com'),
   getFrontendBaseUrl: jest.fn(() => 'https://frontend.example.com'),
 }));
 
@@ -18,8 +18,8 @@ describe('config/api', () => {
 
     expect(BACKEND_URLS).toEqual({
       PYTHON_BACKEND: 'https://python.example.com',
-      SONGFORMER_BACKEND: 'https://songformer.example.com',
       SHEETSAGE_BACKEND: 'https://sheetsage.example.com',
+      STEMS_BACKEND: 'https://stems.example.com',
       VERCEL_FRONTEND: 'https://frontend.example.com',
     });
     expect(getApiUrl('RECOGNIZE_CHORDS')).toBe(API_ROUTES.RECOGNIZE_CHORDS);

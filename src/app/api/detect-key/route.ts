@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ThinkingLevel } from '@google/genai';
-import { getDocumentWithAdminAccess, setDocumentWithAdminAccess } from '@/services/firebase/firestoreAdminService';
+import { getDocument, setDocument } from '@/server/persistence/documentService';
 import crypto from 'crypto';
 import { createGeminiClient, GEMINI_MODEL_NAME } from '@/config/gemini';
 import { sanitizeLegacyCorrections, sanitizeSequenceCorrections } from '@/utils/keyDetectionCorrections';
@@ -154,7 +153,7 @@ function buildHeuristicKeyDetectionResult(params: {
 // stale connection errors in containerized environments (Railway).
 async function checkKeyDetectionCache(cacheKey: string): Promise<KeyDetectionCacheEntry | null> {
   try {
-    const data = await getDocumentWithAdminAccess<KeyDetectionCacheEntry>('keyDetections', cacheKey);
+    const data = await getDocument<KeyDetectionCacheEntry>('keyDetections', cacheKey);
 
     if (data) {
       console.log('Found cached key detection');
@@ -191,7 +190,7 @@ async function saveKeyDetectionToCache(cacheKey: string, keyResult: KeyDetection
       } : null
     };
 
-    await setDocumentWithAdminAccess('keyDetections', cacheKey, JSON.parse(JSON.stringify(removeUndefinedFields(cacheData))));
+    await setDocument('keyDetections', cacheKey, JSON.parse(JSON.stringify(removeUndefinedFields(cacheData))));
     console.log('✅ Key detection saved to cache successfully');
   } catch (error) {
     console.error('❌ Error saving key detection to cache:', error);
@@ -465,7 +464,7 @@ Important: Do not include any explanations, analysis, or additional text. Just g
         contents: prompt,
         config: {
           thinkingConfig: {
-            thinkingLevel: ThinkingLevel.HIGH
+            thinkingLevel: 'HIGH'
           }
         }
       });

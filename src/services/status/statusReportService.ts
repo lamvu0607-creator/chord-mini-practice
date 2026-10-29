@@ -1,9 +1,9 @@
 import {
-  deleteDocumentsWithAdminAccess,
-  getDocumentWithAdminAccess,
-  listDocumentsWithAdminAccess,
-  setDocumentWithAdminAccess,
-} from '@/services/firebase/firestoreAdminService';
+  deleteDocuments,
+  getDocument,
+  listDocuments,
+  setDocument,
+} from '@/server/persistence/documentService';
 import { getStatusConfig } from '@/services/status/statusConfig';
 import {
   STATUS_DEPENDENCY_GROUPS,
@@ -378,14 +378,14 @@ function updateIncidentFromProbe(report: PublicStatusReport, date: string, probe
 }
 
 export async function getStatusReport(date = getStatusDateId()): Promise<PublicStatusReport | null> {
-  const doc = await getDocumentWithAdminAccess<PublicStatusReport>(STATUS_REPORTS_COLLECTION, date);
+  const doc = await getDocument<PublicStatusReport>(STATUS_REPORTS_COLLECTION, date);
   return doc ? sanitizeReport({ ...doc, date: doc.date || date }) : null;
 }
 
 export async function listStatusReports(limit = 90): Promise<PublicStatusReport[]> {
-  const reports = await listDocumentsWithAdminAccess<PublicStatusReport>(STATUS_REPORTS_COLLECTION, limit);
+  const reports = await listDocuments<PublicStatusReport>(STATUS_REPORTS_COLLECTION, limit);
   return reports
-    .map((report) => sanitizeReport({ ...report, date: report.date || report.id }))
+    .map((report) => sanitizeReport({ ...report, date: report.date || report.id || '' }))
     .sort((left, right) => right.date.localeCompare(left.date))
     .slice(0, limit);
 }
@@ -432,7 +432,7 @@ export async function recordStatusProbeResults(probes: StatusProbeResult[]): Pro
   report.expiresAtMs = now.getTime() + getStatusConfig().retentionDays * 24 * 60 * 60 * 1000;
 
   const sanitized = sanitizeReport(report);
-  await setDocumentWithAdminAccess(STATUS_REPORTS_COLLECTION, date, sanitized as unknown as Record<string, unknown>);
+  await setDocument(STATUS_REPORTS_COLLECTION, date, sanitized as unknown as Record<string, unknown>);
   return sanitized;
 }
 
@@ -442,16 +442,16 @@ export async function updateStatusReportAnalysis(date: string, analysis: PublicS
   report.analysis = analysis;
   report.updatedAt = new Date().toISOString();
   const sanitized = sanitizeReport(report);
-  await setDocumentWithAdminAccess(STATUS_REPORTS_COLLECTION, date, sanitized as unknown as Record<string, unknown>);
+  await setDocument(STATUS_REPORTS_COLLECTION, date, sanitized as unknown as Record<string, unknown>);
   return sanitized;
 }
 
 export async function pruneExpiredStatusReports(nowMs = Date.now()): Promise<number> {
-  const reports = await listDocumentsWithAdminAccess<PublicStatusReport>(STATUS_REPORTS_COLLECTION, 300);
+  const reports = await listDocuments<PublicStatusReport>(STATUS_REPORTS_COLLECTION, 300);
   const expiredIds = reports
     .filter((report) => Number(report.expiresAtMs || 0) > 0 && Number(report.expiresAtMs) < nowMs)
     .map((report) => report.id)
-    .filter(Boolean);
+    .filter((id): id is string => Boolean(id));
 
-  return deleteDocumentsWithAdminAccess(STATUS_REPORTS_COLLECTION, expiredIds);
+  return deleteDocuments(STATUS_REPORTS_COLLECTION, expiredIds);
 }

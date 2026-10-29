@@ -1,4 +1,4 @@
-# Troubleshooting and FAQ
+﻿# Troubleshooting and FAQ
 
 <cite>
 **Referenced Files in This Document**
@@ -12,7 +12,7 @@
 - [src/config/publicConfig.ts](file://src/config/publicConfig.ts)
 - [src/utils/environmentDetection.ts](file://src/utils/environmentDetection.ts)
 - [src/services/api/apiService.ts](file://src/services/api/apiService.ts)
-- [src/services/firebase/firebaseService.ts](file://src/services/firebase/firebaseService.ts)
+- [src/services/local-persistence/local-persistenceService.ts](file://src/services/local-persistence/local-persistenceService.ts)
 - [src/utils/errorMessageUtils.ts](file://src/utils/errorMessageUtils.ts)
 - [SongFormer/requirements.txt](file://SongFormer/requirements.txt)
 - [sheetsage/requirements.txt](file://sheetsage/requirements.txt)
@@ -40,7 +40,7 @@ ChordMiniApp consists of:
 - Frontend (Next.js) with runtime configuration loading and environment detection
 - Python backend (Flask) with rate limiting, CORS, and error handling
 - Optional microservices (SongFormer segmentation and Sheetsage melody)
-- Firebase integration for storage and caching
+- Local persistence integration for storage and caching
 - Scripts for local development and deployment
 
 ```mermaid
@@ -49,7 +49,7 @@ subgraph "Frontend"
 FE_Config["publicConfig.ts<br/>Runtime config loader"]
 FE_Env["environmentDetection.ts<br/>Audio strategy detection"]
 FE_API["apiService.ts<br/>Enhanced API client"]
-FE_FB["firebaseService.ts<br/>Storage and Firestore"]
+FE_FB["local-persistenceService.ts<br/>Storage and SQLite"]
 end
 subgraph "Backend"
 BE_App["app.py<br/>Flask app factory"]
@@ -74,7 +74,7 @@ BE_App -.-> SS
 - [src/config/publicConfig.ts:1-218](file://src/config/publicConfig.ts#L1-L218)
 - [src/utils/environmentDetection.ts:1-84](file://src/utils/environmentDetection.ts#L1-L84)
 - [src/services/api/apiService.ts:1-407](file://src/services/api/apiService.ts#L1-L407)
-- [src/services/firebase/firebaseService.ts:1-156](file://src/services/firebase/firebaseService.ts#L1-L156)
+- [src/services/local-persistence/local-persistenceService.ts:1-156](file://src/services/local-persistence/local-persistenceService.ts#L1-L156)
 - [python_backend/app.py:1-186](file://python_backend/app.py#L1-L186)
 - [python_backend/error_handlers.py:1-161](file://python_backend/error_handlers.py#L1-L161)
 - [python_backend/config.py:1-215](file://python_backend/config.py#L1-L215)
@@ -86,11 +86,11 @@ BE_App -.-> SS
 - [package.json:1-135](file://package.json#L1-L135)
 
 ## Core Components
-- Frontend runtime configuration loader that fetches environment variables from the backend at runtime for “build once, run anywhere” Docker deployments.
+- Frontend runtime configuration loader that fetches environment variables from the backend at runtime for â€œbuild once, run anywhereâ€ Docker deployments.
 - Environment detection utility that selects audio processing strategies based on URL and environment.
 - Enhanced API service with client-side rate limiting, retry logic, timeouts, and user-friendly error handling.
 - Centralized error handling in the backend with structured JSON responses and logging.
-- Firebase service for storage and Firestore operations with metadata caching.
+- Local persistence service for storage and SQLite operations with metadata caching.
 - Backend configuration managing CORS, rate limits, timeouts, and feature toggles.
 
 **Section sources**
@@ -98,7 +98,7 @@ BE_App -.-> SS
 - [src/utils/environmentDetection.ts:1-84](file://src/utils/environmentDetection.ts#L1-L84)
 - [src/services/api/apiService.ts:1-407](file://src/services/api/apiService.ts#L1-L407)
 - [python_backend/error_handlers.py:1-161](file://python_backend/error_handlers.py#L1-L161)
-- [src/services/firebase/firebaseService.ts:1-156](file://src/services/firebase/firebaseService.ts#L1-L156)
+- [src/services/local-persistence/local-persistenceService.ts:1-156](file://src/services/local-persistence/local-persistenceService.ts#L1-L156)
 - [python_backend/config.py:1-215](file://python_backend/config.py#L1-L215)
 
 ## Architecture Overview
@@ -106,14 +106,14 @@ High-level flow for audio extraction and analysis:
 - Frontend detects environment and audio strategy, then calls backend endpoints.
 - Backend performs beat detection, chord recognition, and caches results.
 - Optional microservices (SongFormer, Sheetsage) can be used for advanced segmentation and melody transcription.
-- Firebase stores audio metadata and caches results.
+- Local persistence stores audio metadata and caches results.
 
 ```mermaid
 sequenceDiagram
 participant Client as "Frontend"
 participant API as "apiService.ts"
 participant Backend as "Flask app.py"
-participant FB as "firebaseService.ts"
+participant FB as "local-persistenceService.ts"
 participant Ext as "External Services"
 Client->>API : "detectBeats()/recognizeChords()"
 API->>Backend : "POST /api/detect-beats or /api/recognize-chords"
@@ -127,7 +127,7 @@ API-->>Client : "Parsed response or error"
 **Diagram sources**
 - [src/services/api/apiService.ts:29-407](file://src/services/api/apiService.ts#L29-L407)
 - [python_backend/app.py:1-186](file://python_backend/app.py#L1-L186)
-- [src/services/firebase/firebaseService.ts:1-156](file://src/services/firebase/firebaseService.ts#L1-L156)
+- [src/services/local-persistence/local-persistenceService.ts:1-156](file://src/services/local-persistence/local-persistenceService.ts#L1-L156)
 
 ## Detailed Component Analysis
 
@@ -183,7 +183,7 @@ IsCustom --> |No| Log["Log traceback"] --> GenericResp["Return 500 JSON"]
 
 ### API Service and Client-Side Rate Limiting
 - Client-side rate limiter prevents overwhelming the backend.
-- Retry logic, timeouts, and App Check token injection for secure requests.
+- Retry logic, timeouts, and IP rate limiting token injection for secure requests.
 
 ```mermaid
 sequenceDiagram
@@ -205,17 +205,17 @@ API-->>UI : "ApiResponse (success/error/rateLimited)"
 **Section sources**
 - [src/services/api/apiService.ts:1-407](file://src/services/api/apiService.ts#L1-L407)
 
-### Firebase Storage and Firestore Operations
-- Firestore caching for lyrics, audio metadata, and analysis results.
+### local audio storage and SQLite Operations
+- SQLite caching for lyrics, audio metadata, and analysis results.
 - Storage upload with metadata persistence.
 
 ```mermaid
 sequenceDiagram
 participant Client as "Frontend"
 participant API as "apiService.ts"
-participant FB as "firebaseService.ts"
-participant Store as "Firebase Storage"
-participant DB as "Firestore"
+participant FB as "local-persistenceService.ts"
+participant Store as "local audio storage"
+participant DB as "SQLite"
 Client->>API : "uploadAudio()"
 API->>FB : "uploadAudioToStorage(videoId, audioBlob, contentType)"
 FB->>Store : "uploadBytes(ref, data)"
@@ -227,10 +227,10 @@ API-->>Client : "Success"
 ```
 
 **Diagram sources**
-- [src/services/firebase/firebaseService.ts:132-153](file://src/services/firebase/firebaseService.ts#L132-L153)
+- [src/services/local-persistence/local-persistenceService.ts:132-153](file://src/services/local-persistence/local-persistenceService.ts#L132-L153)
 
 **Section sources**
-- [src/services/firebase/firebaseService.ts:1-156](file://src/services/firebase/firebaseService.ts#L1-L156)
+- [src/services/local-persistence/local-persistenceService.ts:1-156](file://src/services/local-persistence/local-persistenceService.ts#L1-L156)
 
 ## Dependency Analysis
 - Frontend dependencies pinned via engines and overrides to ensure compatibility.
@@ -269,7 +269,7 @@ SS["Sheetsage"] --> SSReq["Sheetsage reqs.txt"]
   - Use shorter audio files for faster processing.
   - Prefer direct upload for immediate processing when YouTube extraction is slow.
   - Monitor backend logs for latency spikes and adjust timeouts accordingly.
-  - Consider caching frequently accessed results in Firestore.
+  - Consider caching frequently accessed results in SQLite.
 
 [No sources needed since this section provides general guidance]
 
@@ -277,7 +277,7 @@ SS["Sheetsage"] --> SSReq["Sheetsage reqs.txt"]
 
 ### Installation and Environment Setup
 - Prerequisites and setup steps:
-  - Node.js 20.9+, npm 10+, Python 3.10.x, Docker recommended, Git LFS for SongFormer checkpoints, Firebase account, Gemini API key.
+  - Node.js 20.9+, npm 10+, Python 3.10.x, Docker recommended, Git LFS for SongFormer checkpoints, Local persistence account, Gemini API key.
   - Clone with submodules, pull Git LFS objects, install frontend dependencies.
   - Verify submodules for Beat-Transformer, Chord-CNN-LSTM, ChordMini.
   - Install FluidSynth for MIDI synthesis if chord recognition issues occur.
@@ -309,7 +309,7 @@ SS["Sheetsage"] --> SSReq["Sheetsage reqs.txt"]
 - [python_backend/app.py:180-186](file://python_backend/app.py#L180-L186)
 
 ### Frontend Connection Errors
-- Browser console errors like “Failed to fetch” indicate backend not running on port 5001.
+- Browser console errors like â€œFailed to fetchâ€ indicate backend not running on port 5001.
 - Restart both frontend and backend servers.
 
 **Section sources**
@@ -326,7 +326,7 @@ SS["Sheetsage"] --> SSReq["Sheetsage reqs.txt"]
 - [SongFormer/requirements.txt:1-3](file://SongFormer/requirements.txt#L1-L3)
 
 ### Integration Problems (APIs, Authentication, Configuration)
-- Firebase configuration must match .env.local/.env.docker.
+- Local persistence configuration must match .env.local/.env.docker.
 - Enable Anonymous Authentication for local development.
 - Verify CORS origins and rate limits.
 - For production, configure CORS_ORIGINS and Redis for distributed rate limiting.
@@ -355,8 +355,8 @@ SS["Sheetsage"] --> SSReq["Sheetsage reqs.txt"]
 - Backend:
   - Check centralized error handler logs for detailed tracebacks.
   - Verify rate limit headers and retry-after values.
-- Database (Firebase):
-  - Confirm Firestore collections exist on first write.
+- Database (Local persistence):
+  - Confirm SQLite collections exist on first write.
   - Verify storage rules and temp folder cleanup configuration.
 
 **Section sources**
@@ -378,10 +378,10 @@ SS["Sheetsage"] --> SSReq["Sheetsage reqs.txt"]
   3. Check firewall and port conflicts (AirTunes on port 5000).
   4. Restart frontend and backend.
 
-- Firebase storage unauthorized or temp folder issues:
+- Local persistence storage unauthorized or temp folder issues:
   1. Enable Anonymous Authentication.
   2. Deploy storage.rules allowing temp uploads and cleanup.
-  3. Set FIREBASE_SERVICE_ACCOUNT_KEY and FIREBASE_TEMP_CLEANUP_CRON.
+  3. Set PERSISTENCE_SERVICE_ACCOUNT_KEY and PERSISTENCE_TEMP_CLEANUP_CRON.
   4. Verify temp folder exists and cleanup runs.
 
 - Audio extraction fails with timeout or unsupported format:

@@ -9,7 +9,7 @@
 - [route.ts](file://src/app/api/extract-audio/route.ts)
 - [audioProcessingService.ts](file://src/services/audio/audioProcessingService.ts)
 - [ytMp3GoService.ts](file://src/services/youtube/ytMp3GoService.ts)
-- [firebaseStorageSimplified.ts](file://src/services/firebase/firebaseStorageSimplified.ts)
+- [local-persistenceStorageSimplified.ts](file://src/services/local-persistence/local-persistenceStorageSimplified.ts)
 - [urlValidationUtils.ts](file://src/utils/urlValidationUtils.ts)
 - [grainPlayerPitchShiftService.ts](file://src/services/audio/grainPlayerPitchShiftService.ts)
 - [utils.py](file://sheetsage/src/sheetsage_upstream/sheetsage/utils.py)
@@ -49,7 +49,7 @@ end
 subgraph "Backend"
 BE_Utils["Python audio_utils.py"]
 BE_Temp["Python tempfiles.py"]
-BE_Firestore["firebaseStorageSimplified.ts"]
+BE_SQLite["local-persistenceStorageSimplified.ts"]
 end
 subgraph "External Services"
 YT_PROXY["Cloudflare/local YouTube proxy"]
@@ -63,10 +63,10 @@ FE_Extraction --> FE_BROWSER
 FE_BROWSER --> YT_QUEUE
 FE_BROWSER --> YT_PROXY
 FE_Extraction --> YT_IO
-FE_Extraction --> BE_Firestore
+FE_Extraction --> BE_SQLite
 FE_Extraction --> YT_URL
-BE_Firestore --> BE_Temp
-BE_Firestore --> BE_Utils
+BE_SQLite --> BE_Temp
+BE_SQLite --> BE_Utils
 ```
 
 **Diagram sources**
@@ -74,7 +74,7 @@ BE_Firestore --> BE_Utils
 - [audioProcessingService.ts:43-109](file://src/services/audio/audioProcessingService.ts#L43-L109)
 - [audioExtractionSimplified.ts:69-120](file://src/services/audio/audioExtractionSimplified.ts#L69-L120)
 - [ytMp3GoService.ts:75-155](file://src/services/youtube/ytMp3GoService.ts#L75-L155)
-- [firebaseStorageSimplified.ts:169-216](file://src/services/firebase/firebaseStorageSimplified.ts#L169-L216)
+- [local-persistenceStorageSimplified.ts:169-216](file://src/services/local-persistence/local-persistenceStorageSimplified.ts#L169-L216)
 - [audio_utils.py:12-131](file://python_backend/services/audio/audio_utils.py#L12-L131)
 - [tempfiles.py:15-136](file://python_backend/services/audio/tempfiles.py#L15-L136)
 - [urlValidationUtils.ts:49-104](file://src/utils/urlValidationUtils.ts#L49-L104)
@@ -84,7 +84,7 @@ BE_Firestore --> BE_Utils
 - [audioProcessingService.ts:43-109](file://src/services/audio/audioProcessingService.ts#L43-L109)
 - [audioExtractionSimplified.ts:69-120](file://src/services/audio/audioExtractionSimplified.ts#L69-L120)
 - [ytMp3GoService.ts:75-155](file://src/services/youtube/ytMp3GoService.ts#L75-L155)
-- [firebaseStorageSimplified.ts:169-216](file://src/services/firebase/firebaseStorageSimplified.ts#L169-L216)
+- [local-persistenceStorageSimplified.ts:169-216](file://src/services/local-persistence/local-persistenceStorageSimplified.ts#L169-L216)
 - [audio_utils.py:12-131](file://python_backend/services/audio/audio_utils.py#L12-L131)
 - [tempfiles.py:15-136](file://python_backend/services/audio/tempfiles.py#L15-L136)
 - [urlValidationUtils.ts:49-104](file://src/utils/urlValidationUtils.ts#L49-L104)
@@ -95,7 +95,7 @@ BE_Firestore --> BE_Utils
   - Cloudflare Worker proxy support through `NEXT_PUBLIC_YOUTUBE_PROXY_URL`
   - No automatic Railway/server yt-dlp fallback when Cloudflare/browser extraction fails
   - Deprecated `yt-mp3-go` rollback via `NEXT_PUBLIC_AUDIO_STRATEGY=yt-mp3-go`
-  - Candidate validation and permanent storage via Firebase
+  - Candidate validation and permanent storage via Local persistence
 - Preprocessing utilities:
   - Silence trimming, duration calculation, resampling, and format validation
   - Temporary file management for safe cleanup
@@ -114,13 +114,13 @@ BE_Firestore --> BE_Utils
 - [tempfiles.py:15-136](file://python_backend/services/audio/tempfiles.py#L15-L136)
 - [audioBufferUtils.ts:4-87](file://src/utils/audioBufferUtils.ts#L4-L87)
 - [ytMp3GoService.ts:75-155](file://src/services/youtube/ytMp3GoService.ts#L75-L155)
-- [firebaseStorageSimplified.ts:169-216](file://src/services/firebase/firebaseStorageSimplified.ts#L169-L216)
+- [local-persistenceStorageSimplified.ts:169-216](file://src/services/local-persistence/local-persistenceStorageSimplified.ts#L169-L216)
 
 ## Architecture Overview
 The pipeline follows a layered approach:
 - Frontend triggers extraction via a Next.js API route
 - The route delegates to AudioProcessingService, which coordinates AudioExtractionSimplified
-- AudioExtractionSimplified selects the extraction strategy, validates URLs, caches metadata, and optionally uploads to Firebase
+- AudioExtractionSimplified selects the extraction strategy, validates URLs, caches metadata, and optionally uploads to Local persistence
 - Python backend utilities support preprocessing and temporary file lifecycle
 - Quality control ensures accessible and valid audio sources
 
@@ -133,8 +133,8 @@ participant Extractor as "AudioExtractionSimplified"
 participant Browser as "Browser yt-dlp"
 participant Queue as "Proxy queue"
 participant Proxy as "Cloudflare or local media proxy"
-participant Finalizer as "Firebase finalizer"
-participant Store as "Firebase Storage"
+participant Finalizer as "Local persistence finalizer"
+participant Store as "local audio storage"
 Client->>API : POST /api/extract-audio
 API->>Service : extractAudioFromYouTube(videoId,...)
 Service->>Extractor : extractAudio(videoMetadata, forceRedownload)
@@ -162,7 +162,7 @@ API-->>Client : {success, audioUrl, duration,...}
 - [browserYtDlpExtractionService.ts:1-430](file://src/services/audio/browserYtDlpExtractionService.ts#L1-L430)
 - [browser-ytdlp-worker.js:1-260](file://public/browser-ytdlp-worker.js#L1-L260)
 - [route.ts:1-260](file://src/app/api/audio/finalize-browser-extraction/route.ts#L1-L260)
-- [firebaseStorageSimplified.ts:169-216](file://src/services/firebase/firebaseStorageSimplified.ts#L169-L216)
+- [local-persistenceStorageSimplified.ts:169-216](file://src/services/local-persistence/local-persistenceStorageSimplified.ts#L169-L216)
 
 ## Detailed Component Analysis
 
@@ -179,7 +179,7 @@ API-->>Client : {success, audioUrl, duration,...}
 - Caching and storage:
   - Browser extraction uploads to private `audio-candidates/{uid}/{videoId}/{sha}.mp3`
   - Finalizer validates MP3 bytes, auth, path, size, duration, MIME, and hash before promoting to public `audio/`
-  - Simplified Firestore cache for metadata retrieval
+  - Simplified SQLite cache for metadata retrieval
 - URL validation:
   - Browser extraction downloads through the same YouTube media proxy used by yt-dlp for player/media requests
   - Cloudflare Worker proxy is configured with `NEXT_PUBLIC_YOUTUBE_PROXY_URL`
@@ -200,7 +200,7 @@ Candidate --> Finalize["Validate and promote"]
 Finalize --> Release["Release queue lease"]
 CallYTDL --> Finalize
 CallYTM --> Finalize
-Release --> CacheCheck["Check Firebase & Firestore Cache"]
+Release --> CacheCheck["Check Local persistence & SQLite Cache"]
 CacheCheck --> CacheHit{"Cache Hit?"}
 CacheHit --> |Yes| ReturnCache["Return Cached Result"]
 CacheHit --> |No| FinalURL["Final Accessible URL"]
@@ -212,14 +212,14 @@ ReturnCache --> Done
 - [audioExtractionSimplified.ts:84-120](file://src/services/audio/audioExtractionSimplified.ts#L84-L120)
 - [audioExtractionSimplified.ts:605-799](file://src/services/audio/audioExtractionSimplified.ts#L605-L799)
 - [ytMp3GoService.ts:87-155](file://src/services/youtube/ytMp3GoService.ts#L87-L155)
-- [firebaseStorageSimplified.ts:169-216](file://src/services/firebase/firebaseStorageSimplified.ts#L169-L216)
+- [local-persistenceStorageSimplified.ts:169-216](file://src/services/local-persistence/local-persistenceStorageSimplified.ts#L169-L216)
 - [urlValidationUtils.ts:49-104](file://src/utils/urlValidationUtils.ts#L49-L104)
 
 **Section sources**
 - [audioExtractionSimplified.ts:84-120](file://src/services/audio/audioExtractionSimplified.ts#L84-L120)
 - [audioExtractionSimplified.ts:605-799](file://src/services/audio/audioExtractionSimplified.ts#L605-L799)
 - [ytMp3GoService.ts:87-155](file://src/services/youtube/ytMp3GoService.ts#L87-L155)
-- [firebaseStorageSimplified.ts:169-216](file://src/services/firebase/firebaseStorageSimplified.ts#L169-L216)
+- [local-persistenceStorageSimplified.ts:169-216](file://src/services/local-persistence/local-persistenceStorageSimplified.ts#L169-L216)
 - [urlValidationUtils.ts:49-104](file://src/utils/urlValidationUtils.ts#L49-L104)
 
 ### Audio Utility Functions
@@ -361,13 +361,13 @@ Valid --> |No| Reject
 - Frontend dependencies:
   - Next.js API route depends on AudioProcessingService
   - AudioProcessingService depends on AudioExtractionSimplified
-  - AudioExtractionSimplified depends on environment detection, browser yt-dlp production extraction, local yt-dlp development extraction, rollback yt-mp3-go services, and Firebase utilities
+  - AudioExtractionSimplified depends on environment detection, browser yt-dlp production extraction, local yt-dlp development extraction, rollback yt-mp3-go services, and Local persistence utilities
 - Backend dependencies:
   - Python audio utilities depend on librosa and soundfile
-  - Temporary file management wraps Python’s tempfile and os
+  - Temporary file management wraps Pythonâ€™s tempfile and os
 - External dependencies:
   - browser yt-dlp for production extraction, local yt-dlp for development, and yt-mp3-go for rollback
-  - Firebase for storage and caching
+  - Local persistence for storage and caching
   - URL validation utilities for safe access
 
 ```mermaid
@@ -377,7 +377,7 @@ APS --> AES["audioExtractionSimplified.ts"]
 AES --> BYT["browserYtDlpExtractionService.ts"]
 AES --> YTMP3["ytMp3GoService.ts"]
 AES --> YTDLP["ytDlpService.ts"]
-AES --> FSS["firebaseStorageSimplified.ts"]
+AES --> FSS["local-persistenceStorageSimplified.ts"]
 AES --> UVU["urlValidationUtils.ts"]
 BYT --> CFQ["Cloudflare proxy + queue contract"]
 PYA["audio_utils.py"] --> Librosa["librosa"]
@@ -390,7 +390,7 @@ PYT["tempfiles.py"] --> Tmp["tempfile/os"]
 - [audioProcessingService.ts:43-109](file://src/services/audio/audioProcessingService.ts#L43-L109)
 - [audioExtractionSimplified.ts:69-120](file://src/services/audio/audioExtractionSimplified.ts#L69-L120)
 - [ytMp3GoService.ts:75-155](file://src/services/youtube/ytMp3GoService.ts#L75-L155)
-- [firebaseStorageSimplified.ts:169-216](file://src/services/firebase/firebaseStorageSimplified.ts#L169-L216)
+- [local-persistenceStorageSimplified.ts:169-216](file://src/services/local-persistence/local-persistenceStorageSimplified.ts#L169-L216)
 - [urlValidationUtils.ts:49-104](file://src/utils/urlValidationUtils.ts#L49-L104)
 - [audio_utils.py:12-131](file://python_backend/services/audio/audio_utils.py#L12-L131)
 - [tempfiles.py:15-136](file://python_backend/services/audio/tempfiles.py#L15-L136)
@@ -400,22 +400,22 @@ PYT["tempfiles.py"] --> Tmp["tempfile/os"]
 - [audioProcessingService.ts:43-109](file://src/services/audio/audioProcessingService.ts#L43-L109)
 - [audioExtractionSimplified.ts:69-120](file://src/services/audio/audioExtractionSimplified.ts#L69-L120)
 - [ytMp3GoService.ts:75-155](file://src/services/youtube/ytMp3GoService.ts#L75-L155)
-- [firebaseStorageSimplified.ts:169-216](file://src/services/firebase/firebaseStorageSimplified.ts#L169-L216)
+- [local-persistenceStorageSimplified.ts:169-216](file://src/services/local-persistence/local-persistenceStorageSimplified.ts#L169-L216)
 - [urlValidationUtils.ts:49-104](file://src/utils/urlValidationUtils.ts#L49-L104)
 - [audio_utils.py:12-131](file://python_backend/services/audio/audio_utils.py#L12-L131)
 - [tempfiles.py:15-136](file://python_backend/services/audio/tempfiles.py#L15-L136)
 
 ## Performance Considerations
 - Parallel pipeline:
-  - Start Firebase upload in parallel with immediate processing to reduce latency
+  - Start Local persistence upload in parallel with immediate processing to reduce latency
 - Stream URL optimization:
   - Prefer direct URLs when compatible with backend to avoid extra downloads
 - Memory optimization:
   - Use AudioBuffer to WAV conversion with strict bounds to prevent oversized buffers
   - Validate sample rates and channel counts to avoid unnecessary conversions
 - Caching:
-  - Firebase Storage cache reduces repeated downloads
-  - Simplified Firestore cache accelerates metadata retrieval
+  - local audio storage cache reduces repeated downloads
+  - Simplified SQLite cache accelerates metadata retrieval
 
 [No sources needed since this section provides general guidance]
 

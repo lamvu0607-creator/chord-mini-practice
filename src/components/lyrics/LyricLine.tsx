@@ -6,7 +6,6 @@ import {
 } from '@/utils/chordFormatting';
 import { normalizeChordForDedup } from '@/utils/chordNormalization';
 import { EnhancedLyricLine } from '@/utils/lyricsTimingUtils';
-import { SegmentationResult } from '@/types/chatbotTypes';
 import type { LyricTextColors } from '@/components/lyrics/lyricsTheme';
 
 // Types
@@ -55,7 +54,6 @@ interface LyricLineProps {
     isChordOnly?: boolean;
     isCondensed?: boolean;
   })[];
-  segmentationData?: SegmentationResult | null;
   accidentalPreference?: 'sharp' | 'flat'; // Enharmonic spelling preference for chord labels
 }
 
@@ -123,19 +121,6 @@ const findNearestWord = (
     }
   }
   return nearestIdx;
-};
-
-/**
- * Get section label for a given timestamp
- */
-const getSectionLabel = (timestamp: number, segmentationData?: SegmentationResult | null): string | null => {
-  if (!segmentationData?.segments) return null;
-
-  const segment = segmentationData.segments.find(seg =>
-    timestamp >= seg.startTime && timestamp <= seg.endTime
-  );
-
-  return segment ? (segment.label || segment.type || null) : null;
 };
 
 export function parseHexColor(color: string): RgbColor | null {
@@ -244,7 +229,6 @@ const LyricLineComponent: React.FC<LyricLineProps> = ({
   selectedLanguages,
   translatedLyrics,
   processedLines,
-  segmentationData,
   accidentalPreference
 }) => {
   // Check if this is an instrumental placeholder or chord-only section
@@ -424,32 +408,8 @@ const LyricLineComponent: React.FC<LyricLineProps> = ({
       .filter(item => item.text)
   ), [selectedLanguages, translatedLyrics, translatedLineIndex]);
 
-  const { sectionLabel, isFirstLineOfSection } = useMemo(() => {
-    const sectionLabel = getSectionLabel(line.startTime, segmentationData);
-    return {
-      sectionLabel,
-      isFirstLineOfSection: index === 0 || getSectionLabel(processedLines[index - 1]?.startTime, segmentationData) !== sectionLabel,
-    };
-  }, [index, line.startTime, processedLines, segmentationData]);
-
   return (
     <div key={index}>
-      {/* Section Label - only show at the beginning of each section */}
-      {isFirstLineOfSection && sectionLabel && (
-        <div className={`mb-2 mt-4 first:mt-0 text-left ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-          <div
-            className={`inline-block px-2 py-1 rounded-lg font-medium uppercase tracking-wide ${
-              darkMode ? 'bg-gray-800 border border-gray-600' : 'bg-gray-100 border border-gray-300'
-            }`}
-            style={{
-              fontSize: `${fontSize * 0.85}px`, // Match lyrics font size proportionally
-            }}
-          >
-            {sectionLabel}
-          </div>
-        </div>
-      )}
-
       <div
         id={`line-${index}`}
         className={`mb-4 ${isActive ? 'active' : ''} ${isPast ? 'past' : ''} ${
@@ -641,7 +601,6 @@ const areLyricLinePropsEqual = (prevProps: LyricLineProps, nextProps: LyricLineP
   if (!areSelectedLanguagesEqual(prevProps.selectedLanguages, nextProps.selectedLanguages)) return false;
   if (prevProps.translatedLyrics !== nextProps.translatedLyrics) return false;
   if (prevProps.processedLines !== nextProps.processedLines) return false;
-  if (prevProps.segmentationData !== nextProps.segmentationData) return false;
   return true;
 };
 

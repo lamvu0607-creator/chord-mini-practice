@@ -2,13 +2,11 @@
  * Chord Service - focused solely on chord recognition
  * - Handles both direct File input and URL input (via proxy -> File)
  * - Keeps local development on direct multipart uploads
- * - Exposes explicit offload helpers for production orchestration
  * - Preserves timeout, validation, and error handling semantics
  */
 
 import { createSafeTimeoutSignal } from '@/utils/environmentUtils';
-import { offloadUploadService } from '@/services/storage/offloadUploadService';
-import type { ChordDetectorType, ChordDetectionResult, ChordRecognitionBackendResponse } from '@/types/audioAnalysis';
+import type { ChordDetectorType, ChordDetectionResult } from '@/types/audioAnalysis';
 
 /**
  * Recognize chords from a File with rate limiting.
@@ -103,35 +101,6 @@ export async function recognizeChordsWithRateLimit(
     return chords;
   } catch (error) {
     console.error('Error in chord recognition with rate limiting:', error);
-    throw error;
-  }
-}
-
-/**
- * Recognize chords from an existing offload URL.
- * Production orchestration should prefer this path.
- */
-export async function recognizeChordsFromOffloadUrl(
-  offloadUrl: string,
-  model: ChordDetectorType = 'chord-cnn-lstm'
-): Promise<ChordDetectionResult[]> {
-  try {
-    const result = await offloadUploadService.recognizeChordsFromOffloadUrl(offloadUrl, model, {
-      deleteAfterProcessing: true,
-    });
-
-    if (!result.success) {
-      throw new Error(result.error || 'Unknown offload error');
-    }
-
-    const backendResponse = result.data as ChordRecognitionBackendResponse;
-    if (!backendResponse.chords || !Array.isArray(backendResponse.chords)) {
-      throw new Error('Invalid chord recognition response: missing or invalid chords array');
-    }
-
-    return backendResponse.chords as ChordDetectionResult[];
-  } catch (error) {
-    console.error('Error in offload chord recognition:', error);
     throw error;
   }
 }

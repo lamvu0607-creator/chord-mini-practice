@@ -1,4 +1,4 @@
-# Getting Started
+﻿# Getting Started
 
 <cite>
 **Referenced Files in This Document**
@@ -90,7 +90,7 @@ Prerequisites:
 - Python 3.10.x (3.10.16 recommended)
 - Docker (recommended for optional backends)
 - Git LFS (for SongFormer checkpoints)
-- Firebase account and keys
+- Local persistence account and keys
 - Gemini API key
 
 **Section sources**
@@ -137,12 +137,12 @@ FE-->>U : "Render analysis UI"
 - Node.js and npm versions are enforced by the project.
 - Python 3.10.x is required for the backend and optional services.
 - Git LFS is required to fetch large SongFormer model files.
-- Firebase configuration is mandatory for database and storage.
+- Local persistence configuration is mandatory for database and storage.
 - Optional API keys: YouTube, Music.AI, Gemini, Genius.
 
 Verification:
 - Confirm Node.js and npm versions meet requirements.
-- Ensure Firebase project settings and keys are configured in environment files.
+- Ensure Local persistence project settings and keys are configured in environment files.
 
 **Section sources**
 - [package.json:33-36](file://package.json#L33-L36)
@@ -160,7 +160,7 @@ Verification:
    - npm install
 
 2. Configure environment:
-   - Copy .env.example to .env.local and edit required Firebase and API keys.
+   - Copy .env.example to .env.local and edit required Local persistence and API keys.
 
 3. Start Python backend (Terminal 1):
    - cd python_backend
@@ -244,7 +244,7 @@ Platform-specific notes for Windows/x86_64 hosts:
 - [.env.example:46-49](file://.env.example#L46-L49)
 
 ## Dependency Analysis
-- Frontend depends on Next.js and environment variables for backend URLs and Firebase configuration.
+- Frontend depends on Next.js and environment variables for backend URLs and Local persistence configuration.
 - Python backend depends on Flask, ML frameworks, and audio processing libraries. It lazily loads heavy modules and checks availability at runtime.
 - Docker Compose defines services for frontend, backend, and optional Redis for rate limiting.
 
@@ -305,7 +305,7 @@ Verification steps:
 - Health checks:
   - curl http://localhost:5001/health (dev) or curl http://localhost:8080/ (prod)
 - Environment variables:
-  - Confirm PYTHON_API_URL and Firebase keys are set correctly.
+  - Confirm PYTHON_API_URL and Local persistence keys are set correctly.
 - Optional services:
   - Verify SongFormer and Sheet Sage endpoints respond when started.
 
@@ -325,14 +325,14 @@ You now have the essentials to install ChordMiniApp locally and in production, c
 ## Appendices
 
 ### A. Environment Variables Reference
-- Firebase: NEXT_PUBLIC_FIREBASE_* and related keys
+- Local persistence: NEXT_PUBLIC_PERSISTENCE_* and related keys
 - YouTube: NEXT_PUBLIC_YOUTUBE_API_KEY
 - Music.AI: MUSIC_AI_API_KEY
 - Gemini: GEMINI_API_KEY
 - Genius: GENIUS_API_KEY
 - Backend URLs: PYTHON_API_URL, SONGFORMER_API_URL, SHEETSAGE_API_URL
 - Audio strategy: NEXT_PUBLIC_AUDIO_STRATEGY
-- Feature flags: NEXT_PUBLIC_ENABLE_TRUE_STREAMING, AUDIO_PROXY_FIREBASE_REDIRECT_ENABLED
+- Feature flags: NEXT_PUBLIC_ENABLE_TRUE_STREAMING, AUDIO_PROXY_PERSISTENCE_REDIRECT_ENABLED
 
 **Section sources**
 - [.env.example:1-100](file://.env.example#L1-L100)

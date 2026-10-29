@@ -7,9 +7,8 @@
 
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
-import { ChatMessage, ChatbotRequest, ChatbotResponse, SongContext, SegmentationResult } from '@/types/chatbotTypes';
+import { ChatMessage, ChatbotRequest, ChatbotResponse, SongContext } from '@/types/chatbotTypes';
 import { LyricsData } from '@/types/musicAiTypes';
-import { segmentationAsyncService } from '@/services/api/segmentationAsyncService';
 
 /**
  * Sends a message to the chatbot API
@@ -259,26 +258,3 @@ export function truncateConversationHistory(
   return messages.slice(-maxMessages);
 }
 
-/**
- * Sends a request to the SongFormer segmentation API.
- */
-export async function requestSongSegmentation(
-  songContext: SongContext,
-): Promise<SegmentationResult> {
-  try {
-    const result = await segmentationAsyncService.requestSegmentation(songContext);
-    console.log('✅ SongFormer async segmentation request completed successfully');
-    return result;
-  } catch (error) {
-    console.error('Error requesting song segmentation:', error);
-
-    if (axios.isAxiosError(error)) {
-      const message = error.code === 'ECONNABORTED'
-        ? 'SongFormer segmentation timed out in the browser before the response could be applied.'
-        : error.response?.data?.error || error.message;
-      throw new Error(`Segmentation request failed: ${message}`);
-    }
-
-    throw new Error(error instanceof Error ? error.message : 'Failed to analyze song segmentation');
-  }
-}

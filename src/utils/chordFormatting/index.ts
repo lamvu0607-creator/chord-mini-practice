@@ -7,7 +7,3 @@ export {
   formatRomanNumeral,
 } from './display';
 export { buildBeatToChordSequenceMap } from './sequenceMap';
-export {
-  getSegmentationColorForBeatIndex,
-  getSegmentationCellClassNameForBeatIndex,
-} from './segmentation';

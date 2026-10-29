@@ -19,7 +19,7 @@
 </cite>
 
 ## Introduction
-ChordMini production YouTube extraction now runs primarily in the user's browser. The browser worker loads Pyodide, installs a pinned yt-dlp wheel, obtains a playable YouTube media URL through yt-dlp, downloads the source bytes through a YouTube media proxy, converts them with ffmpeg.wasm to a fixed 192 kbps MP3, uploads a private candidate to Firebase Storage, and asks the backend finalizer to validate and promote the file.
+ChordMini production YouTube extraction now runs primarily in the user's browser. The browser worker loads Pyodide, installs a pinned yt-dlp wheel, obtains a playable YouTube media URL through yt-dlp, downloads the source bytes through a YouTube media proxy, converts them with ffmpeg.wasm to a fixed 192 kbps MP3, uploads a private candidate to local audio storage, and asks the backend finalizer to validate and promote the file.
 
 Production can route the browser worker through a Cloudflare Worker proxy by setting `NEXT_PUBLIC_YOUTUBE_PROXY_URL`. The external proxy now also owns the extraction queue contract: the browser client acquires a lease before using the proxy, heartbeats while extraction is active, and releases the lease when the attempt finishes or is aborted. The in-repo `/api/youtube-media-proxy` remains as the local/default media proxy contract, while the deployed Cloudflare Worker and queue implementation may be managed outside the tracked repository for security and operational reasons. Local development still uses the existing server-side yt-dlp path unless explicitly switched to browser extraction for testing. `yt-mp3-go` remains in the codebase as a deprecated rollback path behind `NEXT_PUBLIC_AUDIO_STRATEGY=yt-mp3-go`, but it is no longer the normal production strategy or public status dependency.
 
@@ -46,7 +46,7 @@ end
 subgraph "Storage"
 CANDIDATE["audio-candidates/{uid}/{videoId}/{sha}.mp3"]
 PUBLIC["audio/audio_{videoId}_{timestamp}.mp3"]
-FIRESTORE["Firestore audio metadata"]
+SQLITE["SQLite audio metadata"]
 end
 AES --> EXTRACT
 AES --> BYT
@@ -61,7 +61,7 @@ BYT --> CANDIDATE
 BYT --> FINALIZE
 FINALIZE --> CANDIDATE
 FINALIZE --> PUBLIC
-FINALIZE --> FIRESTORE
+FINALIZE --> SQLITE
 ```
 
 ## Production Browser Extraction Flow
@@ -74,9 +74,9 @@ participant Worker as "browser-ytdlp-worker.js"
 participant Proxy as "Cloudflare Worker or /api/youtube-media-proxy"
 participant Queue as "Cloudflare Queue Lease"
 participant FFmpeg as "ffmpeg.wasm"
-participant Candidate as "Firebase candidate"
+participant Candidate as "Local persistence candidate"
 participant Finalizer as "Finalize route"
-participant Public as "Public Firebase audio"
+participant Public as "Public Local persistence audio"
 UI->>API : POST {videoId, videoMetadata}
 API-->>UI : 202 browser extraction required
 UI->>Browser : extractAudioWithBrowserYtDlp(video)
@@ -102,7 +102,7 @@ Browser->>Candidate : Upload audio-candidates/{uid}/{videoId}/{sha}.mp3
 Browser->>Finalizer : POST candidate path + metadata
 Finalizer->>Candidate : Validate file, path, auth, and size
 Finalizer->>Public : Promote valid MP3
-Finalizer-->>Browser : public Firebase audio URL
+Finalizer-->>Browser : public Local persistence audio URL
 Browser-->>UI : AudioExtractionResult
 end
 Browser->>Queue : POST /queue/release {leaseId}
@@ -135,7 +135,7 @@ Browser->>Queue : POST /queue/release {leaseId}
 - Audio output:
   - `browserYtDlpConfig.ts` fixes production output to MP3 only.
   - ffmpeg arguments are `-vn -c:a libmp3lame -b:a 192k`.
-  - No high-quality production option is exposed; this keeps Firebase growth predictable.
+  - No high-quality production option is exposed; this keeps Local persistence growth predictable.
 
 ## Cloudflare Worker Proxy
 Production should set `NEXT_PUBLIC_YOUTUBE_PROXY_URL` to the deployed Cloudflare Worker endpoint, for example:
@@ -227,9 +227,9 @@ The `/api/audio/native-ytdlp-fallback` route remains in the codebase for control
 Current behavior:
 - Browser extraction failures stop at the Cloudflare/browser boundary and surface a user-facing extraction error.
 - The native fallback route fails fast with `503` if neither `YOUTUBE_COOKIE` nor `YOUTUBE_COOKIE_FILE` is configured.
-- If a cookie is deliberately configured for a manual diagnostic run, the route still requires Firebase Auth and App Check, downloads with system `yt-dlp`, converts to fixed `192k` MP3, validates the MP3, and saves to Firebase.
+- If a cookie is deliberately configured for a manual diagnostic run, the route still requires Local persistence Auth and IP rate limiting, downloads with system `yt-dlp`, converts to fixed `192k` MP3, validates the MP3, and saves to Local persistence.
 
-## Firebase Candidate Finalization
+## Local persistence Candidate Finalization
 The browser never writes directly to public `audio/` storage. It uploads to `audio-candidates/{uid}/{videoId}/{sha}.mp3`; the server finalizer then validates and promotes the object.
 
 Validation includes:
@@ -240,7 +240,7 @@ Validation includes:
 - Duration sanity checks.
 - Maximum final object size below the existing 50 MB ceiling.
 
-Valid candidates are promoted to `audio/audio_{videoId}_{timestamp}.mp3` and stored in Firebase metadata for downstream beat/chord analysis.
+Valid candidates are promoted to `audio/audio_{videoId}_{timestamp}.mp3` and stored in Local persistence metadata for downstream beat/chord analysis.
 
 ## Rollback And Local Development
 - Default production strategy: `browser-ytdlp`.
@@ -250,7 +250,7 @@ Valid candidates are promoted to `audio/audio_{videoId}_{timestamp}.mp3` and sto
 - Do not silently fall back to Railway/server yt-dlp in production. If Cloudflare/browser extraction fails, stop and report the extraction error.
 
 ## Status And Operations
-Client-side extraction is not probed from the public status page. Its success depends on the user's browser, network, YouTube's current response shape, and Firebase finalization; failed attempts already surface as extraction errors in the analyze UI.
+Client-side extraction is not probed from the public status page. Its success depends on the user's browser, network, YouTube's current response shape, and Local persistence finalization; failed attempts already surface as extraction errors in the analyze UI.
 
 The public status cron now probes:
 - Beat Detection backend.
@@ -261,7 +261,7 @@ The public status cron now probes:
 To configure status probing:
 1. Set `STATUS_PROBES_ENABLED=1`.
 2. Set `STATUS_PROBE_ALLOW_LOCAL=1` only for local or manual test runs.
-3. Configure `PYTHON_API_URL`, `SHEETSAGE_API_URL`, Firestore admin credentials, and `GEMINI_API_KEY`.
+3. Configure `PYTHON_API_URL`, `SHEETSAGE_API_URL`, SQLite admin credentials, and `GEMINI_API_KEY`.
 4. Trigger `/api/cron/status-probe` with `Authorization: Bearer ${CRON_SECRET}`.
 
 Gemini probe behavior:
@@ -271,7 +271,7 @@ Gemini probe behavior:
 - Missing `GEMINI_API_KEY` maps to `unknown`.
 
 ## Privacy And Browser Caching
-The browser may cache Pyodide, the yt-dlp wheel, ffmpeg.wasm assets, and normal application scripts as site assets. No special persistent storage permission or blocking confirmation prompt is required because the app does not request durable browser storage APIs for this pipeline. The user-uploaded candidate audio is still validated server-side before it becomes public Firebase audio.
+The browser may cache Pyodide, the yt-dlp wheel, ffmpeg.wasm assets, and normal application scripts as site assets. No special persistent storage permission or blocking confirmation prompt is required because the app does not request durable browser storage APIs for this pipeline. The user-uploaded candidate audio is still validated server-side before it becomes public Local persistence audio.
 
 ## Known Failure Modes And Fixes
 | Symptom | Likely cause | Fix |
@@ -282,10 +282,10 @@ The browser may cache Pyodide, the yt-dlp wheel, ffmpeg.wasm assets, and normal 
 | Final media download returns `403` from in-repo proxy | Server cookie or auth headers leaked to `googlevideo.com`, or `Range`/`User-Agent` mismatch. | Keep `X-Skip-YouTube-Auth: 1` on browser extraction and final media downloads. The in-repo proxy must skip cookie injection for CDN media URLs. |
 | Browser shows `Refused to set unsafe header "User-Agent"` | Browser APIs cannot set restricted headers directly. | Do not set `User-Agent` on fetch/XHR. Send `X-Override-User-Agent` to the proxy and let the proxy set `User-Agent` server-side. |
 | Candidate upload succeeds but finalization fails | Candidate path, auth user, hash, size, MIME, or MP3 parseability failed validation. | Verify upload path is `audio-candidates/{uid}/{videoId}/{sha}.mp3`, content type is `audio/mpeg`, hash matches the MP3 bytes, and output stays below 50 MB. |
-| MP3 exceeds Firebase limit | Source video is long or conversion produced a large file. | Keep fixed `192k` CBR, reject files above `BROWSER_YTDLP_MAX_FINAL_BYTES`, and ask the user to choose a shorter video. |
+| MP3 exceeds Local persistence limit | Source video is long or conversion produced a large file. | Keep fixed `192k` CBR, reject files above `BROWSER_YTDLP_MAX_FINAL_BYTES`, and ask the user to choose a shorter video. |
 | Pyodide or yt-dlp wheel fails to load | CDN/package proxy issue, CSP, network failure, or stale cached asset. | Confirm `public/browser-ytdlp-worker.js` can load Pyodide `0.26.2`, `/api/pyodide-package-proxy/yt_dlp-2026.3.17-py3-none-any.whl` returns the wheel, and the browser can reach jsDelivr. |
 | Native fallback returns `503` | No server-side `YOUTUBE_COOKIE` or `YOUTUBE_COOKIE_FILE` is configured. | This is expected in production. Native fallback is not automatic; configure cookies only for controlled diagnostics or rollback. |
-| Firebase cache read logs before extraction | Lazy Firebase initialization has not completed before a cache lookup. | Cache reads should call `ensureFirestoreReadyForRead()` and downgrade non-fatal initialization misses to debug logs. This does not block extraction if upload/finalization auth succeeds. |
+| Local persistence cache read logs before extraction | Lazy Local persistence initialization has not completed before a cache lookup. | Cache reads should call `ensureSQLiteReadyForRead()` and downgrade non-fatal initialization misses to debug logs. This does not block extraction if upload/finalization auth succeeds. |
 
 ## Section Sources
 - [browserYtDlpExtractionService.ts:1-360](file://src/services/audio/browserYtDlpExtractionService.ts#L1-L360)

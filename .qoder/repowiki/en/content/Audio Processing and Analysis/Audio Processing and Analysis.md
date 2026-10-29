@@ -172,11 +172,11 @@ Choose --> Browser["browser-ytdlp: Pyodide extract + ffmpeg.wasm 192k MP3"]
 Choose --> YTDL["local yt-dlp: development extract + download"]
 Choose --> YTMP3["yt-mp3-go: deprecated rollback"]
 Browser --> Queue["External proxy queue lease<br/>acquire/status/heartbeat"]
-Queue --> Candidate["Firebase candidate validation"]
+Queue --> Candidate["Local persistence candidate validation"]
 YTDL --> Candidate
 YTMP3 --> Candidate
 Candidate --> Release["Release queue lease if present"]
-Release --> CacheCheck["Check Firestore cache"]
+Release --> CacheCheck["Check SQLite cache"]
 CacheCheck --> |Found| UseCache["Use cached transcription"]
 CacheCheck --> |Not Found| Upload["Upload to storage / offload"]
 Upload --> Analyze["Call backend detection"]
@@ -270,7 +270,7 @@ API-->>FE : "ChordDetectionResult"
 - Endpoint-driven detection:
   - Sends chord sequences to `/api/detect-key` for Gemini-backed primary key/modulation inference.
   - Optional enharmonic corrections and Roman numeral analysis.
-  - Uses prompt-versioned cache keys and REST-based Firestore admin helpers for container-friendly cache reads/writes.
+  - Uses prompt-versioned cache keys and REST-based SQLite admin helpers for container-friendly cache reads/writes.
   - Falls back to heuristic key estimation when the model response is unavailable or unusable.
 - Frontend integration:
   - Formats key info for display and extracts key names.
@@ -426,4 +426,4 @@ BE_CR --> BE_CU["chord_utils.py"]
 - [timingSyncService.ts:118-198](file://src/services/audio/timingSyncService.ts#L118-L198)
 
 ## Conclusion
-ChordMiniApp’s audio system combines robust frontend orchestration with backend ML services to deliver reliable beat and chord analysis, key detection, and real-time playback. The design emphasizes resilience (automatic model fallbacks, graceful error handling), performance (adaptive filtering, pre-rendered tracks, caching), and user experience (precise timing, metronome, and synchronized playback).
+ChordMiniAppâ€™s audio system combines robust frontend orchestration with backend ML services to deliver reliable beat and chord analysis, key detection, and real-time playback. The design emphasizes resilience (automatic model fallbacks, graceful error handling), performance (adaptive filtering, pre-rendered tracks, caching), and user experience (precise timing, metronome, and synchronized playback).

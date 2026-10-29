@@ -5,7 +5,6 @@ import dynamic from 'next/dynamic';
 import { LyricsData, ChordMarker, SynchronizedLyrics } from '@/types/musicAiTypes';
 import { AnalysisResult } from '@/services/chord-analysis/chordRecognitionService';
 import { useApiKeys } from '@/hooks/settings/useApiKeys';
-import { SegmentationResult } from '@/types/chatbotTypes';
 import type { BeatInfo } from '@/services/audio/beatDetectionService';
 import { simplifyChord } from '@/utils/chordSimplification';
 import { useSimplifySelector } from '@/contexts/selectors';
@@ -35,7 +34,6 @@ interface LyricsSectionProps {
   theme: string;
   analysisResults: AnalysisResult | null;
   onFontSizeChange: (size: number) => void;
-  segmentationData?: SegmentationResult | null;
   /** Per-position Gemini corrections – same data used by the Beat & Chord Map tab */
   sequenceCorrections?: SequenceCorrections | null;
 }
@@ -49,7 +47,6 @@ export const LyricsSection: React.FC<LyricsSectionProps> = ({
   theme,
   analysisResults,
   onFontSizeChange,
-  segmentationData = null,
   sequenceCorrections = null
 }) => {
   const { isServiceAvailable, getServiceMessage } = useApiKeys();
@@ -313,7 +310,6 @@ export const LyricsSection: React.FC<LyricsSectionProps> = ({
         onFontSizeChange={onFontSizeChange}
         darkMode={theme === 'dark'}
         chords={beatAlignedChords || []}
-        segmentationData={segmentationData}
         downbeatsOnly={false}
         downbeatTimes={downbeatTimes}
         accidentalPreference={accidentalPreference}

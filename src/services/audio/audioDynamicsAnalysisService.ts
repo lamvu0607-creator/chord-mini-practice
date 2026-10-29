@@ -12,7 +12,7 @@ function resolveAnalysisFetchUrl(audioUrl: string): string {
   }
   return buildAudioProxyUrl(audioUrl, {
     // This fetch runs in the browser, so force the API route to stream bytes
-    // instead of redirecting Firebase URLs back to storage.
+    // instead of redirecting Persistence URLs back to storage.
     forceProxy: true,
   });
 }
@@ -130,7 +130,7 @@ export class AudioDynamicsAnalysisService {
       }
       return analyzeMonoPcm({ monoPcm, sampleRate, sourceSampleRate: decoded.sampleRate });
     } catch (error) {
-      console.warn('⚠️ Audio dynamics analysis failed:', error);
+      console.warn('âš ï¸ Audio dynamics analysis failed:', error);
       return null;
     }
   }

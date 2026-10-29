@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { YouTubePlayer } from '@/types/youtube';
-import { useIsPitchShiftEnabled } from '@/stores/uiStore';
+import { useIsPitchShiftEnabled, useIsStemModeEnabled } from '@/stores/uiStore';
 import { setYouTubePlayerMuted } from '@/utils/youtubePlayerAudio';
 
 export interface AudioPlayerState {
@@ -12,6 +12,7 @@ export interface AudioPlayerState {
 
 export const useAudioPlayer = () => {
   const isPitchShiftEnabled = useIsPitchShiftEnabled();
+  const isStemModeEnabled = useIsStemModeEnabled();
   const [state, setState] = useState<AudioPlayerState>({
     isPlaying: false,
     currentTime: 0,
@@ -68,12 +69,12 @@ export const useAudioPlayer = () => {
   // otherwise YouTube is the audible source. The extracted audio stays muted.
   useEffect(() => {
     if (youtubePlayer) {
-      setYouTubePlayerMuted(youtubePlayer, isPitchShiftEnabled);
+      setYouTubePlayerMuted(youtubePlayer, isPitchShiftEnabled || isStemModeEnabled);
     }
     if (audioRef.current) {
       audioRef.current.muted = true;
     }
-  }, [youtubePlayer, isPitchShiftEnabled]);
+  }, [youtubePlayer, isPitchShiftEnabled, isStemModeEnabled]);
 
   const setDuration = useCallback((duration: number) => {
     setState(prev => ({ ...prev, duration }));

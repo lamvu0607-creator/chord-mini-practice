@@ -1,4 +1,4 @@
-# Performance Optimization
+﻿# Performance Optimization
 
 <cite>
 **Referenced Files in This Document**
@@ -269,7 +269,7 @@ L --> |No| N["Network-first or offline fallback"]
 
 ### Performance Monitoring and Core Web Vitals
 - Client-side PerformanceMonitor tracks LCP, FID, CLS, FCP, TTFB, bundle sizes, and memory usage.
-- Server/service performanceMonitor tracks Firebase queries, filename matching accuracy, cache performance, and error reduction.
+- Server/service performanceMonitor tracks Local persistence queries, filename matching accuracy, cache performance, and error reduction.
 
 ```mermaid
 classDiagram
@@ -283,7 +283,7 @@ class PerformanceMonitor_Client {
 +trackMemoryUsage()
 }
 class PerformanceMonitor_Service {
-+trackFirebaseQuery()
++trackLocal persistenceQuery()
 +trackFilenameMatching()
 +trackCachePerformance()
 +trackErrorReduction()

@@ -1,12 +1,12 @@
-# Core API Service
+﻿# Core API Service
 
 <cite>
 **Referenced Files in This Document**
 - [apiService.ts](file://src/services/api/apiService.ts)
 - [rateLimiting.ts](file://src/utils/rateLimiting.ts)
 - [useRateLimiting.ts](file://src/hooks/api/useRateLimiting.ts)
-- [firebase.ts](file://src/config/firebase.ts)
-- [serverAppCheck.ts](file://src/utils/serverAppCheck.ts)
+- [local-persistence.ts](file://src/config/local-persistence.ts)
+- [serverRateLimit.ts](file://src/utils/serverRateLimit.ts)
 - [api.ts](file://src/config/api.ts)
 - [segmentationAsyncService.ts](file://src/services/api/segmentationAsyncService.ts)
 - [segmentationAsyncService.ts](file://src/services/api/segmentationAsyncService.ts)
@@ -26,14 +26,14 @@
 9. [Conclusion](#conclusion)
 
 ## Introduction
-This document describes the core API service architecture centered around the enhanced ApiService class. The service acts as the primary HTTP client for all API interactions, integrating client-side rate limiting, timeout handling, retry mechanisms, and Firebase App Check authentication. It standardizes request/response handling, error management, and provides convenience methods for common operations such as beat detection, chord recognition, and lyrics retrieval. The document also covers client-side rate limiter configuration and how it prevents overwhelming backend services.
+This document describes the core API service architecture centered around the enhanced ApiService class. The service acts as the primary HTTP client for all API interactions, integrating client-side rate limiting, timeout handling, retry mechanisms, and Local persistence IP rate limiting authentication. It standardizes request/response handling, error management, and provides convenience methods for common operations such as beat detection, chord recognition, and lyrics retrieval. The document also covers client-side rate limiter configuration and how it prevents overwhelming backend services.
 
 ## Project Structure
 The API service architecture spans several modules:
 - Core HTTP client: ApiService with request/response handling, timeouts, retries, and rate limiting
 - Client-side rate limiting utilities: exponential backoff, retry helpers, and client-side limiter
 - React integration: useRateLimiting hook for UI-driven rate limit handling
-- Authentication: Firebase App Check token injection for API requests
+- Authentication: Local persistence IP rate limiting token injection for API requests
 - Routing and configuration: API endpoint routing and fetch options
 - Supporting services: async job orchestration, parallel pipeline optimization, and chatbot integration
 
@@ -46,7 +46,7 @@ ApiService["ApiService"]
 end
 subgraph "Utilities"
 RL["Rate Limiting Utils"]
-FB["Firebase App Check"]
+FB["Local persistence IP rate limiting"]
 end
 subgraph "Backend Layer"
 Frontend["Vercel Frontend Routes"]
@@ -63,27 +63,27 @@ ApiService --> Backend
 **Diagram sources**
 - [apiService.ts:29-407](file://src/services/api/apiService.ts#L29-L407)
 - [rateLimiting.ts:117-266](file://src/utils/rateLimiting.ts#L117-L266)
-- [firebase.ts:517-536](file://src/config/firebase.ts#L517-L536)
+- [local-persistence.ts:517-536](file://src/config/local-persistence.ts#L517-L536)
 - [api.ts:27-51](file://src/config/api.ts#L27-L51)
 
 **Section sources**
 - [apiService.ts:29-407](file://src/services/api/apiService.ts#L29-L407)
 - [rateLimiting.ts:117-266](file://src/utils/rateLimiting.ts#L117-L266)
-- [firebase.ts:517-536](file://src/config/firebase.ts#L517-L536)
+- [local-persistence.ts:517-536](file://src/config/local-persistence.ts#L517-L536)
 - [api.ts:27-51](file://src/config/api.ts#L27-L51)
 
 ## Core Components
-- ApiService: Central HTTP client with request(), get(), post(), postFormData(), and specialized methods for ML tasks. Implements client-side rate limiting, timeout handling, and retry logic. Injects Firebase App Check tokens and parses responses with robust error handling.
+- ApiService: Central HTTP client with request(), get(), post(), postFormData(), and specialized methods for ML tasks. Implements client-side rate limiting, timeout handling, and retry logic. Injects Local persistence IP rate limiting tokens and parses responses with robust error handling.
 - Rate limiting utilities: Exponential backoff, retry helpers, and a client-side limiter to throttle requests per endpoint key.
 - useRateLimiting hook: React hook that wraps ApiService calls and manages rate limit state, optional auto-retry, and UI notifications.
-- Firebase App Check: Token acquisition and injection into outbound API requests.
+- Local persistence IP rate limiting: Token acquisition and injection into outbound API requests.
 - API routing configuration: Endpoint keys and routing logic for frontend vs backend services.
 
 **Section sources**
 - [apiService.ts:29-407](file://src/services/api/apiService.ts#L29-L407)
 - [rateLimiting.ts:117-266](file://src/utils/rateLimiting.ts#L117-L266)
 - [useRateLimiting.ts:20-144](file://src/hooks/api/useRateLimiting.ts#L20-L144)
-- [firebase.ts:517-536](file://src/config/firebase.ts#L517-L536)
+- [local-persistence.ts:517-536](file://src/config/local-persistence.ts#L517-L536)
 - [api.ts:27-51](file://src/config/api.ts#L27-L51)
 
 ## Architecture Overview
@@ -92,7 +92,7 @@ The ApiService integrates multiple concerns:
 - Timeout control: AbortController-based timeouts with validation and error reporting
 - Retry and resilience: fetchWithRetry for exponential backoff and rate-limit-aware retries
 - Rate limiting: ClientRateLimiter to cap concurrent requests per endpoint key
-- Authentication: X-Firebase-AppCheck header injection via getAppCheckTokenForApi
+- Authentication: X-Local persistence-RateLimit header injection via getRateLimitTokenForApi
 - Response parsing: JSON-first parsing with fallbacks and structured error responses
 
 ```mermaid
@@ -101,13 +101,13 @@ participant C as "Client"
 participant H as "useRateLimiting"
 participant S as "ApiService"
 participant RL as "ClientRateLimiter"
-participant FB as "Firebase App Check"
+participant FB as "Local persistence IP rate limiting"
 participant B as "Backend"
 C->>H : "apiCall()"
 H->>S : "request()/get()/post()"
 S->>RL : "isAllowed(key)"
 alt "Allowed"
-S->>FB : "getAppCheckTokenForApi()"
+S->>FB : "getRateLimitTokenForApi()"
 FB-->>S : "token"
 S->>B : "fetch(url, options)"
 B-->>S : "Response"
@@ -123,7 +123,7 @@ end
 **Diagram sources**
 - [apiService.ts:56-241](file://src/services/api/apiService.ts#L56-L241)
 - [rateLimiting.ts:210-265](file://src/utils/rateLimiting.ts#L210-L265)
-- [firebase.ts:517-536](file://src/config/firebase.ts#L517-L536)
+- [local-persistence.ts:517-536](file://src/config/local-persistence.ts#L517-L536)
 - [useRateLimiting.ts:82-107](file://src/hooks/api/useRateLimiting.ts#L82-L107)
 
 ## Detailed Component Analysis
@@ -132,7 +132,7 @@ end
 Responsibilities:
 - Unified request orchestration with configurable timeouts and retries
 - Client-side rate limiting per endpoint key
-- Automatic Firebase App Check token injection
+- Automatic Local persistence IP rate limiting token injection
 - Robust response parsing and error formatting
 - Convenience methods for common operations (health checks, ML tasks)
 
@@ -140,7 +140,7 @@ Key behaviors:
 - Timeout handling: AbortController with validation and detailed logs
 - Retry logic: fetchWithRetry with exponential backoff and rate-limit-aware waits
 - Rate limiting: ClientRateLimiter enforces per-minute caps
-- Authentication: X-Firebase-AppCheck header when token is available
+- Authentication: X-Local persistence-RateLimit header when token is available
 - Response parsing: JSON-first with fallback text parsing and structured error responses
 
 Example usage patterns:
@@ -249,19 +249,19 @@ Behavior:
 **Section sources**
 - [useRateLimiting.ts:20-144](file://src/hooks/api/useRateLimiting.ts#L20-L144)
 
-### Authentication: Firebase App Check
+### Authentication: Local persistence IP rate limiting
 Implementation:
-- getAppCheckTokenForApi obtains a token from Firebase App Check
-- ApiService injects the token into the X-Firebase-AppCheck header for outgoing requests
+- getRateLimitTokenForApi obtains a token from Local persistence IP rate limiting
+- ApiService injects the token into the X-Local persistence-RateLimit header for outgoing requests
 - Token retrieval is non-blocking and gracefully handled when unavailable
 
 Server-side enforcement:
-- verifyAppCheckRequest validates tokens on backend routes
+- verifyRateLimitRequest validates tokens on backend routes
 - Enforced in production based on environment variables
 
 **Section sources**
-- [firebase.ts:517-536](file://src/config/firebase.ts#L517-L536)
-- [serverAppCheck.ts:76-98](file://src/utils/serverAppCheck.ts#L76-L98)
+- [local-persistence.ts:517-536](file://src/config/local-persistence.ts#L517-L536)
+- [serverRateLimit.ts:76-98](file://src/utils/serverRateLimit.ts#L76-L98)
 
 ### API Routing and Configuration
 Routing:
@@ -280,7 +280,7 @@ Fetch options:
 ### Supporting Services
 - SegmentationAsyncService: Manages long-running jobs exceeding platform timeouts with polling and progress callbacks
 - SegmentationAsyncService: Orchestrates SongFormer segmentation with dynamic polling strategies based on song duration
-- ParallelPipelineService: Optimizes audio processing by downloading complete files and uploading to Firebase in parallel
+- ParallelPipelineService: Optimizes audio processing by downloading complete files and uploading to Local persistence in parallel
 - ChatbotService: Integrates with chatbot APIs, formats song context, and retrieves lyrics for enhanced conversations
 
 **Section sources**
@@ -291,7 +291,7 @@ Fetch options:
 
 ## Dependency Analysis
 High-level dependencies:
-- ApiService depends on rateLimiting utilities and Firebase App Check
+- ApiService depends on rateLimiting utilities and Local persistence IP rate limiting
 - useRateLimiting depends on ApiService and React state
 - API routing utilities depend on server backend configuration
 - Supporting services depend on ApiService and external APIs
@@ -299,7 +299,7 @@ High-level dependencies:
 ```mermaid
 graph LR
 ApiService["ApiService"] --> RL["Rate Limiting Utils"]
-ApiService --> FB["Firebase App Check"]
+ApiService --> FB["Local persistence IP rate limiting"]
 Hook["useRateLimiting"] --> ApiService
 APIRoutes["API Routing Config"] --> ApiService
 AsyncJob["SegmentationAsyncService"] --> ApiService
@@ -310,7 +310,7 @@ Chatbot["ChatbotService"] --> ApiService
 
 **Diagram sources**
 - [apiService.ts:5-11](file://src/services/api/apiService.ts#L5-L11)
-- [firebase.ts:517-536](file://src/config/firebase.ts#L517-L536)
+- [local-persistence.ts:517-536](file://src/config/local-persistence.ts#L517-L536)
 - [useRateLimiting.ts:6-6](file://src/hooks/api/useRateLimiting.ts#L6-L6)
 - [api.ts:13-13](file://src/config/api.ts#L13-L13)
 - [segmentationAsyncService.ts:32-40](file://src/services/api/segmentationAsyncService.ts#L32-L40)
@@ -327,7 +327,7 @@ Chatbot["ChatbotService"] --> ApiService
 - Client-side rate limiting: Defaults to 4 requests per minute to avoid overwhelming backend services and to stay below server limits for beat/chord models
 - Timeout tuning: Default 2 minutes; ML endpoints use longer timeouts (up to 13+ minutes) to accommodate processing durations
 - Retry strategy: Exponential backoff with jitter reduces thundering herd effects and improves resilience
-- Parallel processing: ParallelPipelineService downloads complete files and uploads to Firebase concurrently to reduce bottlenecks
+- Parallel processing: ParallelPipelineService downloads complete files and uploads to Local persistence concurrently to reduce bottlenecks
 - Async job handling: SegmentationAsyncService and SegmentationAsyncService manage long-running tasks with polling strategies optimized by song duration
 
 ## Troubleshooting Guide
@@ -335,13 +335,13 @@ Common issues and resolutions:
 - Rate limit exceeded: The client-side limiter returns a rate-limited response with retryAfter. Use clearRateLimit to reset and retry after the indicated interval
 - Timeout errors: Validate timeout values and consider increasing for long-running operations; check AbortError messages for actionable guidance
 - Network errors: Confirm connectivity and retry; generic network error messages indicate connectivity issues
-- App Check token failures: Ensure Firebase App Check is initialized and tokens are available; backend verifies tokens in production
+- IP rate limiting token failures: Ensure Local persistence IP rate limiting is initialized and tokens are available; backend verifies tokens in production
 - Server-side rate limits: fetchWithRetry respects server Retry-After headers and applies exponential backoff automatically
 
 **Section sources**
 - [apiService.ts:187-240](file://src/services/api/apiService.ts#L187-L240)
 - [rateLimiting.ts:117-187](file://src/utils/rateLimiting.ts#L117-L187)
-- [firebase.ts:517-536](file://src/config/firebase.ts#L517-L536)
+- [local-persistence.ts:517-536](file://src/config/local-persistence.ts#L517-L536)
 
 ## Conclusion
-The core API service architecture centers on a robust, rate-aware HTTP client that standardizes API interactions across the application. By combining client-side rate limiting, timeout handling, retry mechanisms, and Firebase App Check authentication, ApiService ensures reliable and resilient communication with backend services. The accompanying utilities and React hook provide a cohesive developer experience, while supporting services optimize performance for long-running tasks and complex workflows.
+The core API service architecture centers on a robust, rate-aware HTTP client that standardizes API interactions across the application. By combining client-side rate limiting, timeout handling, retry mechanisms, and Local persistence IP rate limiting authentication, ApiService ensures reliable and resilient communication with backend services. The accompanying utilities and React hook provide a cohesive developer experience, while supporting services optimize performance for long-running tasks and complex workflows.

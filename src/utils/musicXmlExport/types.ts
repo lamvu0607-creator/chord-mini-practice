@@ -1,6 +1,5 @@
 import type { AudioDynamicsAnalysisResult } from '@/services/audio/audioDynamicsTypes';
 import type { ChordEvent } from '@/utils/chordToMidi';
-import type { SegmentationResult } from '@/types/chatbotTypes';
 import type { SheetSageNoteEvent } from '@/types/sheetSage';
 import type { HandHint, NotationPartId, RenderNoteType } from './constants';
 
@@ -180,7 +179,6 @@ export interface PianoVisualizerScoreInput extends MusicXmlExportOptions {
   scoreBeatTimes?: Array<number | null>;
   pickupBeatCount?: number;
   keySections?: MusicXmlKeySection[];
-  segmentationData?: SegmentationResult | null;
   signalAnalysis?: AudioDynamicsAnalysisResult | null;
   simplePianoBlockChords?: boolean;
 }
@@ -188,7 +186,6 @@ export interface PianoVisualizerScoreInput extends MusicXmlExportOptions {
 export interface BuildPianoNotationNoteEventsOptions {
   bpm?: number;
   timeSignature?: number;
-  segmentationData?: SegmentationResult | null;
   signalAnalysis?: AudioDynamicsAnalysisResult | null;
   simpleBlockChord?: boolean;
 }

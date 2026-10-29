@@ -29,7 +29,6 @@ export function exportPianoVisualizerScoreToMusicXml(input: PianoVisualizerScore
   const pianoAbsoluteNotes = buildPianoNotationNoteEvents(input.chordEvents, {
     bpm,
     timeSignature,
-    segmentationData: input.segmentationData,
     signalAnalysis: input.signalAnalysis,
     simpleBlockChord: input.simplePianoBlockChords ?? false,
   });

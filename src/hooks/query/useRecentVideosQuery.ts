@@ -29,16 +29,12 @@ export function useRecentVideosQuery({
     enabled,
     staleTime: queryStaleTimes.recentVideos,
     gcTime: queryGcTimes.recentVideos,
-    getNextPageParam: (lastPage, allPages) => {
+    getNextPageParam: (lastPage) => {
       if (!lastPage.hasMore) {
         return undefined;
       }
 
-      return {
-        cursor: lastPage.lastVisible,
-        mode: lastPage.queryMode,
-        existingVideoIds: allPages.flatMap((page) => page.videos.map((video) => video.videoId)),
-      };
+      return { cursor: lastPage.nextCursor };
     },
   });
 }

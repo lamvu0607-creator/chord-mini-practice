@@ -73,6 +73,18 @@ describe('errorMessageUtils', () => {
         false,
         true,
       ],
+      [
+        'Failed to extract video information',
+        'Video Processing Failed',
+        true,
+        true,
+      ],
+      [
+        'yt-dlp is not installed or not available in PATH',
+        'Extraction Tool Unavailable',
+        false,
+        true,
+      ],
     ])(
       'maps "%s" to the expected user-facing category',
       (error, title, showTryAnotherButton, extractionError) => {
@@ -100,7 +112,7 @@ describe('errorMessageUtils', () => {
     });
 
     it('does not flag unrelated backend errors', () => {
-      expect(isVideoExtractionError('Firestore write failed')).toBe(false);
+      expect(isVideoExtractionError('SQLite write failed')).toBe(false);
     });
   });
 

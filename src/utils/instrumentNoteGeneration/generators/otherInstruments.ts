@@ -1,7 +1,7 @@
 import { noteNameToMidi, NOTE_INDEX_MAP, type MidiNote } from '@/utils/chordToMidi';
 
 import { CHROMATIC_SCALE, PIANO_PATTERN_MIN_BEATS } from '../constants';
-import { hashPatternSeed } from '../segmentContext';
+import { hashPatternSeed } from '../patternSeed';
 import type { ScheduledNote } from '../types';
 
 export function generateViolinNotes(

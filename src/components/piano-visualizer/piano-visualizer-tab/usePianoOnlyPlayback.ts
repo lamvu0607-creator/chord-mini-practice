@@ -5,7 +5,6 @@ import { getSoundfontChordPlaybackService } from '@/services/chord-playback/soun
 import { mergeConsecutiveChordEvents } from '@/utils/instrumentNoteGeneration';
 import type { GuitarVoicingSelection } from '@/utils/guitarVoicing';
 import type { ChordEvent } from '@/utils/chordToMidi';
-import type { SegmentationResult } from '@/types/chatbotTypes';
 import {
   PLAYBACK_EVENT_MISS_GRACE_PERIOD,
 } from './constants';
@@ -20,7 +19,6 @@ export function usePianoOnlyPlayback(
   bpm: number,
   timeSignature: number = 4,
   dynamicsAnalyzer: DynamicsAnalyzer,
-  segmentationData?: SegmentationResult | null,
   guitarVoicing?: Partial<GuitarVoicingSelection>,
   targetKey?: string | null,
   simplePianoBlockChords: boolean = false,
@@ -112,7 +110,6 @@ export function usePianoOnlyPlayback(
         playbackTime: currentTime,
         totalDuration,
         beatCount: currentChordEvent.beatCount,
-        segmentationData,
         signalDynamics,
         simplePianoBlockChord: simplePianoBlockChords,
       },
@@ -128,7 +125,6 @@ export function usePianoOnlyPlayback(
     dynamicsAnalyzer,
     guitarVoicing,
     merged,
-    segmentationData,
     shouldActivate,
     simplePianoBlockChords,
     targetKey,

@@ -4,14 +4,13 @@
  * This endpoint provides audio download using yt-dlp for local development.
  * It uses the legacy filename generation algorithm for cache compatibility.
  */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { spawn } from 'child_process';
 import path from 'path';
 import { promises as fs } from 'fs';
+import { getYtDlpEnvironment, spawnYtDlp } from '@/server/ytdlp/runner';
 import {
   buildLocalAudioServeUrl,
-  ensureLocalAudioWriteDir,
+  ensureLocalAudioTempDir,
   findExistingLocalAudioFile,
   matchesLocalAudioVideoId,
 } from '@/services/storage/localAudioStorageService';
@@ -21,6 +20,8 @@ export const maxDuration = 300;
 // Allow yt-dlp in production when explicitly configured via NEXT_PUBLIC_AUDIO_STRATEGY
 const isDevelopment = process.env.NODE_ENV === 'development';
 const allowYtDlpInProduction = process.env.NEXT_PUBLIC_AUDIO_STRATEGY === 'ytdlp';
+
+
 
 export async function POST(request: NextRequest) {
   // Block in production unless explicitly enabled
@@ -106,7 +107,7 @@ async function downloadAudio(
       }
 
       // Create local temp directory for downloads
-      const tempDir = await ensureLocalAudioWriteDir();
+      const tempDir = await ensureLocalAudioTempDir();
 
       // Use a simpler, more predictable output template
       // This ensures we can find the file after download
@@ -115,18 +116,25 @@ async function downloadAudio(
       const args = [
         '--extract-audio',
         '--audio-format', format,
-        '--audio-quality', '0', // Best quality
+        '--audio-quality', '0',
         '--output', outputTemplate,
         '--no-warnings',
-        '--restrict-filenames', // Use safe filenames
-        '--print', 'after_move:filepath', // Print the final file path
-        url
+        '--restrict-filenames',
+        '--print', 'after_move:filepath',
       ];
+
+      // Locate ffmpeg directory containing both ffmpeg and ffprobe
+      const { ffmpegDir } = getYtDlpEnvironment();
+      if (ffmpegDir) {
+        args.push('--ffmpeg-location', ffmpegDir);
+      }
+
+      args.push(url);
 
       console.log(`🔧 yt-dlp command: yt-dlp ${args.join(' ')}`);
       console.log(`📁 Output template: ${outputTemplate}`);
 
-      const ytdlp = spawn('yt-dlp', args);
+      const ytdlp = spawnYtDlp(args);
       let stderr = '';
       let stdout = '';
       let finalFilePath = '';
@@ -164,24 +172,30 @@ async function downloadAudio(
               const files = await fs.readdir(tempDir);
               console.log(`📁 Files in temp directory: ${files.join(', ')}`);
 
-              audioFile = files.find((file) => {
-                const hasSupportedExtension =
-                  file.endsWith('.mp3') ||
-                  file.endsWith('.wav') ||
-                  file.endsWith('.m4a') ||
-                  file.endsWith('.opus') ||
-                  file.endsWith('.webm');
+              const targetExt = `.${format.toLowerCase()}`;
+              audioFile =
+                files.find((file) => {
+                  if (!file.endsWith(targetExt)) return false;
+                  return requestedVideoId ? matchesLocalAudioVideoId(file, requestedVideoId) : true;
+                }) ||
+                files.find((file) => {
+                  const hasSupportedExtension =
+                    file.endsWith('.mp3') ||
+                    file.endsWith('.wav') ||
+                    file.endsWith('.m4a') ||
+                    file.endsWith('.opus') ||
+                    file.endsWith('.webm');
 
-                if (!hasSupportedExtension) {
-                  return false;
-                }
+                  if (!hasSupportedExtension) {
+                    return false;
+                  }
 
-                if (requestedVideoId) {
-                  return matchesLocalAudioVideoId(file, requestedVideoId);
-                }
+                  if (requestedVideoId) {
+                    return matchesLocalAudioVideoId(file, requestedVideoId);
+                  }
 
-                return true;
-              }) || '';
+                  return true;
+                }) || '';
 
               if (audioFile) {
                 filePath = path.join(tempDir, audioFile);

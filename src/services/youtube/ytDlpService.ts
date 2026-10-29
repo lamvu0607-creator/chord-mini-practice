@@ -10,6 +10,7 @@
  */
 
 // Removed legacy filename generator import - service has been removed
+import { getInternalFrontendUrl } from '@/config/serverBackend';
 
 export interface YtDlpDownloadResult {
   success: boolean;
@@ -39,7 +40,8 @@ class YtDlpService {
   private readonly baseUrl: string;
 
   constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    // Server-side calls must not loop out through the public URL (e.g. Tailscale Funnel).
+    this.baseUrl = typeof window === 'undefined' ? getInternalFrontendUrl() : '';
   }
 
   /**

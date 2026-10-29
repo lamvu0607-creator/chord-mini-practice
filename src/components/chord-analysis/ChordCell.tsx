@@ -16,7 +16,6 @@ export interface ChordCellProps {
   isEmpty: boolean;
   displayChord: string;
   wasCorrected: boolean;
-  segmentationClassName?: string;
   onBeatClick: (globalIndex: number) => void;
   getChordStyle: (chord: string, globalIndex: number, isClickable: boolean) => string;
   getDynamicFontSize: (cellSize: number, chordLength: number) => string;
@@ -69,7 +68,6 @@ const areChordCellPropsEqual = (
   if (prevProps.showChordLabel !== nextProps.showChordLabel) return false;
   if (prevProps.isEmpty !== nextProps.isEmpty) return false;
   if (prevProps.wasCorrected !== nextProps.wasCorrected) return false;
-  if (prevProps.segmentationClassName !== nextProps.segmentationClassName) return false;
   if (prevProps.accidentalPreference !== nextProps.accidentalPreference) return false;
 
   // Roman numerals and modulation
@@ -119,7 +117,6 @@ export const ChordCell = React.memo<ChordCellProps>(({
   isEmpty,
   displayChord,
   wasCorrected,
-  segmentationClassName,
   onBeatClick,
   getChordStyle,
   getDynamicFontSize,
@@ -218,7 +215,7 @@ export const ChordCell = React.memo<ChordCellProps>(({
     ? '!bg-[#d7e7f5] !border-[#8fb6d8] dark:!bg-[#3d4d66] dark:!border-[#51627c]'
     : modulationInfo?.isModulation
       ? '!bg-green-300/20 dark:!bg-green-900/30 !border-green-500/50 dark:!border-green-500/70'
-      : segmentationClassName || '';
+      : '';
 
   const modulationTooltip = modulationInfo?.isModulation
     ? `Key change: ${modulationInfo.fromKey} → ${modulationInfo.toKey}`

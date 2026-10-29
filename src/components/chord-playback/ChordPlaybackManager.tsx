@@ -9,7 +9,6 @@
 import { useEffect, useMemo } from 'react';
 import { useChordPlayback } from '@/hooks/chord-playback/useChordPlayback';
 import { useTransposedChordData } from '@/hooks/chord-analysis/useTransposedChordData';
-import type { SegmentationResult } from '@/types/chatbotTypes';
 
 interface ChordGridData {
   chords: string[];
@@ -33,7 +32,6 @@ interface ChordPlaybackManagerProps {
   chordGridData: ChordGridData | null;
   isPlaying: boolean;
   currentTime: number;
-  segmentationData?: SegmentationResult | null;
   audioUrl?: string | null;
   bpm?: number; // Beats per minute for dynamic timing (optional, defaults to 120)
   timeSignature?: number; // Beats per measure (e.g. 3 for 3/4, defaults to 4)
@@ -57,7 +55,6 @@ export const ChordPlaybackManager: React.FC<ChordPlaybackManagerProps> = ({
   chordGridData,
   isPlaying,
   currentTime,
-  segmentationData,
   audioUrl,
   bpm,
   timeSignature,
@@ -76,7 +73,6 @@ export const ChordPlaybackManager: React.FC<ChordPlaybackManagerProps> = ({
     beats: transposedChordGridData?.beats || chordGridData?.beats || [],
     isPlaying,
     currentTime,
-    segmentationData,
     audioUrl,
     bpm, // Pass BPM for dynamic timing
     timeSignature, // Pass time signature for pattern selection

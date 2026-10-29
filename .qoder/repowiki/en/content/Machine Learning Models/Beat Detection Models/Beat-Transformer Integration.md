@@ -1,4 +1,4 @@
-# Beat-Transformer Integration
+﻿# Beat-Transformer Integration
 
 <cite>
 **Referenced Files in This Document**
@@ -288,7 +288,7 @@ BeatTransformerDetector --> Demixed_DilatedTransformerModel : "uses"
 ### API Endpoints and Request/Response Formats
 Endpoints:
 - POST /api/detect-beats: Detect beats from uploaded file or server-side path.
-- POST /api/detect-beats-firebase: Detect beats from Firebase Storage URL.
+- POST /api/detect-beats-local-persistence: Detect beats from local audio storage URL.
 - GET /api/model-info: Information about available beat detection models.
 - GET /api/test-beat-transformer: Test Beat-Transformer availability.
 - GET /api/test-madmom: Test Madmom availability.
@@ -302,8 +302,8 @@ Request parameters:
   - audio_path: path to existing audio file on server
   - detector: 'beat-transformer', 'madmom', 'librosa', or 'auto'
   - force: 'true' to bypass size limits for requested detector
-- detect-beats-firebase:
-  - firebase_url: Firebase Storage URL
+- detect-beats-local-persistence:
+  - local-persistence_url: local audio storage URL
   - detector: 'beat-transformer', 'madmom', 'librosa', or 'auto'
 
 Response format (normalized):

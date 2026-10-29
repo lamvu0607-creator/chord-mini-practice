@@ -25,13 +25,6 @@ export function useAnalysisResultsSelector() {
   }));
 }
 
-// Selector: segmentation toggle from UIStore
-export function useSegmentationSelector() {
-  return useUIStore((state) => ({
-    showSegmentation: state.showSegmentation,
-  }));
-}
-
 // Selector: chord corrections & toggles
 export function useChordCorrectionsSelector() {
   return useAnalysisStore((state) => ({

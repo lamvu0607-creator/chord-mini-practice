@@ -11,6 +11,7 @@ Import order is critical - these patches must be applied before
 importing the affected libraries.
 """
 
+from .windows_patch import patch_windows_compatibility
 from .numpy_patch import patch_numpy_compatibility
 from .scipy_patch import apply_scipy_patches
 from .madmom_patch import patch_madmom_compatibility
@@ -26,6 +27,7 @@ def apply_all():
     before importing any heavy libraries that might be affected.
     """
     # Apply patches in dependency order
+    patch_windows_compatibility()
     patch_numpy_compatibility()
     patch_madmom_compatibility()
     apply_scipy_patches()

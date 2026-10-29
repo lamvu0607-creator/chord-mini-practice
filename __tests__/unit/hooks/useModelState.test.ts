@@ -17,6 +17,7 @@ Object.defineProperty(window, 'localStorage', {
 jest.mock('@/utils/modelFiltering', () => ({
   getSafeBeatModel: jest.fn((model) => (model === 'beat-transformer' || model === 'madmom' ? model : 'madmom')),
   getSafeChordModel: jest.fn((model) => model), // Return the requested model as-is
+  getDefaultChordModel: jest.fn(() => 'chord-cnn-lstm'),
 }));
 
 describe('useModelState Hook', () => {

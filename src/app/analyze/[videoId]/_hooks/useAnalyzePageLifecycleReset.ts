@@ -5,7 +5,6 @@ import type { UseAnalyzePageLifecycleResetParams } from '../_types/analyzePageVi
 
 export function useAnalyzePageLifecycleReset({
   videoId,
-  resetSegmentation,
   setIsMelodicTranscriptionPlaybackEnabled,
   setIsFollowModeEnabled,
   setIsCountdownEnabled,
@@ -22,7 +21,6 @@ export function useAnalyzePageLifecycleReset({
     usePlaybackStore.getState().setIsFollowModeEnabled(true);
 
     setIsMelodicTranscriptionPlaybackEnabled(false);
-    resetSegmentation();
     setIsFollowModeEnabled(true);
     setIsCountdownEnabled(false);
     cancelCountdown();
@@ -39,7 +37,6 @@ export function useAnalyzePageLifecycleReset({
     chordPlayback,
     countdownStateRef,
     disableMetronomeService,
-    resetSegmentation,
     setIsCountdownEnabled,
     setIsFollowModeEnabled,
     setIsMelodicTranscriptionPlaybackEnabled,

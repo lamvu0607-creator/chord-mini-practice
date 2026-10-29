@@ -318,12 +318,12 @@ BE --> Cache["backend-cache volume"]
 
 ### Monitoring and Maintenance
 - Frontend performance monitor tracks:
-  - Firebase query metrics, filename matching accuracy, cache performance, and error reduction.
+  - Local persistence query metrics, filename matching accuracy, cache performance, and error reduction.
   - Threshold-based alerting and periodic summaries for operational visibility.
 
 ```mermaid
 flowchart TD
-PM["PerformanceMonitor"] --> FB["Firebase Queries"]
+PM["PerformanceMonitor"] --> FB["Local persistence Queries"]
 PM --> FN["Filename Matching"]
 PM --> CP["Cache Performance"]
 PM --> ER["Error Tracking"]
@@ -403,7 +403,7 @@ Common issues and remedies:
   - Ensure environment variables for SongFormer root and checkpoint are set correctly.
 - Performance issues:
   - Confirm device detection reports CUDA/MPS availability; adjust detector selection for file size.
-  - Monitor cache hit rate and Firebase query reduction via performance monitor.
+  - Monitor cache hit rate and Local persistence query reduction via performance monitor.
 - Compatibility problems:
   - Validate chord dictionary support for the selected detector; fallback to default dictionaries.
 - Deployment verification:
@@ -417,7 +417,7 @@ Common issues and remedies:
 - [post-deployment-verification.sh:69-101](file://scripts/post-deployment-verification.sh#L69-L101)
 
 ## Conclusion
-ChordMiniApp’s model management combines dynamic selection, lazy initialization, and environment-aware hardware acceleration. Centralized YAML configurations and availability utilities streamline deployment and maintenance. The integration with SongFormer is encapsulated behind a thin service wrapper supporting experimental segmentation. Monitoring and deployment artifacts facilitate scalable, observable operations.
+ChordMiniAppâ€™s model management combines dynamic selection, lazy initialization, and environment-aware hardware acceleration. Centralized YAML configurations and availability utilities streamline deployment and maintenance. The integration with SongFormer is encapsulated behind a thin service wrapper supporting experimental segmentation. Monitoring and deployment artifacts facilitate scalable, observable operations.
 
 [No sources needed since this section summarizes without analyzing specific files]
 

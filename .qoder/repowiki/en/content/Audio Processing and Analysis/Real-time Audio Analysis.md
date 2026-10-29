@@ -1,4 +1,4 @@
-# Real-time Audio Analysis
+﻿# Real-time Audio Analysis
 
 <cite>
 **Referenced Files in This Document**
@@ -173,7 +173,7 @@ Responsibilities:
 - Validates inputs (File, AudioBuffer, URL), resolves durations, and enforces analysis duration limits.
 - Detects beats and recognizes chords concurrently to reduce latency.
 - Synchronizes results and selects meter/downbeats using a worker-backed heuristic.
-- Supports offload path for large files via Firebase offload.
+- Supports offload path for large files via Local persistence offload.
 
 Key behaviors:
 - Parallel execution of beat detection and chord recognition.
@@ -323,7 +323,7 @@ These features are summarized into contours with quantiles and time-step metadat
 ### Real-time Visualization Integration
 - DynamicsAnalyzer provides intensity, motion, and attack metrics for real-time UI feedback.
 - Worker-based feature extraction prevents UI stalls during visualization updates.
-- Use the audio context’s currentTime to align visual updates with playback.
+- Use the audio contextâ€™s currentTime to align visual updates with playback.
 
 [No sources needed since this section provides conceptual guidance]
 
@@ -409,4 +409,4 @@ Common issues and resolutions:
 - [audioDynamicsAnalysisService.ts:116-136](file://src/services/audio/audioDynamicsAnalysisService.ts#L116-L136)
 
 ## Conclusion
-ChordMiniApp’s real-time audio analysis combines robust Web Audio API integration with a worker-based architecture to deliver responsive, accurate audio feature extraction and playback shaping. The system manages audio contexts carefully, optimizes buffer processing, and leverages parallelism and caching to maintain low latency. By delegating heavy computations to workers and exposing typed APIs for cross-thread communication, the platform achieves scalable, real-time audio analysis suitable for interactive applications.
+ChordMiniAppâ€™s real-time audio analysis combines robust Web Audio API integration with a worker-based architecture to deliver responsive, accurate audio feature extraction and playback shaping. The system manages audio contexts carefully, optimizes buffer processing, and leverages parallelism and caching to maintain low latency. By delegating heavy computations to workers and exposing typed APIs for cross-thread communication, the platform achieves scalable, real-time audio analysis suitable for interactive applications.

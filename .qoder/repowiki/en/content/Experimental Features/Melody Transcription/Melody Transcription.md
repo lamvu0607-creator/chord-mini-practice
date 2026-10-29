@@ -1,4 +1,4 @@
-# Melody Transcription
+﻿# Melody Transcription
 
 <cite>
 **Referenced Files in This Document**
@@ -13,7 +13,7 @@
 - [modules.py](file://sheetsage/src/sheetsage_upstream/sheetsage/modules/modules.py)
 - [assets.py](file://sheetsage/src/sheetsage_upstream/sheetsage/assets.py)
 - [basic.py](file://sheetsage/src/sheetsage_upstream/sheetsage/theory/basic.py)
-- [firestoreService.ts](file://src/services/firebase/firestoreService.ts)
+- [sqliteService.ts](file://src/services/local-persistence/sqliteService.ts)
 - [docker-compose.yml](file://docker/docker-compose.yml)
 - [docker-compose.dev.yml](file://docker/docker-compose.dev.yml)
 - [Dockerfile](file://Dockerfile)
@@ -47,7 +47,7 @@ UI["User Interface<br/>MelodicTranscriptionToggle"]
 STC["SheetsageTranscriptionClient"]
 OUS["OffloadUploadService"]
 SCC["SheetSageCacheClient"]
-FS["Firestore Service<br/>Melody Cache"]
+FS["SQLite Service<br/>Melody Cache"]
 end
 subgraph "Sheet Sage Backend"
 FLASK["Flask App<br/>/health, /info, /transcribe"]
@@ -81,7 +81,7 @@ SRV --> ASSETS
 - [modules.py:41-144](file://sheetsage/src/sheetsage_upstream/sheetsage/modules/modules.py#L41-L144)
 - [basic.py:16-126](file://sheetsage/src/sheetsage_upstream/sheetsage/theory/basic.py#L16-L126)
 - [assets.py:54-133](file://sheetsage/src/sheetsage_upstream/sheetsage/assets.py#L54-L133)
-- [firestoreService.ts:250-274](file://src/services/firebase/firestoreService.ts#L250-L274)
+- [sqliteService.ts:250-274](file://src/services/local-persistence/sqliteService.ts#L250-L274)
 
 **Section sources**
 - [README.md:1-87](file://sheetsage/README.md#L1-L87)
@@ -94,7 +94,7 @@ SRV --> ASSETS
 - ChordMiniApp SheetsageTranscriptionClient: Resolves audio sources (file or URL), optionally uses offload upload for large files, and posts to /transcribe-sheetsage.
 - OffloadUploadService: Handles large audio uploads via an offload mechanism and polls for results.
 - SheetSageCacheClient: Retrieves cached melody transcription results keyed by videoId.
-- Firestore Service: Stores melody transcription data under a dedicated collection and model identifier.
+- SQLite Service: Stores melody transcription data under a dedicated collection and model identifier.
 - Upstream Sheet Sage Components: Handcrafted mel-spectrogram representation, transformer encoder/decoder modules, theory utilities, and asset manager.
 
 **Section sources**
@@ -104,7 +104,7 @@ SRV --> ASSETS
 - [sheetSageTranscriptionClient.ts:41-78](file://src/services/sheetsage/sheetSageTranscriptionClient.ts#L41-L78)
 - [offloadUploadService.ts:298-352](file://src/services/storage/offloadUploadService.ts#L298-L352)
 - [sheetSageCacheClient.ts:3-17](file://src/services/sheetsage/sheetSageCacheClient.ts#L3-L17)
-- [firestoreService.ts:250-274](file://src/services/firebase/firestoreService.ts#L250-L274)
+- [sqliteService.ts:250-274](file://src/services/local-persistence/sqliteService.ts#L250-L274)
 - [handcrafted.py:10-44](file://sheetsage/src/sheetsage_upstream/sheetsage/representations/handcrafted.py#L10-L44)
 - [modules.py:41-144](file://sheetsage/src/sheetsage_upstream/sheetsage/modules/modules.py#L41-L144)
 - [basic.py:16-126](file://sheetsage/src/sheetsage_upstream/sheetsage/theory/basic.py#L16-L126)
@@ -250,7 +250,7 @@ PitchClass <.. TransformerDecoder : "used in theory"
   - Tracks processing time and progress.
 - SheetSageCacheClient:
   - Fetches cached melody transcription keyed by videoId.
-- Firestore Service:
+- SQLite Service:
   - Stores melody transcription data under a dedicated collection and model identifier.
 
 ```mermaid
@@ -260,7 +260,7 @@ participant STC as "SheetsageTranscriptionClient"
 participant OUS as "OffloadUploadService"
 participant API as "Next.js /transcribe-sheetsage"
 participant SCC as "SheetSageCacheClient"
-participant FS as "Firestore Service"
+participant FS as "SQLite Service"
 UI->>STC : requestSheetSageTranscription(audioFile?, audioUrl?, videoId?)
 STC->>OUS : shouldUseOffloadUpload(fileSize)
 alt Use Offload
@@ -280,13 +280,13 @@ SCC-->>UI : SheetSageResult or null
 - [sheetSageTranscriptionClient.ts:41-78](file://src/services/sheetsage/sheetSageTranscriptionClient.ts#L41-L78)
 - [offloadUploadService.ts:298-352](file://src/services/storage/offloadUploadService.ts#L298-L352)
 - [sheetSageCacheClient.ts:3-17](file://src/services/sheetsage/sheetSageCacheClient.ts#L3-L17)
-- [firestoreService.ts:250-274](file://src/services/firebase/firestoreService.ts#L250-L274)
+- [sqliteService.ts:250-274](file://src/services/local-persistence/sqliteService.ts#L250-L274)
 
 **Section sources**
 - [sheetSageTranscriptionClient.ts:41-78](file://src/services/sheetsage/sheetSageTranscriptionClient.ts#L41-L78)
 - [offloadUploadService.ts:298-352](file://src/services/storage/offloadUploadService.ts#L298-L352)
 - [sheetSageCacheClient.ts:3-17](file://src/services/sheetsage/sheetSageCacheClient.ts#L3-L17)
-- [firestoreService.ts:250-274](file://src/services/firebase/firestoreService.ts#L250-L274)
+- [sqliteService.ts:250-274](file://src/services/local-persistence/sqliteService.ts#L250-L274)
 
 ### Non-Jukebox Handcrafted Melody Transformer Approach
 - Current runtime uses the non-Jukebox handcrafted melody transformer path.
@@ -404,7 +404,7 @@ RT --> THEO["Theory Utilities"]
 - [offloadUploadService.ts:298-352](file://src/services/storage/offloadUploadService.ts#L298-L352)
 
 ## Conclusion
-The melody transcription feature leverages Sheet Sage’s non-Jukebox handcrafted melody transformer approach, integrating tightly with ChordMiniApp’s frontend services for audio sourcing, offloading, caching, and UI presentation. The backend exposes a clear API with robust error handling and asset management. Deployment configurations specify strong resource guarantees and timeouts suitable for transcription workloads. Users should be aware of upstream licensing terms and consider the current experimental nature of the integration.
+The melody transcription feature leverages Sheet Sageâ€™s non-Jukebox handcrafted melody transformer approach, integrating tightly with ChordMiniAppâ€™s frontend services for audio sourcing, offloading, caching, and UI presentation. The backend exposes a clear API with robust error handling and asset management. Deployment configurations specify strong resource guarantees and timeouts suitable for transcription workloads. Users should be aware of upstream licensing terms and consider the current experimental nature of the integration.
 
 ## Appendices
 

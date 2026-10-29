@@ -4,6 +4,7 @@ import type { ComponentProps } from 'react';
 import dynamic from 'next/dynamic';
 import FloatingVideoDock from '@/components/analysis/FloatingVideoDock';
 import UtilityBar from '@/components/analysis/UtilityBar';
+import { isUploadSourceId } from '@/utils/uploadSourceId';
 import type { AnalyzeFloatingDockSectionProps, AnalyzePageViewModel } from '../_types/analyzePageViewModel';
 
 const ResponsiveVideoUtilityLayout = dynamic(() => import('@/components/layout/ResponsiveVideoUtilityLayout'), {
@@ -14,11 +15,15 @@ const ResponsiveVideoUtilityLayout = dynamic(() => import('@/components/layout/R
 interface AnalyzeFloatingDockSectionComponentProps {
   floatingDockProps: AnalyzeFloatingDockSectionProps;
   utilityBarProps: AnalyzePageViewModel['utilityBarProps'];
+  videoId: string;
+  videoTitle?: string;
 }
 
 export default function AnalyzeFloatingDockSection({
   floatingDockProps,
   utilityBarProps,
+  videoId,
+  videoTitle,
 }: AnalyzeFloatingDockSectionComponentProps) {
   if (!floatingDockProps.analysisResults) {
     return null;
@@ -38,6 +43,9 @@ export default function AnalyzeFloatingDockSection({
         <UtilityBar
           className="hidden md:block"
           {...utilityBarProps}
+          stemsVideoId={isUploadSourceId(videoId) ? undefined : videoId}
+          clipVideoId={videoId}
+          stemsTitle={videoTitle}
         />
       )}
     />

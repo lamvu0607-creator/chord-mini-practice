@@ -1,13 +1,11 @@
-import { randomUUID } from 'crypto';
 import { spawn } from 'child_process';
 import { promises as fs } from 'fs';
 import os from 'os';
 import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
 import { BROWSER_YTDLP_MAX_FINAL_BYTES } from '@/services/audio/browserYtDlpConfig';
-import { getFirebaseAdminAuth, getFirebaseAdminStorageBucket } from '@/utils/firebaseAdmin';
+import { saveLocalAudioFile, saveLocalAudioMetadata } from '@/services/storage/localAudioStorageService';
 import { validateBrowserAudioCandidate, YOUTUBE_VIDEO_ID_PATTERN, sha256Hex } from '@/utils/browserAudioValidation';
-import { verifyAppCheckRequest } from '@/utils/serverAppCheck';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -18,20 +16,10 @@ interface CommandResult {
   stderr: string;
 }
 
-function getBearerToken(request: NextRequest): string | null {
-  const header = request.headers.get('authorization') || '';
-  const match = header.match(/^Bearer\s+(.+)$/i);
-  return match?.[1] || null;
-}
-
 function normalizeTitle(value: unknown, videoId: string): string {
   return typeof value === 'string' && value.trim().length > 0
     ? value.trim().slice(0, 240)
     : `YouTube Video ${videoId}`;
-}
-
-function buildFirebaseDownloadUrl(bucketName: string, objectPath: string, token: string): string {
-  return `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucketName)}/o/${encodeURIComponent(objectPath)}?alt=media&token=${encodeURIComponent(token)}`;
 }
 
 function splitCookiePair(cookie: string): { name: string; value: string } | null {
@@ -236,16 +224,6 @@ async function convertToMediumMp3(sourcePath: string, outputPath: string): Promi
 }
 
 export async function POST(request: NextRequest) {
-  const appCheck = await verifyAppCheckRequest(request);
-  if (!appCheck.ok) {
-    return NextResponse.json({ success: false, error: appCheck.error }, { status: appCheck.status || 403 });
-  }
-
-  const token = getBearerToken(request);
-  if (!token) {
-    return NextResponse.json({ success: false, error: 'Missing Firebase auth token.' }, { status: 401 });
-  }
-
   let tempDir = '';
 
   try {
@@ -254,9 +232,6 @@ export async function POST(request: NextRequest) {
     if (!YOUTUBE_VIDEO_ID_PATTERN.test(videoId)) {
       return NextResponse.json({ success: false, error: 'Invalid YouTube video ID.' }, { status: 400 });
     }
-
-    const auth = await getFirebaseAdminAuth();
-    await auth.verifyIdToken(token);
 
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), `chordmini-ytdlp-${videoId}-`));
     const cookie = await getConfiguredYouTubeCookie();
@@ -281,7 +256,7 @@ export async function POST(request: NextRequest) {
 
     const buffer = await fs.readFile(outputPath);
     if (buffer.byteLength > BROWSER_YTDLP_MAX_FINAL_BYTES) {
-      throw new Error('Extracted MP3 is larger than the 50MB Firebase cache limit.');
+      throw new Error('Extracted MP3 is larger than the 50MB local cache limit.');
     }
 
     const sha256 = await sha256Hex(buffer);
@@ -293,36 +268,28 @@ export async function POST(request: NextRequest) {
       expectedFileSize: buffer.byteLength,
     });
 
-    const bucket = await getFirebaseAdminStorageBucket();
-    const timestamp = Date.now();
-    const finalPath = `audio/audio_[${videoId}]_${timestamp}.mp3`;
-    const downloadToken = randomUUID();
     const title = normalizeTitle(body.title, videoId);
-
-    await bucket.file(finalPath).save(buffer, {
-      resumable: false,
-      metadata: {
-        contentType: 'audio/mpeg',
-        cacheControl: 'public, max-age=31536000, immutable',
-        metadata: {
-          firebaseStorageDownloadTokens: downloadToken,
-          source: 'native-ytdlp-fallback',
-          videoId,
-          sha256,
-          bitrate: '192k',
-          playerClient,
-          title,
-          channelTitle: typeof body.channelTitle === 'string' ? body.channelTitle.slice(0, 240) : '',
-          thumbnail: typeof body.thumbnail === 'string' ? body.thumbnail.slice(0, 500) : '',
-          validatedAt: new Date().toISOString(),
-        },
-      },
+    const saved = await saveLocalAudioFile(videoId, buffer, {
+      filename: `${videoId}.mp3`,
+      title,
+      duration: validation.duration,
+      contentType: 'audio/mpeg',
     });
+    await saveLocalAudioMetadata({
+      videoId,
+      filename: saved.filename,
+      filePath: saved.filePath,
+      audioUrl: saved.audioUrl,
+      title,
+      duration: validation.duration,
+      fileSize: buffer.byteLength,
+    });
+    void playerClient;
 
     return NextResponse.json({
       success: true,
-      audioUrl: buildFirebaseDownloadUrl(bucket.name, finalPath, downloadToken),
-      storagePath: finalPath,
+      audioUrl: saved.audioUrl,
+      storagePath: `audio/${saved.filename}`,
       title,
       duration: validation.duration,
       fileSize: buffer.byteLength,

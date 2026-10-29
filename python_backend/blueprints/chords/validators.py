@@ -80,43 +80,6 @@ def validate_chord_recognition_request() -> Tuple[bool, Optional[str], Optional[
     return True, None, file, params
 
 
-def validate_firebase_chord_recognition_request() -> Tuple[bool, Optional[str], Dict[str, Any]]:
-    """
-    Validate a Firebase chord recognition request.
-
-    Returns:
-        Tuple containing:
-        - bool: Whether validation passed
-        - Optional[str]: Error message if validation failed
-        - Dict[str, Any]: Validated parameters
-    """
-    # Check for Firebase URL
-    firebase_url = request.form.get('firebase_url')
-    if not firebase_url:
-        return False, "No Firebase URL provided", {}
-
-    # Validate Firebase URL
-    if 'firebasestorage.googleapis.com' not in firebase_url and 'storage.googleapis.com' not in firebase_url:
-        return False, "Invalid Firebase Storage URL", {}
-
-    # Validate detector parameter
-    detector = request.form.get('detector', 'auto').lower()
-    valid_detectors = ['chord-cnn-lstm', 'btc-sl', 'btc-pl', 'auto']
-    if detector not in valid_detectors:
-        return False, f"Invalid detector '{detector}'. Must be one of: {', '.join(valid_detectors)}", {}
-
-    # Validate chord_dict parameter
-    chord_dict = request.form.get('chord_dict', None)
-
-    params = {
-        'firebase_url': firebase_url,
-        'detector': detector,
-        'chord_dict': chord_dict
-    }
-
-    return True, None, params
-
-
 def validate_chord_dict_for_detector(chord_dict: str, detector: str) -> Tuple[bool, Optional[str]]:
     """
     Validate that a chord dictionary is supported by a detector.
@@ -201,24 +164,60 @@ def validate_file_size(file: FileStorage, detector: str, force: bool) -> Tuple[b
 
 def normalize_audio_url_to_path(audio_url: str, audio_dir: str) -> str:
     """
-    Convert a relative audio URL to an absolute file path.
+    Convert a relative audio URL or local endpoint to an absolute file path.
+    Supports:
+      - /audio/<filename>
+      - /api/serve-local-audio?filename=<filename>
+      - /api/audio/<videoId>
+      - Relative or absolute filesystem paths
 
     Args:
-        audio_url: Relative audio URL (e.g., '/audio/song.mp3')
+        audio_url: Audio URL or path
         audio_dir: Audio directory path
 
     Returns:
-        str: Absolute file path
+        str: Absolute file path or original URL if remote
     """
     import os
+    from urllib.parse import urlparse, parse_qs, unquote
 
-    if audio_url.startswith('/audio/'):
-        # Convert to absolute path
-        relative_path = audio_url[7:]  # Remove '/audio/' prefix
-        file_path = os.path.join(audio_dir, relative_path)
-        return file_path
+    if not audio_url or not isinstance(audio_url, str):
+        return audio_url
 
-    return audio_url  # Return as-is if not a relative URL
+    clean_url = audio_url.strip()
+
+    # Direct filesystem path check
+    if os.path.isabs(clean_url) and os.path.exists(clean_url):
+        return clean_url
+
+    # Check for /audio/ prefix
+    if clean_url.startswith('/audio/'):
+        relative_path = clean_url[7:]
+        return os.path.join(audio_dir, unquote(relative_path))
+
+    # Parse path and query
+    parsed = urlparse(clean_url)
+    if parsed.path == '/api/serve-local-audio':
+        qs = parse_qs(parsed.query)
+        filename = qs.get('filename', [''])[0]
+        if filename:
+            return os.path.join(audio_dir, unquote(filename))
+
+    if parsed.path.startswith('/api/audio/'):
+        video_id = unquote(parsed.path.replace('/api/audio/', ''))
+        if video_id:
+            # Check for direct <videoId>.mp3
+            exact = os.path.join(audio_dir, f"{video_id}.mp3")
+            if os.path.exists(exact):
+                return exact
+            # Check files in audio_dir matching videoId prefix
+            if os.path.isdir(audio_dir):
+                for f in os.listdir(audio_dir):
+                    if f.startswith(f"audio_[{video_id}]_") or f.startswith(f"{video_id}_") or f.startswith(f"{video_id}."):
+                        return os.path.join(audio_dir, f)
+            return exact
+
+    return clean_url
 
 
 def validate_model_name(model_name: str) -> bool:

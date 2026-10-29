@@ -1,4 +1,4 @@
-# Architecture and Design
+﻿# Architecture and Design
 
 <cite>
 **Referenced Files in This Document**
@@ -14,7 +14,7 @@
 - [chord_recognition_service.py](file://python_backend/services/audio/chord_recognition_service.py)
 - [serverBackend.ts](file://src/config/serverBackend.ts)
 - [apiService.ts](file://src/services/api/apiService.ts)
-- [firebase.ts](file://src/config/firebase.ts)
+- [local-persistence.ts](file://src/config/local-persistence.ts)
 - [docker-compose.yml](file://docker/docker-compose.yml)
 - [docker-compose.dev.yml](file://docker/docker-compose.dev.yml)
 - [beat_transformer.py](file://python_backend/models/beat_transformer.py)
@@ -39,13 +39,13 @@ This document describes the ChordMiniApp system architecture, focusing on the se
 ChordMiniApp follows a clear separation of concerns:
 - Frontend: Next.js application under src/, responsible for UI, user interactions, and API orchestration.
 - Backend: Python Flask application under python_backend/, exposing REST endpoints and orchestrating ML services.
-- Infrastructure: Docker Compose configurations for local and development environments; Redis for rate limiting; Firebase for identity and storage.
+- Infrastructure: Docker Compose configurations for local and development environments; Redis for rate limiting; Local persistence for identity and storage.
 
 ```mermaid
 graph TB
 subgraph "Frontend (Next.js)"
 FE_API["apiService.ts<br/>Client API layer"]
-FE_FB["firebase.ts<br/>Firebase client"]
+FE_FB["local-persistence.ts<br/>Local persistence client"]
 FE_CFG["serverBackend.ts<br/>Runtime backend URLs"]
 end
 subgraph "Backend (Flask)"
@@ -63,7 +63,7 @@ subgraph "Infrastructure"
 DC["docker-compose.yml"]
 DCDEV["docker-compose.dev.yml"]
 REDIS["Redis (rate limiting)"]
-FIRE["Firebase (Auth/Storage/Firestore)"]
+FIRE["Local persistence (Auth/Storage/SQLite)"]
 end
 FE_API --> APP
 FE_CFG --> FE_API
@@ -100,7 +100,7 @@ DC --> APP
 - [docker-compose.dev.yml:6-116](file://docker/docker-compose.dev.yml#L6-L116)
 
 ## Core Components
-- Frontend API Layer: The Next.js frontend uses a typed API service to communicate with backend endpoints, applying client-side rate limiting and robust error handling. It also integrates Firebase for authentication and App Check tokens for request attestation.
+- Frontend API Layer: The Next.js frontend uses a typed API service to communicate with backend endpoints, applying client-side rate limiting and robust error handling. It also integrates Local persistence for authentication and IP rate limiting tokens for request attestation.
 - Backend Application Factory: The Flask application is bootstrapped via an application factory that initializes extensions, registers blueprints, and constructs a simple service container for ML services.
 - Microservices-style Blueprints: The backend organizes endpoints into focused blueprints (beats, chords, lyrics, docs, health, debug), each encapsulating domain-specific routes and validators.
 - ML Services: Dedicated services orchestrate model selection, file size policies, and inference across multiple ML models (Beat-Transformer, Madmom, Librosa, Chord-CNN-LSTM, BTC variants).
@@ -108,7 +108,7 @@ DC --> APP
 
 **Section sources**
 - [apiService.ts:29-407](file://src/services/api/apiService.ts#L29-L407)
-- [firebase.ts:400-464](file://src/config/firebase.ts#L400-L464)
+- [local-persistence.ts:400-464](file://src/config/local-persistence.ts#L400-L464)
 - [app_factory.py:27-65](file://python_backend/app_factory.py#L27-L65)
 - [extensions.py:81-93](file://python_backend/extensions.py#L81-L93)
 - [routes.py (beats):40-120](file://python_backend/blueprints/beats/routes.py#L40-L120)
@@ -121,13 +121,13 @@ DC --> APP
 The system follows a client-server architecture:
 - The Next.js frontend renders the UI and manages user interactions. It delegates ML-heavy tasks to backend services via REST endpoints.
 - The Flask backend exposes domain-specific endpoints behind blueprints, applies rate limiting, and coordinates ML inference through dedicated services.
-- Firebase provides identity, storage, and Firestore access for the frontend, while App Check tokens are attached to backend-to-backend requests for attestation.
+- Local persistence provides identity, storage, and SQLite access for the frontend, while IP rate limiting tokens are attached to backend-to-backend requests for attestation.
 
 ```mermaid
 graph TB
 Browser["Browser (Next.js App)"]
 API["apiService.ts"]
-FB["firebase.ts"]
+FB["local-persistence.ts"]
 BFF["Flask App (app.py)"]
 EXT["Extensions (CORS/Limiter)"]
 CFG["Config (config.py)"]
@@ -152,7 +152,7 @@ BP_CHORD --> SVC_CHORD
 
 **Diagram sources**
 - [apiService.ts:29-407](file://src/services/api/apiService.ts#L29-L407)
-- [firebase.ts:400-464](file://src/config/firebase.ts#L400-L464)
+- [local-persistence.ts:400-464](file://src/config/local-persistence.ts#L400-L464)
 - [app.py:180-186](file://python_backend/app.py#L180-L186)
 - [extensions.py:81-93](file://python_backend/extensions.py#L81-L93)
 - [config.py:195-215](file://python_backend/config.py#L195-L215)
@@ -166,35 +166,35 @@ BP_CHORD --> SVC_CHORD
 ## Detailed Component Analysis
 
 ### Frontend API Orchestration
-The frontend’s API layer encapsulates:
+The frontendâ€™s API layer encapsulates:
 - Base URL resolution for backend endpoints, supporting local and production environments.
 - Client-side rate limiting to avoid overwhelming backend endpoints.
 - Robust error handling, including network failures, timeouts, and rate-limit responses.
-- App Check token injection for backend requests to strengthen security.
+- IP rate limiting token injection for backend requests to strengthen security.
 
 ```mermaid
 sequenceDiagram
 participant UI as "Next.js UI"
 participant API as "apiService.ts"
-participant FB as "firebase.ts"
+participant FB as "local-persistence.ts"
 participant BFF as "Flask Backend"
 UI->>API : "detectBeats(audioFile, options)"
-API->>FB : "getAppCheckTokenForApi()"
-FB-->>API : "App Check token"
-API->>BFF : "POST /api/detect-beats<br/>Headers : X-Firebase-AppCheck"
+API->>FB : "getRateLimitTokenForApi()"
+FB-->>API : "IP rate limiting token"
+API->>BFF : "POST /api/detect-beats<br/>Headers : X-Local persistence-RateLimit"
 BFF-->>API : "JSON result or error"
 API-->>UI : "Normalized response"
 ```
 
 **Diagram sources**
 - [apiService.ts:29-407](file://src/services/api/apiService.ts#L29-L407)
-- [firebase.ts:522-536](file://src/config/firebase.ts#L522-L536)
+- [local-persistence.ts:522-536](file://src/config/local-persistence.ts#L522-L536)
 - [routes.py (beats):40-120](file://python_backend/blueprints/beats/routes.py#L40-L120)
 
 **Section sources**
 - [serverBackend.ts:23-56](file://src/config/serverBackend.ts#L23-L56)
 - [apiService.ts:29-407](file://src/services/api/apiService.ts#L29-L407)
-- [firebase.ts:522-536](file://src/config/firebase.ts#L522-L536)
+- [local-persistence.ts:522-536](file://src/config/local-persistence.ts#L522-L536)
 
 ### Backend Application Factory and Blueprints
 The Flask application is created using an application factory that:
@@ -226,7 +226,7 @@ InitSvc --> Ready(["Flask app ready"])
 - [config.py:195-215](file://python_backend/config.py#L195-L215)
 
 ### Beat Detection Workflow
-Beat detection routes accept audio files or Firebase URLs, validate inputs, and delegate to the Beat Detection Service. The service selects an appropriate detector based on availability and file size, then performs inference and returns normalized results.
+Beat detection routes accept audio files or Local persistence URLs, validate inputs, and delegate to the Beat Detection Service. The service selects an appropriate detector based on availability and file size, then performs inference and returns normalized results.
 
 ```mermaid
 sequenceDiagram
@@ -300,7 +300,7 @@ LyricsBP-->>Client : "JSON result"
 
 ### Security, Monitoring, and Performance
 - Security:
-  - Firebase App Check tokens are attached to backend requests for attestation.
+  - Local persistence IP rate limiting tokens are attached to backend requests for attestation.
   - CORS is configured centrally with environment-aware origins.
   - Rate limiting is enforced via Flask-Limiter, optionally backed by Redis.
   - Request validation utilities sanitize and constrain inputs (e.g., YouTube search queries).
@@ -313,7 +313,7 @@ LyricsBP-->>Client : "JSON result"
   - Docker Compose supports Redis for rate limiting and caching.
 
 **Section sources**
-- [firebase.ts:522-536](file://src/config/firebase.ts#L522-L536)
+- [local-persistence.ts:522-536](file://src/config/local-persistence.ts#L522-L536)
 - [extensions.py:22-93](file://python_backend/extensions.py#L22-L93)
 - [config.py:47-103](file://python_backend/config.py#L47-L103)
 - [validators.py (youtube):13-67](file://python_backend/blueprints/youtube/validators.py#L13-L67)
@@ -371,7 +371,7 @@ Common issues and remedies:
 - CORS Errors: Verify CORS origins in configuration and ensure frontend and backend share the same origin in development.
 - Rate Limiting: Inspect rate limit headers and adjust thresholds if necessary; consider Redis-backed limits for distributed environments.
 - Model Availability: Use test endpoints to confirm model readiness; fallback logic will select alternate detectors when unavailable.
-- Firebase Initialization: Confirm runtime configuration loading and App Check token availability; check anonymous authentication flow on cold starts.
+- Local persistence Initialization: Confirm runtime configuration loading and IP rate limiting token availability; check anonymous authentication flow on cold starts.
 - Docker Health Checks: Ensure backend and Redis containers are healthy and reachable on internal networks.
 
 **Section sources**
@@ -379,12 +379,12 @@ Common issues and remedies:
 - [extensions.py:50-58](file://python_backend/extensions.py#L50-L58)
 - [routes.py (beats):252-296](file://python_backend/blueprints/beats/routes.py#L252-L296)
 - [routes.py (chords):260-375](file://python_backend/blueprints/chords/routes.py#L260-L375)
-- [firebase.ts:400-464](file://src/config/firebase.ts#L400-L464)
+- [local-persistence.ts:400-464](file://src/config/local-persistence.ts#L400-L464)
 - [docker-compose.yml:55-90](file://docker/docker-compose.yml#L55-L90)
 - [docker-compose.dev.yml:29-80](file://docker/docker-compose.dev.yml#L29-L80)
 
 ## Conclusion
-ChordMiniApp employs a clean separation between a modern Next.js frontend and a modular Flask backend. The backend’s application factory and blueprint-based organization enable scalable, maintainable ML services. With centralized configuration, rate limiting, and Firebase integration, the system balances performance, security, and developer experience. Docker Compose simplifies local and production deployments, while Redis enhances reliability for rate limiting and caching.
+ChordMiniApp employs a clean separation between a modern Next.js frontend and a modular Flask backend. The backendâ€™s application factory and blueprint-based organization enable scalable, maintainable ML services. With centralized configuration, rate limiting, and Local persistence integration, the system balances performance, security, and developer experience. Docker Compose simplifies local and production deployments, while Redis enhances reliability for rate limiting and caching.
 
 [No sources needed since this section summarizes without analyzing specific files]
 
@@ -392,7 +392,7 @@ ChordMiniApp employs a clean separation between a modern Next.js frontend and a 
 
 ### Deployment Topology
 - Local Development: docker-compose.dev.yml builds and runs frontend and backend images, with Redis for rate limiting and caching volumes.
-- Production-like: docker-compose.yml defines a containerized environment with explicit environment variables for Firebase and API URLs.
+- Production-like: docker-compose.yml defines a containerized environment with explicit environment variables for Local persistence and API URLs.
 
 ```mermaid
 graph TB

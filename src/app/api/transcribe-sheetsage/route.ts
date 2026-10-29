@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSheetSageApiUrl } from '@/config/serverBackend';
 import { createSafeTimeoutSignal } from '@/utils/environmentUtils';
 import type { SheetSageResult } from '@/types/sheetSage';
-import { setDocumentWithAdminAccess } from '@/services/firebase/firestoreAdminService';
-import { validateOffloadUrl } from '@/utils/offloadValidation';
-import { deleteOffloadUrl } from '@/services/storage/offloadCleanupService';
-import { verifyAppCheckRequest } from '@/utils/serverAppCheck';
+import { setDocument } from '@/server/persistence/documentService';
+import { validateAudioSourceUrl } from '@/utils/audioSourceValidation';
+import { getAuthenticatedUser } from '@/server/auth/sessionGuard';
+import { checkTrialQuota, getOrCreateAnonymousToken } from '@/server/auth/quotaGuard';
+import { isUploadSourceId } from '@/utils/uploadSourceId';
 
 export const maxDuration = 300;
 
@@ -30,15 +31,7 @@ function buildBackendUnavailableMessage(message: string): string {
 }
 
 function isValidVideoId(videoId: string): boolean {
-  return /^[a-zA-Z0-9_-]{11}$/.test(videoId);
-}
-
-function shouldDeleteOffloadAfterProcessing(formData: FormData): boolean {
-  const raw = formData.get('delete_offload') ?? formData.get('delete_blob');
-  if (typeof raw !== 'string') return true;
-
-  const normalized = raw.trim().toLowerCase();
-  return !(normalized === '0' || normalized === 'false' || normalized === 'no');
+  return /^[a-zA-Z0-9_-]{11}$/.test(videoId) || isUploadSourceId(videoId);
 }
 
 function readStringField(formData: FormData, ...names: string[]): string | null {
@@ -55,7 +48,6 @@ function readStringField(formData: FormData, ...names: string[]): string | null 
 type SheetSageAudioSource = {
   file?: File;
   audioUrl?: string;
-  shouldDeleteRemoteUrl?: boolean;
 };
 
 async function resolveAudioSourceFromFormData(formData: FormData): Promise<SheetSageAudioSource> {
@@ -64,23 +56,12 @@ async function resolveAudioSourceFromFormData(formData: FormData): Promise<Sheet
     return { file };
   }
 
-  const remoteUrlEntry = readStringField(formData, 'audioUrl', 'firebase_url', 'offload_url', 'blob_url');
+  const remoteUrlEntry = readStringField(formData, 'audioUrl');
   if (!remoteUrlEntry) {
     throw new Error('No audio file provided');
   }
 
-  const audioUrl = validateOffloadUrl(remoteUrlEntry);
-  const shouldDeleteOffload = shouldDeleteOffloadAfterProcessing(formData);
-
-  return {
-    audioUrl,
-    shouldDeleteRemoteUrl: shouldDeleteOffload && (
-      formData.has('offload_url')
-      || formData.has('blob_url')
-      || formData.has('delete_offload')
-      || formData.has('delete_blob')
-    ),
-  };
+  return { audioUrl: validateAudioSourceUrl(remoteUrlEntry) };
 }
 
 function getJsonString(payload: unknown, ...names: string[]): string | null {
@@ -100,28 +81,14 @@ function getJsonString(payload: unknown, ...names: string[]): string | null {
 }
 
 function resolveAudioSourceFromJson(payload: unknown): SheetSageAudioSource {
-  const remoteUrlEntry = getJsonString(payload, 'audioUrl', 'firebase_url', 'offload_url', 'blob_url');
+  const remoteUrlEntry = getJsonString(payload, 'audioUrl');
   if (!remoteUrlEntry) {
     throw new Error('No audio file provided');
   }
 
   return {
-    audioUrl: validateOffloadUrl(remoteUrlEntry),
-    shouldDeleteRemoteUrl: false,
+    audioUrl: validateAudioSourceUrl(remoteUrlEntry),
   };
-}
-
-async function cleanupRemoteAudioSource(audioSource: SheetSageAudioSource): Promise<void> {
-  if (!audioSource.audioUrl || !audioSource.shouldDeleteRemoteUrl) {
-    return;
-  }
-
-  try {
-    const deletion = await deleteOffloadUrl(audioSource.audioUrl);
-    console.log(`🗑️ [SheetSage] Offload file deleted after backend processing (provider=${deletion.provider}, alreadyDeleted=${deletion.alreadyDeleted === true}): ${audioSource.audioUrl.substring(0, 80)}...`);
-  } catch (deleteError) {
-    console.warn('⚠️ [SheetSage] Non-critical: failed to delete offload file after backend processing:', deleteError);
-  }
 }
 
 function normalizeMelodyResultForCache(videoId: string, result: SheetSageResult) {
@@ -176,12 +143,6 @@ export async function POST(request: NextRequest) {
   const backendUrl = getSheetSageApiUrl();
 
   try {
-    // Verify App Check token
-    const appCheck = await verifyAppCheckRequest(request);
-    if (!appCheck.ok) {
-      return NextResponse.json({ success: false, error: appCheck.error }, { status: appCheck.status || 403 });
-    }
-
     const contentType = request.headers.get('content-type') || '';
     const isJsonRequest = contentType.toLowerCase().includes('application/json');
     const requestPayload = isJsonRequest ? await request.json().catch(() => null) : null;
@@ -190,6 +151,23 @@ export async function POST(request: NextRequest) {
       ? getJsonString(requestPayload, 'videoId')
       : formData?.get('videoId');
     const videoId = typeof videoIdField === 'string' ? videoIdField.trim() : '';
+
+    // Quota guard check for anonymous users
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser && videoId) {
+      const { token: anonToken } = await getOrCreateAnonymousToken(request);
+      const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || request.headers.get('x-real-ip');
+      const quotaCheck = checkTrialQuota(anonToken, ipAddress, videoId);
+      if (!quotaCheck.allowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Bạn đã dùng hết 1 lượt thử miễn phí. Vui lòng đăng nhập để sử dụng tính năng nhận diện giai điệu.',
+          },
+          { status: 403 },
+        );
+      }
+    }
 
     let audioSource: SheetSageAudioSource;
     try {
@@ -206,16 +184,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const modeField = isJsonRequest
+      ? (requestPayload && typeof requestPayload === 'object' && 'mode' in requestPayload && typeof requestPayload.mode === 'string' ? requestPayload.mode : null)
+      : (formData instanceof FormData ? readStringField(formData, 'mode') : null);
+    const mode = (typeof modeField === 'string' && modeField.trim()) ? modeField.trim().toLowerCase() : 'vocal';
+
     const backendRequest = audioSource.audioUrl
       ? {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audioUrl: audioSource.audioUrl }),
+        body: JSON.stringify({ audioUrl: audioSource.audioUrl, mode }),
         signal: createSafeTimeoutSignal(SHEETSAGE_BACKEND_TIMEOUT_MS),
       }
       : (() => {
         const backendFormData = new FormData();
         backendFormData.append('file', audioSource.file as File, audioSource.file?.name || 'audio-upload');
+        backendFormData.append('mode', mode);
         return {
           method: 'POST',
           body: backendFormData,
@@ -228,7 +212,6 @@ export async function POST(request: NextRequest) {
     });
 
     const payload = await response.json().catch(() => null);
-    await cleanupRemoteAudioSource(audioSource);
 
     if (!response.ok) {
       return NextResponse.json(
@@ -243,7 +226,7 @@ export async function POST(request: NextRequest) {
     if (videoId && isValidVideoId(videoId) && payload?.data) {
       try {
         const sanitizedData = normalizeMelodyResultForCache(videoId, payload.data as SheetSageResult);
-        await setDocumentWithAdminAccess('melody', videoId, sanitizedData);
+        await setDocument('melody', videoId, sanitizedData);
         console.log(`🎻 [API] Cached Sheet Sage melody for ${videoId} (${sanitizedData.noteEventCount} notes)`);
       } catch (cacheError) {
         console.error('❌ [API] Failed to persist Sheet Sage melody cache:', cacheError);

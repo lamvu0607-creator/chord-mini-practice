@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { audioExtractionServiceSimplified, YouTubeVideoMetadata } from '@/services/audio/audioExtractionSimplified';
 import { detectEnvironment } from '@/utils/environmentDetection';
-import { firebaseStorageSimplified } from '@/services/firebase/firebaseStorageSimplified';
+import { getAuthenticatedUser } from '@/server/auth/sessionGuard';
+import {
+  checkTrialQuota,
+  consumeTrialQuota,
+  getOrCreateAnonymousToken,
+  setAnonymousTokenCookie,
+} from '@/server/auth/quotaGuard';
 
 /**
  * Audio Extraction API Route - Environment-Aware Service Integration
@@ -24,53 +30,22 @@ async function getCachedBrowserExtractionResult(videoMetadata: YouTubeVideoMetad
   const videoId = videoMetadata.id;
 
   try {
-    const { ensureFirebaseInitialized } = await import('@/config/firebase');
-    await ensureFirebaseInitialized();
-  } catch (initError) {
-    console.warn('⚠️ Firebase initialization failed, continuing with browser extraction:', initError);
-  }
-
-  try {
-    const { findExistingAudioFile } = await import('@/services/firebase/firebaseStorageService');
-    const existingFile = await findExistingAudioFile(videoId);
-    if (existingFile) {
-      firebaseStorageSimplified.saveAudioMetadataBackground({
-        videoId,
-        audioUrl: existingFile.audioUrl,
-        title: videoMetadata.title,
-        thumbnail: videoMetadata.thumbnail,
-        channelTitle: videoMetadata.channelTitle,
-        duration: 0,
-        fileSize: existingFile.fileSize || 0,
-        extractionService: 'firebase-storage-cache',
-        extractionTimestamp: Date.now(),
-        videoDuration: videoMetadata.duration,
-      });
-
+    const { findExistingLocalAudioFile } = await import('@/services/storage/localAudioStorageService');
+    const existing = await findExistingLocalAudioFile(videoId);
+    if (existing) {
       return {
         success: true,
-        audioUrl: existingFile.audioUrl,
-        title: videoMetadata.title,
-        duration: 0,
+        audioUrl: existing.streamUrl || existing.audioUrl,
+        streamUrl: existing.streamUrl,
+        title: existing.title || videoMetadata.title,
+        duration: existing.duration || 0,
         fromCache: true,
-        isStreamUrl: false,
+        isStreamUrl: Boolean(existing.streamUrl),
+        streamExpiresAt: undefined,
       };
     }
-  } catch (storageError) {
-    console.warn('⚠️ Firebase Storage cache check failed before browser extraction:', storageError);
-  }
-
-  const cached = await firebaseStorageSimplified.getCachedAudioMetadata(videoId);
-  if (cached) {
-    return {
-      success: true,
-      audioUrl: cached.audioUrl,
-      title: cached.title,
-      duration: cached.duration,
-      fromCache: true,
-      isStreamUrl: cached.isStreamUrl,
-      streamExpiresAt: cached.streamExpiresAt,
-    };
+  } catch (error) {
+    console.warn('Local audio cache check failed before browser extraction:', error);
   }
 
   return null;
@@ -111,6 +86,32 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Quota Guard: verify authenticated user or anonymous quota
+    const authUser = await getAuthenticatedUser(request);
+    const { token: anonToken, isNew: isNewAnonToken } = await getOrCreateAnonymousToken(request);
+    const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || request.headers.get('x-real-ip');
+    const userAgent = request.headers.get('user-agent');
+
+    if (!authUser) {
+      const quotaCheck = checkTrialQuota(anonToken, ipAddress, videoId);
+      if (!quotaCheck.allowed) {
+        const quotaExceededResponse = NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'ANONYMOUS_QUOTA_EXCEEDED',
+              message: 'Bạn đã sử dụng hết 1 lượt thử miễn phí. Vui lòng đăng nhập để tiếp tục phân tích không giới hạn.',
+            },
+          },
+          { status: 403 }
+        );
+        if (isNewAnonToken) {
+          setAnonymousTokenCookie(quotaExceededResponse, anonToken);
+        }
+        return quotaExceededResponse;
+      }
+    }
+
     try {
       const env = detectEnvironment();
       const resolvedMetadata: YouTubeVideoMetadata = videoMetadata || {
@@ -124,9 +125,13 @@ export async function POST(request: NextRequest) {
         if (!forceRedownload) {
           const cachedResult = await getCachedBrowserExtractionResult(resolvedMetadata);
           if (cachedResult) {
-            return NextResponse.json({
+            if (!authUser) {
+              consumeTrialQuota(anonToken, videoId, ipAddress, userAgent);
+            }
+            const response = NextResponse.json({
               success: true,
               audioUrl: cachedResult.audioUrl,
+              streamUrl: `/api/audio/${encodeURIComponent(videoId)}`,
               title: cachedResult.title,
               duration: cachedResult.duration,
               youtubeEmbedUrl: `https://www.youtube.com/embed/${videoId}`,
@@ -135,10 +140,17 @@ export async function POST(request: NextRequest) {
               streamExpiresAt: cachedResult.streamExpiresAt,
               method: 'browser-ytdlp-cache'
             });
+            if (isNewAnonToken) {
+              setAnonymousTokenCookie(response, anonToken);
+            }
+            return response;
           }
         }
 
-        return NextResponse.json({
+        if (!authUser) {
+          consumeTrialQuota(anonToken, videoId, ipAddress, userAgent);
+        }
+        const response = NextResponse.json({
           success: false,
           requiresBrowserExtraction: true,
           method: 'browser-ytdlp',
@@ -147,6 +159,10 @@ export async function POST(request: NextRequest) {
           duration: resolvedMetadata.duration,
           youtubeEmbedUrl: `https://www.youtube.com/embed/${videoId}`,
         }, { status: 202 });
+        if (isNewAnonToken) {
+          setAnonymousTokenCookie(response, anonToken);
+        }
+        return response;
       }
 
       let result;
@@ -186,9 +202,14 @@ export async function POST(request: NextRequest) {
       // Determine the method based on environment
       const method = env.strategy === 'ytdlp' ? 'yt-dlp' : 'yt-mp3-go';
 
-      return NextResponse.json({
+      if (!authUser) {
+        consumeTrialQuota(anonToken, videoId, ipAddress, userAgent);
+      }
+
+      const successResponse = NextResponse.json({
         success: true,
         audioUrl: result.audioUrl,
+        streamUrl: `/api/audio/${encodeURIComponent(videoId)}`,
         title: result.title,
         duration: result.duration,
         youtubeEmbedUrl: `https://www.youtube.com/embed/${videoId}`,
@@ -197,6 +218,12 @@ export async function POST(request: NextRequest) {
         streamExpiresAt: result.streamExpiresAt,
         method
       });
+
+      if (isNewAnonToken) {
+        setAnonymousTokenCookie(successResponse, anonToken);
+      }
+
+      return successResponse;
 
     } catch (extractionError) {
       console.error('❌ Simplified extraction error', { videoId, extractionError });

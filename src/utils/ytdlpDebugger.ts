@@ -2,7 +2,7 @@
  * yt-dlp Debugging Utilities
  * 
  * This module provides debugging utilities for yt-dlp audio extraction issues.
- * It helps diagnose file path mismatches, naming issues, and Firebase integration problems.
+ * It helps diagnose file path mismatches, naming issues, and Persistence integration problems.
  */
 
 import path from 'path';
@@ -48,7 +48,7 @@ export async function debugYtdlpDownload(
           debugInfo.tempDir = directory;
           foundDirectory = true;
         }
-        console.log(`✅ Temp directory exists: ${directory}`);
+        console.log(`âœ… Temp directory exists: ${directory}`);
       } catch {
         debugInfo.errors.push(`Temp directory does not exist: ${directory}`);
         continue;
@@ -57,14 +57,14 @@ export async function debugYtdlpDownload(
       try {
         const files = await fs.readdir(directory);
         debugInfo.filesInTempDir.push(...files);
-        console.log(`📁 Files in temp directory (${files.length}) at ${directory}:`, files);
+        console.log(`ðŸ“ Files in temp directory (${files.length}) at ${directory}:`, files);
 
         for (const file of files) {
           try {
             const filePath = path.join(directory, file);
             const stats = await fs.stat(filePath);
             debugInfo.fileSizes[file] = stats.size;
-            console.log(`   📄 ${file}: ${(stats.size / 1024 / 1024).toFixed(2)}MB`);
+            console.log(`   ðŸ“„ ${file}: ${(stats.size / 1024 / 1024).toFixed(2)}MB`);
           } catch (error) {
             debugInfo.errors.push(`Failed to get stats for ${file}: ${error}`);
           }
@@ -88,7 +88,7 @@ export async function debugYtdlpDownload(
 
     if (audioFiles.length > 0) {
       debugInfo.actualFilename = audioFiles[0];
-      console.log(`🎵 Found audio files: ${audioFiles.join(', ')}`);
+      console.log(`ðŸŽµ Found audio files: ${audioFiles.join(', ')}`);
       
       if (expectedFilename && !audioFiles.includes(expectedFilename)) {
         debugInfo.errors.push(
@@ -101,12 +101,12 @@ export async function debugYtdlpDownload(
 
     // Analyze yt-dlp output for clues
     if (ytdlpOutput) {
-      console.log(`📝 Analyzing yt-dlp output...`);
+      console.log(`ðŸ“ Analyzing yt-dlp output...`);
       
       // Look for file paths in output
       const filePathMatches = ytdlpOutput.match(/\/[^\s]+\.(mp3|wav|m4a|opus|webm)/g);
       if (filePathMatches) {
-        console.log(`🔍 File paths found in yt-dlp output:`, filePathMatches);
+        console.log(`ðŸ” File paths found in yt-dlp output:`, filePathMatches);
       }
 
       // Look for error messages
@@ -145,7 +145,7 @@ export async function testLocalFileServing(filename: string): Promise<{
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const testUrl = `${baseUrl}/api/serve-local-audio?filename=${encodeURIComponent(filename)}`;
     
-    console.log(`🧪 Testing local file serving: ${testUrl}`);
+    console.log(`ðŸ§ª Testing local file serving: ${testUrl}`);
     
     const response = await fetch(testUrl);
     
@@ -179,18 +179,18 @@ export async function troubleshootYtdlp(
   expectedFilename?: string,
   ytdlpOutput?: string
 ): Promise<void> {
-  console.log(`🔧 Starting yt-dlp troubleshooting for: ${videoUrl}`);
-  console.log(`📋 Expected filename: ${expectedFilename || 'Not specified'}`);
+  console.log(`ðŸ”§ Starting yt-dlp troubleshooting for: ${videoUrl}`);
+  console.log(`ðŸ“‹ Expected filename: ${expectedFilename || 'Not specified'}`);
   console.log('='.repeat(60));
 
   // Step 1: Debug download
   const debugInfo = await debugYtdlpDownload(videoUrl, expectedFilename, ytdlpOutput);
   
-  console.log(`📁 Temp directory: ${debugInfo.tempDir}`);
-  console.log(`📄 Files found: ${debugInfo.filesInTempDir.length}`);
+  console.log(`ðŸ“ Temp directory: ${debugInfo.tempDir}`);
+  console.log(`ðŸ“„ Files found: ${debugInfo.filesInTempDir.length}`);
   
   if (debugInfo.errors.length > 0) {
-    console.log(`❌ Errors found:`);
+    console.log(`âŒ Errors found:`);
     debugInfo.errors.forEach((error, index) => {
       console.log(`   ${index + 1}. ${error}`);
     });
@@ -198,19 +198,19 @@ export async function troubleshootYtdlp(
 
   // Step 2: Test file serving if files exist
   if (debugInfo.actualFilename) {
-    console.log(`🧪 Testing file serving for: ${debugInfo.actualFilename}`);
+    console.log(`ðŸ§ª Testing file serving for: ${debugInfo.actualFilename}`);
     const servingTest = await testLocalFileServing(debugInfo.actualFilename);
     
     if (servingTest.success) {
-      console.log(`✅ File serving works: ${servingTest.url}`);
-      console.log(`📊 Response size: ${servingTest.responseSize ? (servingTest.responseSize / 1024 / 1024).toFixed(2) + 'MB' : 'Unknown'}`);
+      console.log(`âœ… File serving works: ${servingTest.url}`);
+      console.log(`ðŸ“Š Response size: ${servingTest.responseSize ? (servingTest.responseSize / 1024 / 1024).toFixed(2) + 'MB' : 'Unknown'}`);
     } else {
-      console.log(`❌ File serving failed: ${servingTest.error}`);
+      console.log(`âŒ File serving failed: ${servingTest.error}`);
     }
   }
 
   // Step 3: Recommendations
-  console.log(`💡 Recommendations:`);
+  console.log(`ðŸ’¡ Recommendations:`);
   
   if (debugInfo.filesInTempDir.length === 0) {
     console.log(`   - Check if yt-dlp is installed and accessible`);
@@ -225,7 +225,7 @@ export async function troubleshootYtdlp(
     console.log(`   - Actual: ${debugInfo.actualFilename}`);
     console.log(`   - Consider using the actual filename or adjusting the output template`);
   } else {
-    console.log(`   - Files look good, check network connectivity and Firebase integration`);
+    console.log(`   - Files look good, check network connectivity and Persistence integration`);
   }
 
   console.log('='.repeat(60));

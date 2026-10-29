@@ -177,75 +177,6 @@ describe('useChordPlayback', () => {
     });
   });
 
-  it('keeps chord playback active when an instrumental section begins without triggering a retired saxophone phrase', async () => {
-    const segmentationData = {
-      segments: [
-        { type: 'verse', startTime: 0, endTime: 0.5, label: 'Verse' },
-        { type: 'instrumental', startTime: 0.5, endTime: 2, label: 'Instrumental' },
-      ],
-      analysis: { structure: 'Verse → Instrumental' },
-      metadata: { totalDuration: 2, analysisTimestamp: Date.now(), model: 'songformer' },
-    };
-
-    const { result, rerender } = renderHook((props: Parameters<typeof useChordPlayback>[0]) => useChordPlayback(props), {
-      initialProps: {
-        currentBeatIndex: 0,
-        chords: ['C', 'C', 'C', 'C'],
-        beats: [0, 0.5, 1, 1.5],
-        isPlaying: true,
-        currentTime: 0.25,
-        bpm: 120,
-        segmentationData,
-      },
-    });
-
-    act(() => {
-      result.current.togglePlayback();
-    });
-
-    await waitFor(() => {
-      expectChordPlaybackCall(mockPlayChord, 'C', 0.25);
-    });
-
-    rerender({
-      currentBeatIndex: 1,
-      chords: ['C', 'C', 'C', 'C'],
-      beats: [0, 0.5, 1, 1.5],
-      isPlaying: true,
-      currentTime: 0.75,
-      bpm: 120,
-      segmentationData,
-    });
-
-    await waitFor(() => {
-      expect(mockPlayChord).toHaveBeenCalledTimes(1);
-    });
-    expect(mockPlayChordInstrument).not.toHaveBeenCalled();
-  });
-
-  it('passes segmentation data into the live dynamics analyzer params', async () => {
-    const segmentationData = {
-      segments: [{ type: 'chorus', startTime: 0, endTime: 2, label: 'Chorus' }],
-      analysis: { structure: 'Chorus' },
-      metadata: { totalDuration: 2, analysisTimestamp: Date.now(), model: 'songformer' },
-    };
-
-    renderHook(() => useChordPlayback({
-      chords: ['C'],
-      beats: [0, 0.5, 1, 1.5],
-      isEnabled: false,
-      isPlaying: false,
-      currentTime: 0,
-      bpm: 120,
-      timeSignature: 4,
-      segmentationData,
-    }));
-
-    await waitFor(() => {
-      expect(mockSetParams).toHaveBeenCalledWith(expect.objectContaining({ segmentationData }));
-    });
-  });
-
   it('does not push saxophone mixer updates during normal chord playback now that sax phrases are retired', async () => {
     mockGetEffectiveVolumes.mockReturnValue({ saxophone: 28, chordPlayback: 70 });
     mockGetSettings.mockReturnValue({ saxophoneVolume: 40 });
@@ -257,11 +188,6 @@ describe('useChordPlayback', () => {
       isPlaying: true,
       currentTime: 0.25,
       bpm: 120,
-      segmentationData: {
-        segments: [{ type: 'verse', startTime: 0, endTime: 2, label: 'Verse' }],
-        analysis: { structure: 'Verse' },
-        metadata: { totalDuration: 2, analysisTimestamp: Date.now(), model: 'songformer' },
-      },
     }));
 
     act(() => {

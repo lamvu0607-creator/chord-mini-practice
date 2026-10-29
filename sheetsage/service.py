@@ -8,6 +8,30 @@ import types
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+def _install_fluidsynth_stub() -> None:
+    # pretty_midi imports fluidsynth for synthesizer playback, which fails on Windows
+    # if C:\tools\fluidsynth\bin does not exist. SheetSage does not use fluidsynth playback.
+    if "fluidsynth" not in sys.modules:
+        sys.modules["fluidsynth"] = types.ModuleType("fluidsynth")
+
+
+_install_fluidsynth_stub()
+
+
+def _patch_scipy_signal() -> None:
+    # In scipy >= 1.13, scipy.signal.hann was moved to scipy.signal.windows.hann
+    # librosa <= 0.10 beat tracking relies on scipy.signal.hann
+    try:
+        import scipy.signal
+        import scipy.signal.windows
+        if not hasattr(scipy.signal, "hann"):
+            scipy.signal.hann = scipy.signal.windows.hann
+    except Exception:
+        pass
+
+
+_patch_scipy_signal()
+
 import pretty_midi
 
 ROOT_DIR = Path(__file__).resolve().parent
@@ -20,6 +44,14 @@ os.environ.setdefault("SHEETSAGE_CACHE_DIR", str(SHEETSAGE_CACHE_DIR))
 
 if str(UPSTREAM_DIR) not in sys.path:
     sys.path.insert(0, str(UPSTREAM_DIR))
+
+# If 'sheetsage' exists in sys.modules (e.g. imported as a package from repo root),
+# extend its search path so submodules inside sheetsage_upstream/sheetsage can be imported.
+if "sheetsage" in sys.modules:
+    upstream_pkg_path = UPSTREAM_DIR / "sheetsage"
+    pkg = sys.modules["sheetsage"]
+    if hasattr(pkg, "__path__") and str(upstream_pkg_path) not in pkg.__path__:
+        pkg.__path__.append(str(upstream_pkg_path))
 
 
 def _install_jukebox_stub() -> None:
@@ -123,6 +155,91 @@ def _build_asset_details(tag: str, asset: Dict[str, Any]) -> Dict[str, Any]:
         return asset_details
 
 
+class BasicPitchMelodyRuntime:
+    def __init__(self) -> None:
+        self._initialized = True
+
+    @property
+    def is_initialized(self) -> bool:
+        return self._initialized
+
+    def get_runtime_info(self) -> Dict[str, Any]:
+        return {
+            "engine": "basic-pitch",
+            "model": "Spotify Basic Pitch (ICASSP 2022) - Standard Model",
+            "initialized": True,
+            "offline": True,
+        }
+
+    def transcribe_file(
+        self,
+        audio_path: str,
+        source_name: Optional[str] = None,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        import time
+        import librosa
+        import numpy as np
+        from basic_pitch.inference import predict
+
+        start_time = time.perf_counter()
+        logger.info("Running pure Spotify Basic Pitch inference directly on raw audio: %s", audio_path)
+
+        # Run pure Spotify Basic Pitch directly on the raw audio
+        _model_output, _midi_data, note_events_raw = predict(audio_path)
+
+        # Convert to ChordMini SheetSageNoteEvent format
+        note_events = []
+        for event in note_events_raw:
+            onset_s, offset_s, pitch_midi, amp, *_ = event
+            if offset_s - onset_s < 0.05:
+                continue
+            velocity = int(min(127, max(1, round(float(amp) * 127))))
+            note_events.append({
+                "onset": round(float(onset_s), 3),
+                "offset": round(float(offset_s), 3),
+                "pitch": int(pitch_midi),
+                "velocity": velocity,
+            })
+
+        note_events.sort(key=lambda event: (event["onset"], event["pitch"], event["offset"]))
+
+        # Compute tempo and beat times using librosa
+        beat_times = []
+        tempo_bpm = 120
+        try:
+            y, sr = librosa.load(audio_path, sr=22050)
+            tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
+            beat_times = [round(float(t), 3) for t in librosa.frames_to_time(beat_frames, sr=sr).tolist()]
+            if isinstance(tempo, (list, np.ndarray)):
+                tempo_bpm = int(round(float(tempo[0]))) if len(tempo) > 0 else 120
+            else:
+                tempo_bpm = int(round(float(tempo)))
+        except Exception as exc:
+            logger.warning("Librosa beat tracking fallback encountered error: %s", exc)
+
+        processing_time = round(time.perf_counter() - start_time, 3)
+        logger.info(
+            "Basic Pitch finished: %d note events extracted in %.2fs (tempo: %d bpm)",
+            len(note_events),
+            processing_time,
+            tempo_bpm,
+        )
+
+        return {
+            "source": "sheetsage",
+            "engine": "basic-pitch",
+            "sourceName": source_name,
+            "noteEvents": note_events,
+            "noteEventCount": len(note_events),
+            "beatTimes": beat_times,
+            "beatsPerMeasure": 4,
+            "tempoBpm": tempo_bpm if tempo_bpm > 0 else 120,
+            "processingTime": processing_time,
+            "usedJukebox": False,
+        }
+
+
 class SheetSageRuntime:
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -131,10 +248,16 @@ class SheetSageRuntime:
         self._detect_melody = True
         self._detect_harmony = False
         self._measures_per_chunk = int(os.getenv("SHEETSAGE_MEASURES_PER_CHUNK", "8"))
+        self._basic_pitch_engine = BasicPitchMelodyRuntime()
+        self._active_engine_name = os.getenv("SHEETSAGE_ENGINE", "auto").strip().lower()
 
     @property
     def is_initialized(self) -> bool:
         return self._initialized
+
+    @property
+    def active_engine_name(self) -> str:
+        return self._active_engine_name
 
     def get_required_asset_details(self) -> List[Dict[str, Any]]:
         manifest = _load_required_asset_manifest()
@@ -145,8 +268,9 @@ class SheetSageRuntime:
         ]
 
     def get_runtime_info(self):
-        return {
+        info = {
             "pythonVersion": sys.version.split()[0],
+            "activeEngine": self._active_engine_name,
             "useJukebox": self._use_jukebox,
             "detectMelody": self._detect_melody,
             "detectHarmony": self._detect_harmony,
@@ -159,6 +283,9 @@ class SheetSageRuntime:
             "experimental": True,
             "license": "Models/data remain subject to upstream CC BY-NC-SA and other third-party terms.",
         }
+        if self._active_engine_name == "basic-pitch":
+            info["fallback"] = "Spotify Basic Pitch engine active"
+        return info
 
     def ensure_initialized(self) -> None:
         if self._initialized:
@@ -168,26 +295,60 @@ class SheetSageRuntime:
             if self._initialized:
                 return
 
+            if self._active_engine_name == "basic-pitch":
+                self._initialized = True
+                logger.info("SheetSage running with explicit BasicPitch engine")
+                return
+
             SHEETSAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-            try:
-                for tag in REQUIRED_ASSET_TAGS:
-                    retrieve_asset(tag, log=False)
-            except Exception as exc:
-                raise SheetSageAssetUnavailableError(
-                    "Sheet Sage could not download its required upstream assets. "
-                    "The configured asset host is returning an access error. "
-                    "This service cannot transcribe until those files are manually seeded into "
-                    f"{SHEETSAGE_CACHE_DIR} or the upstream asset URLs are replaced. "
-                    f"Required tags: {', '.join(REQUIRED_ASSET_TAGS)}."
-                ) from exc
+
+            # Fast check: Check if all required assets already exist in cache
+            manifest = _load_required_asset_manifest()
+            all_assets_present = True
+            for tag in REQUIRED_ASSET_TAGS:
+                if tag in manifest:
+                    asset_path = SHEETSAGE_CACHE_DIR / str(manifest[tag]["path"])
+                    if not asset_path.is_file():
+                        all_assets_present = False
+                        break
+
+            if all_assets_present:
+                try:
+                    for tag in REQUIRED_ASSET_TAGS:
+                        retrieve_asset(tag, log=False)
+                    self._active_engine_name = "sheetsage"
+                    self._initialized = True
+                    logger.info("SheetSage initialized using cached upstream weights.")
+                    return
+                except Exception as exc:
+                    logger.warning("Failed verifying cached SheetSage weights: %s", exc)
+
+            # Check if user explicitly configured force S3 download
+            if os.getenv("SHEETSAGE_FORCE_S3_DOWNLOAD", "").strip().lower() in ("1", "true", "yes"):
+                try:
+                    for tag in REQUIRED_ASSET_TAGS:
+                        retrieve_asset(tag, log=False)
+                    self._active_engine_name = "sheetsage"
+                    self._initialized = True
+                    return
+                except Exception as exc:
+                    logger.warning("SheetSage S3 download failed: %s", exc)
+
+            # Otherwise, activate Spotify Basic Pitch immediately without hanging on dead S3 bucket
+            logger.info("SheetSage upstream S3 weights not in cache. Activating Spotify Basic Pitch engine.")
+            self._active_engine_name = "basic-pitch"
             self._initialized = True
 
     def transcribe_file(
         self,
         audio_path,
         source_name=None,
+        **kwargs: Any,
     ):
         self.ensure_initialized()
+
+        if self._active_engine_name == "basic-pitch":
+            return self._basic_pitch_engine.transcribe_file(audio_path, source_name=source_name, **kwargs)
 
         def status_change_callback(status: Any) -> None:
             status_name = getattr(status, "name", str(status))

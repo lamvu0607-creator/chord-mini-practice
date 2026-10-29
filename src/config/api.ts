@@ -11,7 +11,7 @@
  * Backend service URLs are intentionally resolved from server-only environment variables.
  */
 
-import { getPythonApiUrl, getSongformerApiUrl, getSheetSageApiUrl, getFrontendBaseUrl } from '@/config/serverBackend';
+import { getPythonApiUrl, getSheetSageApiUrl, getStemsApiUrl, getFrontendBaseUrl } from '@/config/serverBackend';
 
 // Backend URLs - Centralized configuration using environment variables
 // NOTE: This constant uses process.env and is suitable for server-side code (API routes, SSR)
@@ -19,8 +19,8 @@ import { getPythonApiUrl, getSongformerApiUrl, getSheetSageApiUrl, getFrontendBa
 export const BACKEND_URLS = {
   PYTHON_BACKEND: getPythonApiUrl(),
 
-  SONGFORMER_BACKEND: getSongformerApiUrl(),
   SHEETSAGE_BACKEND: getSheetSageApiUrl(),
+  STEMS_BACKEND: getStemsApiUrl(),
 
   VERCEL_FRONTEND: getFrontendBaseUrl(),
 } as const;

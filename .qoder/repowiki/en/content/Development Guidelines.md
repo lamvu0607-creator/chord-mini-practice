@@ -109,7 +109,7 @@ subgraph "Client"
 UI["Next.js App<br/>src/"]
 end
 subgraph "Services"
-FB["Firebase<br/>Firestore/Storage"]
+FB["Local persistence<br/>SQLite/Storage"]
 YT["YouTube APIs"]
 AI["Gemini/Music.AI/Lyrics"]
 end
@@ -267,7 +267,7 @@ CI-->>Dev : Status checks and notifications
 
 ### Deployment Procedures
 - Development
-  - Local setup with Node.js 20+, Python 3.10.x, Docker, Firebase, and API keys as per README.
+  - Local setup with Node.js 20+, Python 3.10.x, Docker, Local persistence, and API keys as per README.
 - Staging/Production
   - Docker Compose with pre-built images; configure environment variables; health checks included.
   - Backend Dockerfile includes multi-stage build, pre-downloaded Spleeter models, and Gunicorn worker tuning.
@@ -345,7 +345,7 @@ DC --> BED
 
 ## Dependency Analysis
 - Frontend Dependencies
-  - Next.js, React 19, HeroUI, Tailwind, Firebase, Tone.js, ffmpeg, and more as defined in package.json.
+  - Next.js, React 19, HeroUI, Tailwind, Local persistence, Tone.js, ffmpeg, and more as defined in package.json.
 - Backend Dependencies
   - Flask, librosa, spleeter, madmom, TensorFlow/PyTorch, and more as defined in python_backend/requirements.txt.
 - Optional Services
@@ -383,7 +383,7 @@ FE --> |Optional| SF
 ## Troubleshooting Guide
 - Backend Connectivity
   - Verify backend health endpoint and port 5001; check environment variables and CORS origins.
-- Firebase Storage
+- local audio storage
   - Ensure Anonymous Auth enabled; verify storage rules and temp folder cleanup configuration.
 - Docker Platform Issues
   - On Windows/x86_64, build local linux/amd64 images instead of pulling arm64 ones.
@@ -394,7 +394,7 @@ FE --> |Optional| SF
 - [README.md:447-490](file://README.md#L447-L490)
 
 ## Conclusion
-These guidelines consolidate the project’s coding standards, testing strategy, CI/CD practices, deployment procedures, and community norms. By following these practices, contributors can efficiently extend ChordMiniApp while maintaining high code quality and reliability.
+These guidelines consolidate the projectâ€™s coding standards, testing strategy, CI/CD practices, deployment procedures, and community norms. By following these practices, contributors can efficiently extend ChordMiniApp while maintaining high code quality and reliability.
 
 ## Appendices
 - Quick Commands

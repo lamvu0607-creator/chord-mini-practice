@@ -565,7 +565,7 @@ function getScaleDegreeNames(scaleType: ScaleType): string[] {
   return SCALE_DEGREE_NAMES;
 }
 
-function getScaleNotes(root: string, scaleType: ScaleType): string[] {
+export function getScaleNotes(root: string, scaleType: ScaleType): string[] {
   return getScaleSteps(scaleType).map((step) => getNote(root, step, getAccidentalPreference(root)));
 }
 
@@ -1413,7 +1413,9 @@ function createSecondaryQuestion(sequenceIndex: number): SecondaryDominantQuizQu
 }
 
 export function generateQuizQuestions(): QuizQuestion[] {
-  if (process.env.NODE_ENV === 'test') {
+  // Bracket access keeps this runtime-selectable in tests that intentionally
+  // exercise the random generator; direct access may be folded by the build.
+  if (process.env['NODE_ENV'] === 'test') {
     return generateStableQuizQuestions();
   }
 

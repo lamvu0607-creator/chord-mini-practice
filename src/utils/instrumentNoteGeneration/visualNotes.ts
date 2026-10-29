@@ -1,5 +1,4 @@
 import { getInstrumentVisualSustainTailSeconds } from '@/services/chord-playback/instrumentEnvelopeConfig';
-import type { SegmentationResult } from '@/types/chatbotTypes';
 import type { ChordEvent } from '@/utils/chordToMidi';
 import type { GuitarVoicingSelection } from '@/utils/guitarVoicing';
 
@@ -123,7 +122,6 @@ export function generateAllInstrumentVisualNotePlans(
   instruments: ActiveInstrument[],
   bpm?: number,
   timeSignature?: number,
-  segmentationData?: SegmentationResult | null,
   guitarVoicing?: Partial<GuitarVoicingSelection>,
   targetKey?: string,
   signalDynamicsSource?: SignalDynamicsSource | null,
@@ -158,7 +156,6 @@ export function generateAllInstrumentVisualNotePlans(
         startTime,
         totalDuration,
         timeSignature,
-        segmentationData,
         signalDynamics,
         simpleBlockChord: simplePianoBlockChords && instrumentName === 'piano',
         guitarVoicing,
@@ -230,7 +227,6 @@ export function generateAllInstrumentVisualNotes(
   instruments: ActiveInstrument[],
   bpm?: number,
   timeSignature?: number,
-  segmentationData?: SegmentationResult | null,
   guitarVoicing?: Partial<GuitarVoicingSelection>,
   targetKey?: string,
   signalDynamicsSource?: SignalDynamicsSource | null,
@@ -243,7 +239,6 @@ export function generateAllInstrumentVisualNotes(
       instruments,
       bpm,
       timeSignature,
-      segmentationData,
       guitarVoicing,
       targetKey,
       signalDynamicsSource,

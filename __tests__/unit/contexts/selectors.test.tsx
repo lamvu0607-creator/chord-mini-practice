@@ -5,7 +5,6 @@ import {
   useBeatSelector,
   useChordCorrectionsSelector,
   useRomanNumeralsSelector,
-  useSegmentationSelector,
   useSimplifySelector,
 } from '@/contexts/selectors';
 import { useAnalysisStore } from '@/stores/analysisStore';
@@ -35,24 +34,21 @@ describe('contexts/selectors', () => {
     expect(result.current).toEqual({ analysisResults });
   });
 
-  it('selects segmentation, roman numeral, and simplify state from the UI store', () => {
+  it('selects roman numeral and simplify state from the UI store', () => {
     const romanNumeralData = {
       analysis: ['I', 'V'],
       keyContext: 'C',
     };
 
     act(() => {
-      useUIStore.getState().setShowSegmentation(true);
       useUIStore.getState().setShowRomanNumerals(true);
       useUIStore.getState().updateRomanNumeralData(romanNumeralData);
       useUIStore.getState().setSimplifyChords(true);
     });
 
-    const segmentation = renderHook(() => useSegmentationSelector());
     const numerals = renderHook(() => useRomanNumeralsSelector());
     const simplify = renderHook(() => useSimplifySelector());
 
-    expect(segmentation.result.current).toEqual({ showSegmentation: true });
     expect(numerals.result.current).toEqual({
       showRomanNumerals: true,
       romanNumeralData,

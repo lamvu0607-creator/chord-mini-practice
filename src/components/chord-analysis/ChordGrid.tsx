@@ -16,14 +16,11 @@ import { useChordGridLayout } from '@/hooks/chord-analysis/useChordGridLayout';
 import { useChordDataProcessing } from '@/hooks/chord-analysis/useChordDataProcessing';
 import { useChordInteractions } from '@/hooks/chord-analysis/useChordInteractions';
 import { useLoopBeatSelection } from '@/hooks/chord-analysis/useLoopBeatSelection';
-import { SegmentationResult } from '@/types/chatbotTypes';
 import { ChordGridHeader } from './ChordGridHeader';
 import { ChordCell } from './ChordCell';
 import GridLyricsRow, { type BeatGridTimedLyrics, groupPlacementsIntoRows } from './GridLyricsRow';
 import { enhanceLyricsWithCharacterTiming, type EnhancedLyricLine } from '@/utils/lyricsTimingUtils';
 import { getDisplayAccidentalPreference } from '@/utils/chordUtils';
-import { getSegmentationColor } from '@/utils/segmentationColors';
-import { buildSegmentedSectionBlocks, getVisibleCellsForSegmentedSlot, SegmentedSectionRow, shouldRenderSegmentedSlotMeasureBar, SegmentedBeatCell } from '@/utils/chordGridSegmentationLayout';
 import AppTooltip from '@/components/common/AppTooltip';
 import type { MetricSegment } from '@/services/chord-analysis/gridTypes';
 
@@ -51,13 +48,6 @@ interface GroupedMeasure {
   isPickupMeasure?: boolean;
   visualStartIndex: number;
   beatsPerMeasure?: number;
-}
-
-interface SectionBlock {
-  label: string;
-  accentColor: string;
-  rows: SegmentedSectionRow[];
-  measuresPerRow: number;
 }
 
 interface MetricSectionBlock {
@@ -120,9 +110,6 @@ interface ChordGridProps {
       }>;
     };
   } | null;
-  // NEW: Song segmentation data for color-coding
-  segmentationData?: SegmentationResult | null; // Segmentation analysis results
-  showSegmentation?: boolean; // Whether to show segmentation colors
   // Edit mode props
   isEditMode?: boolean; // Whether edit mode is active
   editedChords?: Record<number, string>; // Temporarily edited chord values
@@ -196,9 +183,6 @@ const areChordGridPropsEqual = (
   if (prevProps.showCorrectedChords !== nextProps.showCorrectedChords) return false;
   if (prevProps.sequenceCorrections !== nextProps.sequenceCorrections) return false;
 
-  // Segmentation
-  if (prevProps.segmentationData !== nextProps.segmentationData) return false;
-  if (prevProps.showSegmentation !== nextProps.showSegmentation) return false;
 
   // Roman numerals
   if (prevProps.showRomanNumerals !== nextProps.showRomanNumerals) return false;
@@ -242,8 +226,6 @@ const ChordGrid: React.FC<ChordGridProps> = React.memo(({
   showCorrectedChords = false,
   //chordCorrections = null,
   sequenceCorrections = null,
-  segmentationData = null,
-  showSegmentation = false,
   isEditMode = false,
   editedChords = {},
   onChordEdit,
@@ -356,7 +338,7 @@ const ChordGrid: React.FC<ChordGridProps> = React.memo(({
     isLyricsPanelOpen
   );
 
-  const segmentationRowHeightPx = useMemo(() => {
+  const sectionRowHeightPx = useMemo(() => {
     const isSmUp = screenWidth >= 640;
     const minRowHeight = showRomanNumerals
       ? (isSmUp ? 4.2 * 16 : 3.3 * 16)
@@ -364,7 +346,7 @@ const ChordGrid: React.FC<ChordGridProps> = React.memo(({
     return Math.max(cellSize, minRowHeight);
   }, [cellSize, screenWidth, showRomanNumerals]);
 
-  const segmentationRowGapPx = 2;
+  const sectionRowGapPx = 2;
   const lyricsRowGapPx = 4;
   const lyricsRowPaddingPx = 12;
 
@@ -572,27 +554,6 @@ const ChordGrid: React.FC<ChordGridProps> = React.memo(({
     return calculatedRows;
   }, [groupedByMeasure, dynamicMeasuresPerRow]);
 
-  const sectionBlocks = useMemo<SectionBlock[] | null>(() => {
-    if (
-      normalizedMetricSegments.length > 0 ||
-      !showSegmentation ||
-      !segmentationData?.segments?.length ||
-      groupedByMeasure.length === 0
-    ) {
-      return null;
-    }
-
-    return buildSegmentedSectionBlocks(
-      groupedByMeasure,
-      dynamicMeasuresPerRow,
-      actualBeatsPerMeasure,
-      segmentationData,
-    ).map((block) => ({
-      ...block,
-      accentColor: getSegmentationColor(block.label),
-    }));
-  }, [showSegmentation, segmentationData, groupedByMeasure, dynamicMeasuresPerRow, actualBeatsPerMeasure, normalizedMetricSegments.length]);
-
   const metricSectionBlocks = useMemo<MetricSectionBlock[] | null>(() => {
     if (normalizedMetricSegments.length === 0 || metricGroupedByMeasure.length === 0) {
       return null;
@@ -696,39 +657,6 @@ const ChordGrid: React.FC<ChordGridProps> = React.memo(({
       return map;
     }
 
-    if (sectionBlocks) {
-      sectionBlocks.forEach((block) => block.rows.forEach((row) => {
-        const rowEntries: Array<{
-          globalIndex: number | null;
-          measureIdx: number;
-          chord: string;
-          showChordLabel: boolean;
-        }> = [];
-
-        row.slots.forEach((slot, measureIdx) => {
-          slot.cells.forEach((cell) => {
-            rowEntries.push(cell
-              ? {
-                globalIndex: cell.globalIndex,
-                measureIdx,
-                chord: cell.chord,
-                showChordLabel: shouldShowChordLabelLocal(cell.globalIndex),
-              }
-              : {
-                globalIndex: null,
-                measureIdx,
-                chord: '',
-                showChordLabel: false,
-              });
-          });
-        });
-
-        populateRowOverflows(rowEntries);
-      }));
-
-      return map;
-    }
-
     rows.forEach((row) => {
       const rowEntries: Array<{
         globalIndex: number | null;
@@ -753,7 +681,7 @@ const ChordGrid: React.FC<ChordGridProps> = React.memo(({
     });
 
     return map;
-  }, [rows, sectionBlocks, metricSectionBlocks, shiftedChords.length, shouldShowChordLabelLocal]);
+  }, [rows, metricSectionBlocks, shiftedChords.length, shouldShowChordLabelLocal]);
 
   // CRITICAL FIX: Use original chords for Roman numeral mapping to prevent misalignment during pitch shift
   // Roman numerals are key-relative and should remain constant regardless of transposition
@@ -956,35 +884,6 @@ const ChordGrid: React.FC<ChordGridProps> = React.memo(({
     return getLyricsForIndexRange(startIndex, endIndex);
   }, [actualBeatsPerMeasure, getLyricsForIndexRange]);
 
-  const getLyricsForSegmentedRow = useCallback((row: SegmentedSectionRow, widthMeasuresPerRow: number): GridLyricRowPlacement => {
-    let firstCell: SegmentedBeatCell | null = null;
-    let firstCellRowIndex = -1;
-
-    for (let slotIdx = 0; slotIdx < row.slots.length; slotIdx++) {
-      const slot = row.slots[slotIdx];
-      for (let cellIdx = 0; cellIdx < slot.cells.length; cellIdx++) {
-        const cell = slot.cells[cellIdx];
-        if (cell) {
-          firstCell = cell;
-          firstCellRowIndex = slotIdx * slot.cells.length + cellIdx;
-          break;
-        }
-      }
-      if (firstCell) break;
-    }
-
-    if (!firstCell) {
-      return { placements: [], columnCount: 1 };
-    }
-
-    const beatsPerMeasure = row.slots[0]?.cells.length || actualBeatsPerMeasure;
-    const blockRowWidth = widthMeasuresPerRow * beatsPerMeasure;
-    const rowStartGlobalIndex = firstCell.globalIndex - firstCellRowIndex;
-    const rowEndGlobalIndex = rowStartGlobalIndex + blockRowWidth - 1;
-
-    return getLyricsForIndexRange(rowStartGlobalIndex, rowEndGlobalIndex);
-  }, [actualBeatsPerMeasure, getLyricsForIndexRange]);
-
   const renderLyricsRow = useCallback((lines: ReturnType<typeof getLyricsForGroupedRow>, key: string) => {
     if (!gridLyrics || lines.placements.length === 0) return null;
 
@@ -1151,44 +1050,6 @@ const ChordGrid: React.FC<ChordGridProps> = React.memo(({
     );
   }, [getLyricsForGroupedRow, renderChordGridCell, renderLyricsRow, shiftedChords.length]);
 
-  const renderSegmentedRow = useCallback((row: SegmentedSectionRow, rowKey: string, widthMeasuresPerRow: number) => {
-    const lyricLines = getLyricsForSegmentedRow(row, widthMeasuresPerRow);
-
-    return (
-      <div 
-        key={rowKey} 
-        className="measure-row min-w-0"
-      >
-        <div className={`grid gap-1 sm:gap-1 w-full ${getMeasuresPerRowGridClass(widthMeasuresPerRow)}`}>
-          {row.slots.map((slot, measureIdx) => {
-            const visibleCells = getVisibleCellsForSegmentedSlot(slot.cells);
-            const showMeasureBar = shouldRenderSegmentedSlotMeasureBar(slot.cells);
-
-            return (
-            <div
-              key={`${rowKey}-slot-${slot.slotIndex}-${measureIdx}`}
-              className={`${showMeasureBar ? 'border-l-[3px] border-gray-600 dark:border-gray-400' : ''} min-w-0 flex-shrink-0`}
-              style={showMeasureBar ? { paddingLeft: '2px' } : undefined}
-            >
-              <div className={`grid gap-0.5 auto-rows-fr ${getGridColumnsClass()}`}>
-                {visibleCells.map(({ cell, gridColumnStart }) => (
-                  <div
-                    key={`segmented-${rowKey}-${slot.slotIndex}-${cell.globalIndex}`}
-                    style={gridColumnStart ? { gridColumnStart } : undefined}
-                  >
-                    {renderChordGridCell(cell.chord, cell.globalIndex, `segmented-cell-${rowKey}-${slot.slotIndex}-${cell.globalIndex}`)}
-                  </div>
-                ))}
-              </div>
-            </div>
-            );
-          })}
-        </div>
-        {renderLyricsRow(lyricLines, rowKey)}
-      </div>
-    );
-  }, [getGridColumnsClass, getLyricsForSegmentedRow, renderChordGridCell, renderLyricsRow]);
-
   // Early return if no chords available
   if (chords.length === 0) {
     return (
@@ -1235,12 +1096,12 @@ const ChordGrid: React.FC<ChordGridProps> = React.memo(({
                     const lyricLines = getLyricsForGroupedRow(row);
                     const visualRows = groupPlacementsIntoRows(lyricLines.placements);
                     const lineCount = visualRows.length;
-                    return sum + segmentationRowHeightPx + getLyricsBlockHeight(lineCount);
+                    return sum + sectionRowHeightPx + getLyricsBlockHeight(lineCount);
                   }, 0);
 
                   const stripHeight = Math.max(
-                    segmentationRowHeightPx,
-                    rowsHeight + Math.max(0, section.rows.length - 1) * segmentationRowGapPx,
+                    sectionRowHeightPx,
+                    rowsHeight + Math.max(0, section.rows.length - 1) * sectionRowGapPx,
                   );
 
                   return (
@@ -1270,53 +1131,6 @@ const ChordGrid: React.FC<ChordGridProps> = React.memo(({
                         `metric-section-${sectionIdx}-row-${rowIdx}`,
                         section.beatsPerMeasure,
                         section.measuresPerRow,
-                      ))}
-                    </div>
-                  </div>
-                );
-                })}
-              </div>
-            ) : sectionBlocks ? (
-              <div className="space-y-3">
-                {sectionBlocks.map((section, sectionIdx) => {
-                  const rowsHeight = section.rows.reduce((sum, row) => {
-                    const lyricLines = getLyricsForSegmentedRow(row, section.measuresPerRow);
-                    const visualRows = groupPlacementsIntoRows(lyricLines.placements);
-                    const lineCount = visualRows.length;
-                    return sum + segmentationRowHeightPx + getLyricsBlockHeight(lineCount);
-                  }, 0);
-
-                  const stripHeight = Math.max(
-                    segmentationRowHeightPx,
-                    rowsHeight + Math.max(0, section.rows.length - 1) * segmentationRowGapPx,
-                  );
-
-                  return (
-                  <div key={`section-${sectionIdx}-${section.label}`} className="flex items-stretch gap-2 sm:gap-3">
-                    <div
-                      className="w-7 sm:w-8 flex-shrink-0 flex self-start"
-                    >
-                      <AppTooltip content={section.label} placement="right">
-                        <div
-                          className="w-full rounded-sm border border-black/10 text-[10px] sm:text-xs font-semibold tracking-[0.18em] uppercase flex items-center justify-center text-gray-700 dark:border-white/15 dark:text-gray-100"
-                          style={{
-                            writingMode: 'vertical-rl',
-                            transform: 'rotate(180deg)',
-                            backgroundColor: section.accentColor,
-                            padding: '0.5rem 0.2rem',
-                            height: `${stripHeight}px`,
-                          }}
-                        >
-                          {section.label}
-                        </div>
-                      </AppTooltip>
-                    </div>
-
-                    <div className="flex-1 space-y-0.5 min-w-0">
-                      {section.rows.map((row, rowIdx) => renderSegmentedRow(
-                        row,
-                        `section-${sectionIdx}-row-${rowIdx}`,
-                        dynamicMeasuresPerRow,
                       ))}
                     </div>
                   </div>

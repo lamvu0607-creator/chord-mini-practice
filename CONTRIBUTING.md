@@ -205,7 +205,7 @@ Use the bug report template and include:
 
 ### 🔧 Backend & Infrastructure
 - **API Optimization**: Improve response times and error handling
-- **Caching Strategy**: Enhance Firebase and blob storage efficiency
+- **Caching Strategy**: Enhance SQLite and local audio storage efficiency
 - **Rate Limiting**: Implement robust rate limiting and quota management
 - **Monitoring**: Add comprehensive logging and performance monitoring
 

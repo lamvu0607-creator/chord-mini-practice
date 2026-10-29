@@ -48,9 +48,9 @@ const PrivacyPage: React.FC = () => {
                 Audio Data
               </h3>
               <ul className="space-y-2 text-gray-700 dark:text-gray-300">
-                <li>• YouTube URLs you submit for analysis</li>
-                <li>• Audio files you upload (processed locally, not permanently stored)</li>
-                <li>• Analysis results (chord progressions, beat information)</li>
+                <li>â€¢ YouTube URLs you submit for analysis</li>
+                <li>â€¢ Audio files you upload (processed locally, not permanently stored)</li>
+                <li>â€¢ Analysis results (chord progressions, beat information)</li>
               </ul>
             </div>
             <div>
@@ -58,10 +58,10 @@ const PrivacyPage: React.FC = () => {
                 Technical Information
               </h3>
               <ul className="space-y-2 text-gray-700 dark:text-gray-300">
-                <li>• Browser type and version</li>
-                <li>• Device information and screen resolution</li>
-                <li>• Usage patterns and feature interactions</li>
-                <li>• Error logs and performance metrics</li>
+                <li>â€¢ Browser type and version</li>
+                <li>â€¢ Device information and screen resolution</li>
+                <li>â€¢ Usage patterns and feature interactions</li>
+                <li>â€¢ Error logs and performance metrics</li>
               </ul>
             </div>
           </div>
@@ -74,11 +74,11 @@ const PrivacyPage: React.FC = () => {
           </h2>
           <div className="space-y-4 text-gray-700 dark:text-gray-300">
             <ul className="space-y-3">
-              <li>• <strong>Music Analysis:</strong> Process audio to detect chords, beats, and synchronize lyrics</li>
-              <li>• <strong>Performance Optimization:</strong> Cache analysis results to improve response times</li>
-              <li>• <strong>Research Purposes:</strong> Aggregate usage data to improve machine learning models</li>
-              <li>• <strong>Service Improvement:</strong> Analyze usage patterns to enhance user experience</li>
-              <li>• <strong>Technical Support:</strong> Diagnose and resolve technical issues</li>
+              <li>â€¢ <strong>Music Analysis:</strong> Process audio to detect chords, beats, and synchronize lyrics</li>
+              <li>â€¢ <strong>Performance Optimization:</strong> Cache analysis results to improve response times</li>
+              <li>â€¢ <strong>Research Purposes:</strong> Aggregate usage data to improve machine learning models</li>
+              <li>â€¢ <strong>Service Improvement:</strong> Analyze usage patterns to enhance user experience</li>
+              <li>â€¢ <strong>Technical Support:</strong> Diagnose and resolve technical issues</li>
             </ul>
           </div>
         </div>
@@ -94,10 +94,10 @@ const PrivacyPage: React.FC = () => {
                 Security Measures
               </h3>
               <ul className="space-y-2">
-                <li>• All data transmission is encrypted using HTTPS</li>
-                <li>• Analysis results are cached using Firebase with security rules</li>
-                <li>• Audio files are processed temporarily and not permanently stored</li>
-                <li>• Access to data is restricted to authorized research personnel</li>
+                <li>â€¢ All data transmission is encrypted using HTTPS</li>
+                <li>â€¢ Analysis results are cached using Persistence with security rules</li>
+                <li>â€¢ Audio files are processed temporarily and not permanently stored</li>
+                <li>â€¢ Access to data is restricted to authorized research personnel</li>
               </ul>
             </div>
           </div>
@@ -111,11 +111,11 @@ const PrivacyPage: React.FC = () => {
           <div className="space-y-4 text-gray-700 dark:text-gray-300">
             <p>ChordMini integrates with the following third-party services:</p>
             <ul className="space-y-3">
-              <li>• <strong>YouTube API:</strong> For video metadata and audio extraction</li>
-              <li>• <strong>Firebase:</strong> For caching and data storage</li>
-              <li>• <strong>LRCLIB API:</strong> For lyrics retrieval and synchronization</li>
-              <li>• <strong>LRClib:</strong> For synchronized lyrics</li>
-              <li>• <strong>Google Cloud:</strong> For machine learning model hosting</li>
+              <li>â€¢ <strong>YouTube API:</strong> For video metadata and audio extraction</li>
+              <li>â€¢ <strong>Persistence:</strong> For caching and data storage</li>
+              <li>â€¢ <strong>LRCLIB API:</strong> For lyrics retrieval and synchronization</li>
+              <li>â€¢ <strong>LRClib:</strong> For synchronized lyrics</li>
+              <li>â€¢ <strong>Google Cloud:</strong> For machine learning model hosting</li>
             </ul>
             <p>Each service has its own privacy policy that governs their data handling practices.</p>
           </div>
@@ -129,10 +129,10 @@ const PrivacyPage: React.FC = () => {
           <div className="space-y-4 text-gray-700 dark:text-gray-300">
             <p>You have the right to:</p>
             <ul className="space-y-2">
-              <li>• Request information about data we have collected</li>
-              <li>• Request deletion of your cached analysis results</li>
-              <li>• Opt out of data collection for research purposes</li>
-              <li>• Report privacy concerns or data breaches</li>
+              <li>â€¢ Request information about data we have collected</li>
+              <li>â€¢ Request deletion of your cached analysis results</li>
+              <li>â€¢ Opt out of data collection for research purposes</li>
+              <li>â€¢ Report privacy concerns or data breaches</li>
             </ul>
           </div>
         </div>

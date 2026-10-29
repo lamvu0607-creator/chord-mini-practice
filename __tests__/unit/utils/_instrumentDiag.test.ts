@@ -1,6 +1,8 @@
 import { parseChordToMidiNotes } from '@/utils/chordToMidi';
 import { generateNotesForInstrument, generateAllInstrumentVisualNotes } from '@/utils/instrumentNoteGeneration';
 import { writeFileSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
 
 const baseParams = { chordName: 'C', chordNotes: parseChordToMidiNotes('C'), duration: 2, beatDuration: 0.5 };
 const shortParams = { ...baseParams, duration: 1.5 };
@@ -72,6 +74,6 @@ results.guitar34Count = guitar34.length;
 results.guitar34_12 = guitar34[12] ? { name: guitar34[12].noteName, offset: guitar34[12].startOffset } : null;
 
 test('dump', () => {
-  writeFileSync('/tmp/instr_diag.json', JSON.stringify(results, null, 2));
+  writeFileSync(join(tmpdir(), 'instr_diag.json'), JSON.stringify(results, null, 2));
   expect(true).toBe(true);
 });

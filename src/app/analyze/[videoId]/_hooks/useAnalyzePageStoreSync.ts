@@ -23,7 +23,6 @@ export function useAnalyzePageStoreSync({
   isTranscribingLyrics,
   lyricsError,
   videoTitle,
-  showSegmentation,
   isChatbotOpen,
   isLyricsPanelOpen,
   isPlaying,
@@ -116,13 +115,10 @@ export function useAnalyzePageStoreSync({
   useEffect(() => {
     const uiStore = useUIStore.getState();
     const noteName = keySignature ? keySignature.split(' ')[0] : 'C';
-    const isFirebaseAudioAvailable = !!audioProcessingState.audioUrl;
+    const isCachedAudioAvailable = !!audioProcessingState.audioUrl;
 
     if (uiStore.videoTitle !== videoTitle) {
       uiStore.setVideoTitle(videoTitle);
-    }
-    if (uiStore.showSegmentation !== showSegmentation) {
-      uiStore.setShowSegmentation(showSegmentation);
     }
     if (uiStore.isChatbotOpen !== isChatbotOpen) {
       uiStore.setIsChatbotOpen(isChatbotOpen);
@@ -133,14 +129,13 @@ export function useAnalyzePageStoreSync({
     if (uiStore.originalKey !== noteName) {
       uiStore.initializeOriginalKey(noteName);
     }
-    if (uiStore.isFirebaseAudioAvailable !== isFirebaseAudioAvailable) {
-      uiStore.initializeFirebaseAudioAvailable(isFirebaseAudioAvailable);
+    if (uiStore.isCachedAudioAvailable !== isCachedAudioAvailable) {
+      uiStore.initializeCachedAudioAvailable(isCachedAudioAvailable);
     }
   }, [
     audioProcessingState.audioUrl,
     keySignature,
     videoTitle,
-    showSegmentation,
     isChatbotOpen,
     isLyricsPanelOpen,
   ]);

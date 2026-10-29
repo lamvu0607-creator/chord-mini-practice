@@ -21,22 +21,34 @@ def validate_beat_detection_request() -> Tuple[bool, Optional[str], Optional[Fil
         - Optional[FileStorage]: Uploaded file if present
         - Dict[str, Any]: Validated parameters
     """
-    # Check if we have either a file upload or audio_path
+    # Check if we have either a file upload, audio_path, or audio_url
     file = request.files.get('file')
     audio_path = request.form.get('audio_path')
+    audio_url = request.form.get('audio_url') or request.form.get('audioUrl')
 
-    if not file and not audio_path:
-        return False, "No audio file provided. Please upload a file or provide audio_path.", None, {}
+    json_data = None
+    if request.is_json:
+        json_data = request.get_json(silent=True) or {}
+        if not audio_url:
+            audio_url = json_data.get('audioUrl') or json_data.get('audio_url')
+        if not audio_path:
+            audio_path = json_data.get('audio_path') or json_data.get('audioPath')
+
+    if not file and not audio_path and not audio_url:
+        return False, "No audio file provided. Please upload a file, provide audio_path, or provide audio_url.", None, {}
 
     # Validate detector parameter
-    detector = request.form.get('detector', 'auto').lower()
+    if json_data:
+        detector = json_data.get('detector', 'auto').lower()
+        force = json_data.get('force', False)
+    else:
+        detector = request.form.get('detector', 'auto').lower()
+        force_param = request.args.get('force', request.form.get('force', '')).lower()
+        force = force_param == 'true'
+
     valid_detectors = ['beat-transformer', 'madmom', 'librosa', 'auto']
     if detector not in valid_detectors:
         return False, f"Invalid detector '{detector}'. Must be one of: {', '.join(valid_detectors)}", file, {}
-
-    # Validate force parameter
-    force_param = request.args.get('force', request.form.get('force', '')).lower()
-    force = force_param == 'true'
 
     # Validate file if provided
     if file and file.filename == '':
@@ -45,39 +57,12 @@ def validate_beat_detection_request() -> Tuple[bool, Optional[str], Optional[Fil
     params = {
         'detector': detector,
         'force': force,
-        'audio_path': audio_path
+        'audio_path': audio_path,
+        'audio_url': audio_url,
+        'json_data': json_data
     }
 
     return True, None, file, params
-
-
-def validate_firebase_beat_detection_request() -> Tuple[bool, Optional[str], Dict[str, Any]]:
-    """
-    Validate a Firebase beat detection request.
-
-    Returns:
-        Tuple containing:
-        - bool: Whether validation passed
-        - Optional[str]: Error message if validation failed
-        - Dict[str, Any]: Validated parameters
-    """
-    # Check for Firebase URL
-    firebase_url = request.form.get('firebase_url')
-    if not firebase_url:
-        return False, "No Firebase URL provided", {}
-
-    # Validate detector parameter
-    detector = request.form.get('detector', 'auto').lower()
-    valid_detectors = ['beat-transformer', 'madmom', 'librosa', 'auto']
-    if detector not in valid_detectors:
-        return False, f"Invalid detector '{detector}'. Must be one of: {', '.join(valid_detectors)}", {}
-
-    params = {
-        'firebase_url': firebase_url,
-        'detector': detector
-    }
-
-    return True, None, params
 
 
 def get_file_size_mb(file: FileStorage) -> float:

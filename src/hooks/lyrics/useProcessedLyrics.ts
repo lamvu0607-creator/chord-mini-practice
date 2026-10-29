@@ -1,8 +1,6 @@
 import { useMemo } from 'react';
 import { enhanceLyricsWithCharacterTiming, EnhancedLyricLine } from '@/utils/lyricsTimingUtils';
-import { SegmentationResult, SongSegment } from '@/types/chatbotTypes';
 import { normalizeChordForDedup } from '@/utils/chordNormalization';
-import { isInstrumentalLikeSegment } from '@/utils/segmentationSections';
 import type { LyricWordTiming } from '@/types/musicAiTypes';
 
 // Types: beat-aligned chord events
@@ -184,35 +182,6 @@ const deduplicateChords = (chords: BeatAlignedChordEvent[]): BeatAlignedChordEve
 };
 
 /**
- * Create instrumental placeholders for sections without lyrics
- */
-const createInstrumentalPlaceholder = (segment: SongSegment, chords: BeatAlignedChordEvent[]) => {
-  const sectionLabel = segment.label || segment.type || 'Instrumental';
-
-  // Find chords that occur during this instrumental section
-  const sectionChords = chords.filter(chord =>
-    chord.time >= segment.startTime && chord.time <= segment.endTime
-  );
-
-  // Deduplicate chords to only show chord changes
-  const deduplicatedChords = deduplicateChords(sectionChords);
-
-  return {
-    startTime: segment.startTime,
-    endTime: segment.endTime,
-    text: `[${sectionLabel}]`,
-    chords: deduplicatedChords.map(chord => ({
-      position: 0, // Position at start of placeholder text
-      chord: chord.chord,
-      time: chord.time
-    })),
-    isInstrumental: true,
-    sectionLabel,
-    duration: segment.endTime - segment.startTime
-  };
-};
-
-/**
  * Create chord-only sections for chords that don't fall within lyrics or instrumental sections
  * Optimizes sections with minimal unique chords by condensing them
  */
@@ -248,7 +217,6 @@ interface UseProcessedLyricsProps {
   lyrics: SynchronizedLyrics;
   // Beat-aligned chord events (same timeline as synchronizedChords)
   beatAlignedChords: BeatAlignedChordEvent[];
-  segmentationData: SegmentationResult | null;
   // Optional filter to keep only downbeat chord changes
   downbeatsOnly?: boolean;
   // Optional downbeat times to support the filter (seconds)
@@ -264,13 +232,12 @@ export type ProcessedLyricLine = EnhancedLyricLine & {
 };
 
 /**
- * Custom hook for processing lyrics with chords and segmentation data
+ * Custom hook for processing lyrics with chords
  * Extracted from LeadSheetDisplay component for better maintainability
  */
 export const useProcessedLyrics = ({
   lyrics,
   beatAlignedChords,
-  segmentationData,
   downbeatsOnly = false,
   downbeatTimes = []
 }: UseProcessedLyricsProps): ProcessedLyricLine[] => {
@@ -383,28 +350,8 @@ export const useProcessedLyrics = ({
     // 2. Enhance with character timing
     const enhancedLyrics = enhanceLyricsWithCharacterTiming(lyricsWithChords);
 
-    // 3. Merge with instrumental and chord-only sections
+    // 3. Merge with chord-only sections
     const allItems: ProcessedLyricLine[] = [...enhancedLyrics.lines];
-
-    // Add instrumental placeholders for sections without lyrics
-    if (segmentationData?.segments) {
-      const instrumentalSections = segmentationData.segments.filter(isInstrumentalLikeSegment);
-
-      instrumentalSections.forEach(segment => {
-        // Check if there are already lyrics in this time range
-        const hasLyricsInRange = enhancedLyrics.lines.some(line =>
-          (line.startTime >= segment.startTime && line.startTime <= segment.endTime) ||
-          (line.endTime >= segment.startTime && line.endTime <= segment.endTime) ||
-          (line.startTime <= segment.startTime && line.endTime >= segment.endTime)
-        );
-
-        // Only add instrumental placeholder if no lyrics exist in this range
-        if (!hasLyricsInRange) {
-          const placeholder = createInstrumentalPlaceholder(segment, memoizedChords);
-          allItems.push(placeholder as ProcessedLyricLine);
-        }
-      });
-    }
 
     // Add chord-only sections for chords that don't fall within any lyrics or instrumental sections
     const sortedItems = [...allItems].sort((a, b) => a.startTime - b.startTime);
@@ -477,7 +424,7 @@ export const useProcessedLyrics = ({
     const cleaned = sorted.filter(item => (item.endTime - item.startTime) > 0);
 
     return cleaned;
-  }, [lyrics, memoizedChords, segmentationData]);
+  }, [lyrics, memoizedChords]);
 
   return processedAndMergedLyrics;
 };

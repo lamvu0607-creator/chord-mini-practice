@@ -84,7 +84,7 @@ function stabilizeScheduledMelodyNotes(notes: ScheduledNote[]): ScheduledNote[] 
       continue;
     }
 
-    if (nextNote) {
+    if (nextNote && nextNote.midi === currentNote.midi) {
       const nextStartOffset = nextNote.startOffset;
       const maximumDurationBeforeNext = nextStartOffset - currentNote.startOffset - MELODIC_NOTE_GAP_SECONDS;
       const minimumDuration = Math.min(currentNote.duration, 0.024);
@@ -350,15 +350,38 @@ export function buildSheetSageExtraVisualNotes(
   result: SheetSageResult | null,
   color: string,
   pitchShiftSemitones: number = 0,
+  harmonyColor: string = '#ec4899',
 ): SheetSageVisualNote[] {
-  if (!result?.noteEvents?.length) {
+  if (!result) {
     return [];
   }
 
-  return result.noteEvents.map((event) => ({
-    midi: clampMidiPitch(event.pitch + pitchShiftSemitones),
-    startTime: event.onset,
-    endTime: event.offset,
-    color,
-  }));
+  const visualNotes: SheetSageVisualNote[] = [];
+
+  const leadEvents = (result.leadNotes && result.leadNotes.length > 0)
+    ? result.leadNotes
+    : (result.noteEvents || []);
+
+  for (const event of leadEvents) {
+    visualNotes.push({
+      midi: clampMidiPitch(event.pitch + pitchShiftSemitones),
+      startTime: event.onset,
+      endTime: event.offset,
+      color,
+    });
+  }
+
+  if (result.harmonyNotes && result.harmonyNotes.length > 0) {
+    for (const event of result.harmonyNotes) {
+      visualNotes.push({
+        midi: clampMidiPitch(event.pitch + pitchShiftSemitones),
+        startTime: event.onset,
+        endTime: event.offset,
+        color: harmonyColor,
+        labelText: event.intervalTag,
+      });
+    }
+  }
+
+  return visualNotes;
 }

@@ -24,7 +24,7 @@ This guide explains the reusable pattern for adding a new machine learning model
 ### 1. Define the model boundary
 Before adding code, decide the model's domain and normalized contract:
 - Domain: beat detection, chord recognition, segmentation, melody transcription, lyrics/text processing, or another feature area.
-- Input: uploaded file, server file path, Firebase/offload URL, JSON payload, or a combination.
+- Input: uploaded file, server file path, Local persistence/offload URL, JSON payload, or a combination.
 - Output: the normalized response shape consumed by existing services and UI.
 - Runtime needs: checkpoint files, config files, Python packages, device requirements, temporary files, and size/time limits.
 
@@ -76,7 +76,7 @@ If the existing route already accepts a model id, prefer extending:
 - Request form fields and validation.
 - Fallback model metadata.
 - Timeout and error messages.
-- Offload/Firebase proxy behavior, if the model supports production offload.
+- Offload/Local persistence proxy behavior, if the model supports production offload.
 
 ### 7. Update frontend model selection
 Expose the model to the UI in the same layer where related models are listed:
@@ -188,7 +188,7 @@ The example below adds a hypothetical chord model with id `my-chord-model`. Use 
 
 7. Optional dedicated Next route:
    - Add `src/app/api/recognize-chords-my-chord-model/route.ts` only if an alias is needed.
-   - The route should verify App Check, set `detector=my-chord-model`, and proxy to Flask `POST /api/recognize-chords`.
+   - The route should verify IP rate limiting, set `detector=my-chord-model`, and proxy to Flask `POST /api/recognize-chords`.
 
 ### Smoke checks for the chord example
 Run these checks after implementing the code:
@@ -216,4 +216,3 @@ When adding any model, update the relevant wiki pages:
 - Machine learning model docs for model capabilities and limitations.
 - Frontend model selector docs if users can choose the model.
 - Troubleshooting docs for missing checkpoints, package errors, timeout behavior, and production availability.
-

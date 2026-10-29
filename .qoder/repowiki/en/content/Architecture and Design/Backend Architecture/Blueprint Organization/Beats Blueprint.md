@@ -1,4 +1,4 @@
-# Beats Blueprint
+﻿# Beats Blueprint
 
 <cite>
 **Referenced Files in This Document**
@@ -93,7 +93,7 @@ BP --> ERR
 ## Core Components
 - Endpoints:
   - POST /api/detect-beats: Analyze uploaded or local audio files.
-  - POST /api/detect-beats-firebase: Analyze audio referenced by a Firebase Storage URL.
+  - POST /api/detect-beats-local-persistence: Analyze audio referenced by a local audio storage URL.
   - GET /api/model-info: Retrieve model availability and configuration.
   - GET /api/test-beat-transformer, GET /api/test-madmom, GET /api/test-librosa, GET /api/test-all-models, GET /api/test-dbn-isolation: Health and capability checks for detectors.
 - Detector Services:
@@ -208,10 +208,10 @@ Result -- No --> Err500["Return 500 Internal Server Error"]
 - [tempfiles.py:15-51](file://python_backend/services/audio/tempfiles.py#L15-L51)
 - [beat_detection_service.py:163-311](file://python_backend/services/audio/beat_detection_service.py#L163-L311)
 
-### Endpoint: POST /api/detect-beats-firebase
-- Purpose: Download audio from a Firebase Storage URL and analyze it.
+### Endpoint: POST /api/detect-beats-local-persistence
+- Purpose: Download audio from a local audio storage URL and analyze it.
 - Request:
-  - firebase_url and detector.
+  - local-persistence_url and detector.
 - Processing:
   - Streams download to a temporary file.
   - Runs BeatDetectionService.detect_beats with force disabled (auto size handling).
@@ -222,12 +222,12 @@ Result -- No --> Err500["Return 500 Internal Server Error"]
 ```mermaid
 sequenceDiagram
 participant FE as "Frontend Next.js"
-participant API as "Flask /api/detect-beats-firebase"
+participant API as "Flask /api/detect-beats-local-persistence"
 participant VAL as "Validators"
 participant TMP as "TempFiles"
 participant SVC as "BeatDetectionService"
-FE->>API : POST firebase_url, detector
-API->>VAL : validate_firebase_beat_detection_request()
+FE->>API : POST local-persistence_url, detector
+API->>VAL : validate_local-persistence_beat_detection_request()
 VAL-->>API : {valid,params}
 API->>TMP : temporary_file(.mp3)
 API->>API : _download_remote_audio_to_temp_path()
@@ -359,8 +359,8 @@ BeatDetectionService --> LibrosaDetectorService : "uses"
 - validate_beat_detection_request:
   - Accepts file or audio_path.
   - Validates detector and force parameters.
-- validate_firebase_beat_detection_request:
-  - Requires firebase_url and validates detector.
+- validate_local-persistence_beat_detection_request:
+  - Requires local-persistence_url and validates detector.
 - validate_file_size:
   - Enforces per-detector size limits.
   - Allows force=true to bypass limits for the requested detector.
@@ -456,7 +456,7 @@ end
 - External Dependencies:
   - Madmom, Librosa, and Beat-Transformer libraries.
   - Redis for rate limiting.
-  - Firebase Storage for remote audio downloads.
+  - local audio storage for remote audio downloads.
 
 ```mermaid
 graph TB
@@ -551,12 +551,12 @@ The beats detection blueprint provides a robust, modular system for beat and dow
         "total_processing_time": 5.1
       }
 
-- POST /api/detect-beats-firebase
+- POST /api/detect-beats-local-persistence
   - Body: form-data
-    - firebase_url: Firebase Storage URL
+    - local-persistence_url: local audio storage URL
     - detector: 'beat-transformer' | 'madmom' | 'librosa' | 'auto'
   - Example request:
-    - curl -X POST -F "firebase_url=https://firebasestorage.googleapis.com/..." -F "detector=madmom" http://localhost:5000/api/detect-beats-firebase
+    - curl -X POST -F "local-persistence_url=https://local-persistencestorage.googleapis.com/..." -F "detector=madmom" http://localhost:5000/api/detect-beats-local-persistence
 
 - GET /api/model-info
   - Response includes:

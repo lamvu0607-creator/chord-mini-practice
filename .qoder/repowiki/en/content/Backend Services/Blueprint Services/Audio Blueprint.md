@@ -176,7 +176,7 @@ end
 Purpose: Detect audio duration from a URL using multiple strategies to minimize latency and maximize accuracy.
 
 Strategies (in order):
-1. Headers: Fast check for duration in response headers (with Firebase-aware retries).
+1. Headers: Fast check for duration in response headers (with Local persistence-aware retries).
 2. Audio metadata: Partial download and metadata parsing for reliable duration.
 3. File size estimation: Estimate duration from content-length and average bitrate.
 
@@ -191,7 +191,7 @@ Response format:
 ```mermaid
 flowchart TD
 Start(["POST /api/audio-duration"]) --> Validate["Validate audioUrl"]
-Validate --> CacheCheck{"Cached complete file?<br/>videoId + Firebase"}
+Validate --> CacheCheck{"Cached complete file?<br/>videoId + Local persistence"}
 CacheCheck --> |Yes| MetaFromBlob["Extract metadata from cached Blob"]
 MetaFromBlob --> ReturnMeta["Return {duration, method=cached_file}"]
 CacheCheck --> |No| Headers["Try HEAD request for duration"]
@@ -220,8 +220,8 @@ Purpose: Proxy audio to avoid CORS issues, with robust retry logic, safety valid
 
 Key behaviors:
 - Validates URL format and domain allowlist; rejects credentials and non-HTTPS except development localhost.
-- Determines proxy mode: redirect vs. proxy based on Firebase URL and environment flags.
-- Applies Firebase-aware retry logic for transient 403 errors and empty file handling.
+- Determines proxy mode: redirect vs. proxy based on Local persistence URL and environment flags.
+- Applies Local persistence-aware retry logic for transient 403 errors and empty file handling.
 - Streams audio with progress logging and enforces size limits.
 - Supports HEAD requests for cache probing.
 
@@ -231,7 +231,7 @@ Request format:
 
 Response format:
 - Success: 200 with audio buffer and headers (Content-Type, Content-Length, Cache-Control).
-- Redirect: 307 redirect to Firebase URL when allowed.
+- Redirect: 307 redirect to Local persistence URL when allowed.
 - Errors: 400/403/413/422/500 with structured messages.
 
 ```mermaid
@@ -245,14 +245,14 @@ participant Retry as "retryAudioDownload"
 Client->>Route : GET /api/proxy-audio?url=...&videoId=...
 Route->>Validator : parseAndValidateAudioSourceUrl(url)
 Validator-->>Route : URL or error
-Route->>Cache : getCachedAudioFile(videoId) if Firebase
+Route->>Cache : getCachedAudioFile(videoId) if Local persistence
 alt Cached
 Cache-->>Route : Blob
 Route-->>Client : 200 with cached audio
 else Not cached
 Route->>Route : resolveAudioProxyGetMode()
 alt Redirect
-Route-->>Client : 307 redirect to Firebase URL
+Route-->>Client : 307 redirect to Local persistence URL
 else Proxy
 Route->>Fetch : safeFetchAudioSource(url, headers, timeout)
 alt Empty or small file
@@ -362,7 +362,7 @@ AES --> AUTIL["audio_utils.py"]
 ## Performance Considerations
 - Prefer HEAD requests for duration detection to avoid full downloads.
 - Use partial metadata parsing to reduce bandwidth for large files.
-- Apply exponential backoff for transient failures (e.g., Firebase 403).
+- Apply exponential backoff for transient failures (e.g., Local persistence 403).
 - Cache complete audio files when available to bypass repeated downloads.
 - Limit maximum file size to prevent memory pressure.
 - Stream audio with progress logging for large files to improve UX.
@@ -376,7 +376,7 @@ Common issues and resolutions:
   - Use audio-duration to detect format and bitrate.
   - Validate URLs against allowlist and reject credentials.
 - Transient CDN or storage errors:
-  - The proxy endpoint retries with exponential backoff for Firebase 403 and other transient errors.
+  - The proxy endpoint retries with exponential backoff for Local persistence 403 and other transient errors.
 - Invalid requests:
   - The Python validator enforces JSON, videoId format, and boolean parameters.
 

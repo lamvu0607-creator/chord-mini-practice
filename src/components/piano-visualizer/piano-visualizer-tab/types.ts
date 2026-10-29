@@ -1,5 +1,4 @@
 import type { AnalysisResult } from '@/services/chord-analysis/chordRecognitionService';
-import type { SegmentationResult } from '@/types/chatbotTypes';
 import type { SheetSageResult } from '@/types/sheetSage';
 import type { BeatGridTimedLyrics } from '@/components/chord-analysis/GridLyricsRow';
 
@@ -53,7 +52,6 @@ export interface PianoVisualizerTabProps {
   showCorrectedChords?: boolean;
   chordCorrections?: Record<string, string> | null;
   sequenceCorrections?: SequenceCorrections | null;
-  segmentationData?: SegmentationResult | null;
   currentTime?: number;
   isPlaying?: boolean;
   isChordPlaybackEnabled?: boolean;

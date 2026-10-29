@@ -1,4 +1,4 @@
-# Error Handling and Logging
+﻿# Error Handling and Logging
 
 <cite>
 **Referenced Files in This Document**
@@ -13,7 +13,7 @@
 - [ClientErrorBoundary.tsx](file://src/components/common/ClientErrorBoundary.tsx)
 - [UserFriendlyErrorDisplay.tsx](file://src/components/common/UserFriendlyErrorDisplay.tsx)
 - [corsErrorSuppression.ts](file://src/utils/corsErrorSuppression.ts)
-- [firestore.rules](file://firebase/firestore.rules)
+- [sqlite.rules](file://local-persistence/sqlite.rules)
 </cite>
 
 ## Table of Contents
@@ -96,7 +96,7 @@ K --> H
 - Flask extensions initialization: configure CORS, rate limiting, and logging with environment-driven settings.
 - Configuration-driven logging levels and formats: define log levels and formats per environment.
 - Frontend error boundaries and user-friendly messaging: capture client-side errors, suppress noisy CORS noise, and present actionable messages to users.
-- Security controls for error reporting: restrict creation of error logs via Firestore rules.
+- Security controls for error reporting: restrict creation of error logs via SQLite rules.
 
 **Section sources**
 - [error_handlers.py:13-161](file://python_backend/error_handlers.py#L13-L161)
@@ -106,7 +106,7 @@ K --> H
 - [GlobalErrorBoundary.tsx:19-84](file://src/components/common/GlobalErrorBoundary.tsx#L19-L84)
 - [UserFriendlyErrorDisplay.tsx:15-66](file://src/components/common/UserFriendlyErrorDisplay.tsx#L15-L66)
 - [corsErrorSuppression.ts:74-177](file://src/utils/corsErrorSuppression.ts#L74-L177)
-- [firestore.rules:255-264](file://firebase/firestore.rules#L255-L264)
+- [sqlite.rules:255-264](file://local-persistence/sqlite.rules#L255-L264)
 
 ## Architecture Overview
 The system integrates backend and frontend error handling:
@@ -198,7 +198,7 @@ ChordMiniException <|-- ExternalServiceError
 - [error_handlers.py:97-161](file://python_backend/error_handlers.py#L97-L161)
 
 ### Exception Propagation Patterns and Response Formatting
-- Flask’s errorhandler decorators intercept exceptions and return JSON bodies with consistent structure.
+- Flaskâ€™s errorhandler decorators intercept exceptions and return JSON bodies with consistent structure.
 - Rate limit exceptions include a retry-after hint when available.
 - Generic and 500 errors include full tracebacks in logs for debugging while returning sanitized messages to clients.
 
@@ -315,10 +315,10 @@ UX-->>FE : Render actionable UI
 
 ### Error Monitoring Integration and Alerting
 - Frontend performance monitor tracks metrics and can emit alerts for significant deviations (e.g., error reduction percentage).
-- Firestore rules permit controlled creation of error logs for debugging and monitoring, enforcing size limits and rate limits.
+- SQLite rules permit controlled creation of error logs for debugging and monitoring, enforcing size limits and rate limits.
 
 **Section sources**
-- [firestore.rules:255-264](file://firebase/firestore.rules#L255-L264)
+- [sqlite.rules:255-264](file://local-persistence/sqlite.rules#L255-L264)
 
 ### Security Considerations for Error Reporting
 - Restrict write access to error logs collections; enforce size limits and rate limits.
@@ -326,7 +326,7 @@ UX-->>FE : Render actionable UI
 - Use environment variables to toggle debug logging and disable debug endpoints in production.
 
 **Section sources**
-- [firestore.rules:255-264](file://firebase/firestore.rules#L255-L264)
+- [sqlite.rules:255-264](file://local-persistence/sqlite.rules#L255-L264)
 - [logging.py:18-21](file://python_backend/utils/logging.py#L18-L21)
 - [app_factory.py:93-98](file://python_backend/app_factory.py#L93-L98)
 
@@ -381,7 +381,7 @@ FE1 --> FE4["corsErrorSuppression.ts"]
 - Backend 500 errors: Inspect logs for full tracebacks; verify service availability and model paths; confirm rate limit configuration.
 - Unexpected exceptions: Confirm custom exception subclasses are properly raised and handled; ensure logging utilities are used consistently.
 - Frontend crashes: Verify global error boundaries are mounted; check user-friendly error display props; review CORS error suppression logic.
-- Error logs in Firebase: Confirm Firestore rules allow controlled creation of error logs; verify size and rate limits.
+- Error logs in Local persistence: Confirm SQLite rules allow controlled creation of error logs; verify size and rate limits.
 
 **Section sources**
 - [error_handlers.py:61-91](file://python_backend/error_handlers.py#L61-L91)
@@ -389,7 +389,7 @@ FE1 --> FE4["corsErrorSuppression.ts"]
 - [GlobalErrorBoundary.tsx:38-47](file://src/components/common/GlobalErrorBoundary.tsx#L38-L47)
 - [UserFriendlyErrorDisplay.tsx:22-40](file://src/components/common/UserFriendlyErrorDisplay.tsx#L22-L40)
 - [corsErrorSuppression.ts:108-137](file://src/utils/corsErrorSuppression.ts#L108-L137)
-- [firestore.rules:255-264](file://firebase/firestore.rules#L255-L264)
+- [sqlite.rules:255-264](file://local-persistence/sqlite.rules#L255-L264)
 
 ## Conclusion
 The ChordMini error handling and logging system combines centralized Flask error handlers, structured logging utilities, and configuration-driven settings with robust frontend error boundaries and user-friendly messaging. It preserves debugging context while maintaining user safety and system performance, and it incorporates security controls for error reporting.

@@ -28,7 +28,6 @@ const baseParams = {
   isTranscribingLyrics: false,
   lyricsError: null,
   videoTitle: 'Song',
-  showSegmentation: false,
   isChatbotOpen: false,
   isLyricsPanelOpen: false,
   isPlaying: false,

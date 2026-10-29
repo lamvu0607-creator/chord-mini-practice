@@ -33,7 +33,6 @@ interface GuitarChordDiagramProps {
   isFocused?: boolean; // Whether this chord diagram is currently focused/active
   customWidth?: number; // Override size preset width for responsive sizing
   customHeight?: number; // Override size preset height for responsive sizing
-  segmentationColor?: string; // Segmentation color for border styling
   showPositionSelector?: boolean; // Show position selector for multiple positions
   onPositionChange?: (positionIndex: number) => void; // Callback for position changes
   capoFret?: number; // Capo fret position (0 = no capo, 1-12 = capo position)
@@ -108,7 +107,6 @@ const GuitarChordDiagramComponent: React.FC<GuitarChordDiagramProps> = ({
   isFocused = false,
   customWidth,
   customHeight,
-  segmentationColor,
   showPositionSelector = false,
   onPositionChange,
   capoFret = 0,
@@ -140,15 +138,15 @@ const GuitarChordDiagramComponent: React.FC<GuitarChordDiagramProps> = ({
     return `rgba(${channels[0]}, ${channels[1]}, ${channels[2]}, ${alpha})`;
   };
 
-  const focusedAccentColor = segmentationColor || 'rgba(59, 130, 246, 0.6)';
+  const focusedAccentColor = 'rgba(59, 130, 246, 0.6)';
   const focusedDiagramStyle = isFocused
     ? {
-        boxShadow: `0 0 0 2px ${withAlpha(focusedAccentColor, segmentationColor ? 0.75 : 0.6)}`,
-        backgroundColor: withAlpha(focusedAccentColor, segmentationColor ? 0.18 : 0.12),
+        boxShadow: `0 0 0 2px ${withAlpha(focusedAccentColor, 0.6)}`,
+        backgroundColor: withAlpha(focusedAccentColor, 0.12),
       }
     : undefined;
   const focusedLabelStyle = isFocused
-    ? { color: withAlpha(focusedAccentColor, segmentationColor ? 0.95 : 1) }
+    ? { color: withAlpha(focusedAccentColor, 1) }
     : undefined;
 
   // Return quarter rest SVG for N.C. (No Chord)
@@ -346,7 +344,6 @@ const areChordDiagramPropsEqual = (
   if (prevProps.isFocused !== nextProps.isFocused) return false;
   if (prevProps.customWidth !== nextProps.customWidth) return false;
   if (prevProps.customHeight !== nextProps.customHeight) return false;
-  if (prevProps.segmentationColor !== nextProps.segmentationColor) return false;
   if (prevProps.showPositionSelector !== nextProps.showPositionSelector) return false;
   if (prevProps.capoFret !== nextProps.capoFret) return false;
   if (prevProps.capoLabelMode !== nextProps.capoLabelMode) return false;

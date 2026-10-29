@@ -1,4 +1,4 @@
-# Architecture Overview
+﻿# Architecture Overview
 
 <cite>
 **Referenced Files in This Document**
@@ -13,7 +13,7 @@
 - [apiService.ts](file://src/services/api/apiService.ts)
 - [chord_recognition_service.py](file://python_backend/services/audio/chord_recognition_service.py)
 - [beat_detection_service.py](file://python_backend/services/audio/beat_detection_service.py)
-- [firebase.json](file://firebase/firebase.json)
+- [local-persistence.json](file://local-persistence/local-persistence.json)
 - [docker-compose.yml](file://docker/docker-compose.yml)
 - [app.py](file://SongFormer/app.py)
 - [app.py](file://sheetsage/app.py)
@@ -31,14 +31,14 @@
 9. [Conclusion](#conclusion)
 
 ## Introduction
-This document presents the architecture of ChordMiniApp, an open-source music analysis platform that combines a Next.js frontend, a Python Flask backend, and specialized machine learning services. The system supports beat detection, chord recognition, optional melody transcription, and synchronized lyrics. It integrates Firebase for storage and authentication, and provides optional standalone services for advanced segmentation and melody transcription.
+This document presents the architecture of ChordMiniApp, an open-source music analysis platform that combines a Next.js frontend, a Python Flask backend, and specialized machine learning services. The system supports beat detection, chord recognition, optional melody transcription, and synchronized lyrics. It integrates Local persistence for storage and authentication, and provides optional standalone services for advanced segmentation and melody transcription.
 
 ## Project Structure
 The repository is organized into:
 - Frontend: Next.js application under src/, with pages, components, services, and configuration
 - Python backend: Flask application under python_backend/ exposing ML endpoints
 - Optional ML services: SongFormer (structural segmentation) and Sheetsage (melody transcription) under SongFormer/ and sheetsage/
-- Infrastructure: Docker Compose for local and production deployments, Firebase configuration
+- Infrastructure: Docker Compose for local and production deployments, Local persistence configuration
 
 ```mermaid
 graph TB
@@ -56,7 +56,7 @@ SF["SongFormer Service"]
 SS["Sheetsage Service"]
 end
 subgraph "Infrastructure"
-FB["Firebase<br/>Storage, Auth, Rules"]
+FB["Local persistence<br/>Storage, Auth, Rules"]
 DC["Docker Compose"]
 end
 FE_App --> FE_Config
@@ -87,14 +87,14 @@ DC --> SS
 - [docker-compose.yml:10-115](file://docker/docker-compose.yml#L10-L115)
 
 ## Core Components
-- Next.js frontend: Renders UI, orchestrates API calls, manages Firebase integration, and handles user interactions for audio analysis and visualization.
+- Next.js frontend: Renders UI, orchestrates API calls, manages Local persistence integration, and handles user interactions for audio analysis and visualization.
 - Flask backend: Exposes REST endpoints for beat detection, chord recognition, and related utilities; delegates to internal services and detectors.
 - Beat detection service: Orchestrates multiple detectors (Beat-Transformer, madmom, librosa) with size-aware selection and fallback strategies.
 - Chord recognition service: Orchestrates Chord-CNN-LSTM and BTC variants (SL/PL), with chord dictionary validation and optional Spleeter separation.
 - Optional services:
   - SongFormer: Structural segmentation (functional sections) using PyTorch models.
   - Sheetsage: Experimental melody transcription using PyTorch models.
-- Firebase: Storage for audio, Firestore for metadata and caches, and authentication.
+- Local persistence: Storage for audio, SQLite for metadata and caches, and authentication.
 
 **Section sources**
 - [layout.tsx:143-228](file://src/app/layout.tsx#L143-L228)
@@ -104,7 +104,7 @@ DC --> SS
 - [chord_recognition_service.py:25-322](file://python_backend/services/audio/chord_recognition_service.py#L25-L322)
 - [app.py:549-698](file://SongFormer/app.py#L549-L698)
 - [app.py:21-175](file://sheetsage/app.py#L21-L175)
-- [firebase.json:1-10](file://firebase/firebase.json#L1-L10)
+- [local-persistence.json:1-10](file://local-persistence/local-persistence.json#L1-L10)
 
 ## Architecture Overview
 The system follows a microservices-style backend with a Flask application hosting multiple ML endpoints, while the frontend remains stateless and communicates via HTTP. Optional ML services are provided as separate Flask applications for segmentation and melody transcription.
@@ -123,7 +123,7 @@ Det_CNNLSTM["Chord-CNN-LSTM Detector"]
 Det_BTC["BTC SL/PL Detectors"]
 SF["SongFormer Service"]
 SS["Sheetsage Service"]
-FB["Firebase"]
+FB["Local persistence"]
 Client --> FE
 FE --> BE
 BE --> SVC_Beat
@@ -156,7 +156,7 @@ SS --> FB
 ### Frontend API and Routing
 - API routing is centralized to distinguish between Vercel-hosted endpoints and the Python backend. ML endpoints are proxied to the Flask backend.
 - The frontend constructs URLs using environment-driven base URLs and selects endpoints for beat/chord recognition, lyrics, and model info.
-- The API service adds timeouts, retries, and client-side rate limiting, and attaches Firebase App Check tokens when available.
+- The API service adds timeouts, retries, and client-side rate limiting, and attaches Local persistence IP rate limiting tokens when available.
 
 ```mermaid
 sequenceDiagram
@@ -190,7 +190,7 @@ API-->>UI : ApiResponse
 
 ### Flask Backend Orchestration
 - The Flask app is created via an application factory, registering blueprints for health, docs, beats, chords, lyrics, and optional debug endpoints.
-- Services are initialized and injected into the Flask app’s extensions for dependency management.
+- Services are initialized and injected into the Flask appâ€™s extensions for dependency management.
 - Beat and chord routes validate inputs, enforce rate limits, and delegate to service layers.
 
 ```mermaid
@@ -326,7 +326,7 @@ SVC_B --> DET_B["Detectors"]
 SVC_C --> DET_C["Detectors"]
 FE --> SF["SongFormer"]
 FE --> SS["Sheetsage"]
-BE --> FB["Firebase"]
+BE --> FB["Local persistence"]
 SF --> FB
 SS --> FB
 ```
@@ -356,13 +356,13 @@ SS --> FB
 - Backend connectivity: Verify Flask backend health endpoint and port usage to avoid conflicts with system services.
 - Frontend connection errors: Ensure the frontend connects to the correct backend URL and environment variables are set.
 - Model availability: Use test endpoints to confirm detector availability and device info for Beat-Transformer.
-- Firebase issues: Confirm storage rules, bucket configuration, and CORS settings; verify anonymous authentication is enabled.
+- Local persistence issues: Confirm storage rules, bucket configuration, and CORS settings; verify anonymous authentication is enabled.
 
 **Section sources**
 - [README.md:447-490](file://README.md#L447-L490)
 - [routes.py:252-338](file://python_backend/blueprints/beats/routes.py#L252-L338)
 - [routes.py:260-375](file://python_backend/blueprints/chords/routes.py#L260-L375)
-- [firebase.json:1-10](file://firebase/firebase.json#L1-L10)
+- [local-persistence.json:1-10](file://local-persistence/local-persistence.json#L1-L10)
 
 ## Conclusion
-ChordMiniApp employs a clean separation of concerns: a responsive Next.js frontend, a modular Flask backend delegating to specialized services, and optional standalone ML services for advanced tasks. The architecture balances flexibility, scalability, and maintainability, leveraging Firebase for storage and authentication and Docker Compose for repeatable deployments.
+ChordMiniApp employs a clean separation of concerns: a responsive Next.js frontend, a modular Flask backend delegating to specialized services, and optional standalone ML services for advanced tasks. The architecture balances flexibility, scalability, and maintainability, leveraging Local persistence for storage and authentication and Docker Compose for repeatable deployments.

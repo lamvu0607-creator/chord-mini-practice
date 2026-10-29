@@ -12,13 +12,6 @@ function isEnabled(value: string | undefined): boolean {
   return value === '1' || value?.toLowerCase() === 'true';
 }
 
-function hasPrivateFirestoreConfig(): boolean {
-  return Boolean(
-    (process.env.FIREBASE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID)
-      && (process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT),
-  );
-}
-
 export interface StatusConfig {
   probesEnabled: boolean;
   storageEnabled: boolean;
@@ -45,7 +38,7 @@ export function getStatusConfig(): StatusConfig {
 
   return {
     probesEnabled: isEnabled(process.env.STATUS_PROBES_ENABLED),
-    storageEnabled: hasPrivateFirestoreConfig(),
+    storageEnabled: true,
     localProbeAllowed: isEnabled(process.env.STATUS_PROBE_ALLOW_LOCAL),
     isLocalRuntime,
     timezone: process.env.STATUS_REPORT_TIMEZONE || DEFAULT_STATUS_TIMEZONE,

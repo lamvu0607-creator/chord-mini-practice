@@ -47,7 +47,7 @@ function createNonPausingProgressBar(durationMs: number, id: string) {
 interface ProcessingStatusBannerProps {
   audioUrl?: string;
   fromCache?: boolean;
-  fromFirestoreCache?: boolean;
+  fromPersistentCache?: boolean;
   videoId?: string;
   beatDetector?: 'madmom' | 'beat-transformer' | 'auto';
 }
@@ -55,7 +55,7 @@ interface ProcessingStatusBannerProps {
 const ProcessingStatusBanner: React.FC<ProcessingStatusBannerProps> = React.memo(({
   audioUrl,
   fromCache = false,
-  fromFirestoreCache = false,
+  fromPersistentCache = false,
   videoId,
   beatDetector = 'madmom',
 }) => {
@@ -170,7 +170,7 @@ const ProcessingStatusBanner: React.FC<ProcessingStatusBannerProps> = React.memo
       // Build description with cache badges
       const cacheInfo = [
         fromCache ? 'Audio Cache' : '',
-        fromFirestoreCache ? 'Results Cache' : '',
+        fromPersistentCache ? 'Results Cache' : '',
       ].filter(Boolean).join(' · ');
 
       const description = `Beat and chord analysis completed in ${getFormattedElapsedTime()}${cacheInfo ? ` · ${cacheInfo}` : ''}`;
@@ -217,7 +217,7 @@ const ProcessingStatusBanner: React.FC<ProcessingStatusBannerProps> = React.memo
         beatToastKeyRef.current = null;
       }
     }
-  }, [stage, statusMessage, getFormattedElapsedTime, fromCache, fromFirestoreCache, beatDetector]);
+  }, [stage, statusMessage, getFormattedElapsedTime, fromCache, fromPersistentCache, beatDetector]);
 
   // Cleanup on unmount
   useEffect(() => {

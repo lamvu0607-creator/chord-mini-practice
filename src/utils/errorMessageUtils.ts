@@ -177,9 +177,24 @@ export function createUserFriendlyError(error: string): UserFriendlyError {
     };
   }
 
+  // Missing tool / environment errors
+  if (errorLower.includes('not available in path') ||
+      errorLower.includes('not installed') ||
+      errorLower.includes('enoent') ||
+      errorLower.includes('yt-dlp spawn error')) {
+    return {
+      title: 'Extraction Tool Unavailable',
+      message: 'Required extraction tool (yt-dlp/ffmpeg) is not available on the server environment.',
+      suggestion: 'Please ensure the Conda environment (chord-app) is activated with yt-dlp and ffmpeg installed.',
+      showTryAnotherButton: false,
+      isVideoExtractionError: true
+    };
+  }
+
   // Generic extraction errors
   if (errorLower.includes('extraction failed') ||
-      errorLower.includes('download failed')) {
+      errorLower.includes('download failed') ||
+      errorLower.includes('failed to extract video information')) {
     return {
       title: 'Video Processing Failed',
       message: 'Unable to extract audio from this video. The video processing failed.',
@@ -216,10 +231,10 @@ export function createUserFriendlyError(error: string): UserFriendlyError {
     };
   }
 
-  // File format errors
-  if (errorLower.includes('format') ||
-      errorLower.includes('codec') ||
-      errorLower.includes('unsupported')) {
+  // File format errors (use word boundary regex to avoid false positive on "information")
+  if (/\b(format|formats|codec)\b/i.test(errorLower) ||
+      errorLower.includes('unsupported format') ||
+      errorLower.includes('unsupported audio')) {
     return {
       title: 'Unsupported Format',
       message: 'Unable to process this video due to an unsupported format.',

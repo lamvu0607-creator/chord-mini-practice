@@ -7,7 +7,7 @@ jest.mock('@/services/chord-analysis/chordRecognitionService', () => ({
   analyzeAudioWithRateLimit: (...args: unknown[]) => mockAnalyzeAudioWithRateLimit(...args),
 }));
 
-jest.mock('@/services/firebase/firestoreService', () => ({
+jest.mock('@/services/persistence/transcriptionService', () => ({
   getTranscription: (...args: unknown[]) => mockGetTranscription(...args),
   saveTranscription: (...args: unknown[]) => mockSaveTranscription(...args),
   updateTranscriptionEnrichment: (...args: unknown[]) => mockUpdateTranscriptionEnrichment(...args),
@@ -38,7 +38,7 @@ describe('AudioProcessingService.analyzeAudioFile', () => {
     mockAnalyzeAudioWithRateLimit.mockResolvedValue(analysisResults);
   });
 
-  it('skips the duplicate Firestore lookup when the caller already checked and found no cache', async () => {
+  it('skips the duplicate persistent-cache lookup when the caller already checked and found no cache', async () => {
     const onTranscriptionSaved = jest.fn();
 
     const result = await AudioProcessingService.getInstance().analyzeAudioFile(

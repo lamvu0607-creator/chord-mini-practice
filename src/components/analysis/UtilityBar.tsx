@@ -7,12 +7,13 @@ import { HiChevronDoubleDown, HiOutlineChevronDoubleDown } from 'react-icons/hi2
 import { PiMetronomeBold, PiMetronome } from 'react-icons/pi';
 import { GiMicrophone } from 'react-icons/gi';
 import { VscRobot } from 'react-icons/vsc';
-import SegmentationToggleButton from '@/components/analysis/SegmentationToggleButton';
 import RomanNumeralToggle from '@/components/analysis/RomanNumeralToggle';
 import MelodicTranscriptionToggle from '@/components/analysis/MelodicTranscriptionToggle';
 import ChordPlaybackToggle from '@/components/chord-playback/ChordPlaybackToggle';
 import ChordSimplificationToggle from '@/components/analysis/ChordSimplificationToggle';
 import PitchShiftPopover from '@/components/chord-playback/PitchShiftPopover';
+import AnalyzeStemControl from '@/components/stems/AnalyzeStemControl';
+import AnalyzeClipControl from '@/components/analysis/AnalyzeClipControl';
 import LoopPlaybackToggle from '@/components/analysis/LoopPlaybackToggle';
 import LyricsSearchDialog from '@/components/analysis/LyricsSearchDialog';
 import UtilityPopoverPanel from '@/components/analysis/UtilityPopoverPanel';
@@ -49,6 +50,12 @@ interface UtilityBarProps {
   };
   youtubePlayer?: Parameters<typeof ChordPlaybackToggle>[0]['youtubePlayer'];
 
+  /** YouTube video id; enables the stems control (analyze page only). */
+  stemsVideoId?: string;
+  stemsTitle?: string;
+  /** Analyze-page source id (YouTube or upload_*); enables the clip control. */
+  clipVideoId?: string;
+
   // Playback rate for pitch shift
   playbackRate: number;
   setPlaybackRate: (rate: number) => void;
@@ -77,15 +84,6 @@ interface UtilityBarProps {
     onClose: () => void;
     onSearch: () => void;
     onApplyCandidate: (candidate: LRCLibCandidate) => void;
-  };
-  segmentation: {
-    isVisible: boolean;
-    hasData: boolean;
-    isLoading: boolean;
-    disabled?: boolean;
-    disabledReason?: string;
-    errorMessage?: string | null;
-    onToggle: () => void;
   };
 
   // Metronome
@@ -249,8 +247,10 @@ const UtilityBar: React.FC<UtilityBarProps> = ({
   toggleChatbot,
   toggleLyricsPanel,
   lyricsSearchPopover,
-  segmentation,
   metronome,
+  stemsVideoId,
+  stemsTitle,
+  clipVideoId,
   totalBeats = 0,
   maxWidth: _maxWidth = '1200px',
   className = '',
@@ -332,6 +332,12 @@ const UtilityBar: React.FC<UtilityBarProps> = ({
             setPlaybackRate={setPlaybackRate}
           />
 
+          {/* Stems (replace the original audio with separated stems) */}
+          {stemsVideoId && <AnalyzeStemControl videoId={stemsVideoId} title={stemsTitle} />}
+
+          {/* Clip (cut a section and analyze it on its own) */}
+          {clipVideoId && <AnalyzeClipControl videoId={clipVideoId} title={stemsTitle} />}
+
           {/* Loop Playback */}
           <LoopPlaybackToggle
             totalBeats={totalBeats}
@@ -374,17 +380,6 @@ const UtilityBar: React.FC<UtilityBarProps> = ({
 
         {/* Side Panel & Structure Controls (Right Dock) */}
         <FloatingDock>
-          {/* Segmentation */}
-          <SegmentationToggleButton
-            isEnabled={segmentation.isVisible}
-            onClick={segmentation.onToggle}
-            hasSegmentationData={segmentation.hasData}
-            isLoading={segmentation.isLoading}
-            disabled={segmentation.disabled}
-            disabledReason={segmentation.disabledReason}
-            errorMessage={segmentation.errorMessage}
-          />
-
           {/* Lyrics Popover (Unwrapped Fragment) */}
           {!isUploadPage && (
             <Popover

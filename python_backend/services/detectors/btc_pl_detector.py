@@ -69,6 +69,8 @@ class BTCPLDetectorService:
             # Try to import prerequisites and our btc wrapper
             try:
                 import torch  # noqa: F401
+                if self.model_dir and str(self.model_dir) not in sys.path:
+                    sys.path.insert(0, str(self.model_dir))
                 from btc_chord_recognition import btc_chord_recognition  # noqa: F401
             except Exception as e:
                 log_error(f"BTC-PL import check failed: {e}")

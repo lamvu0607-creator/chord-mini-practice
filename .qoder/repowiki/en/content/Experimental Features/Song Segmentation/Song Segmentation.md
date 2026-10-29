@@ -1,4 +1,4 @@
-# Song Segmentation
+﻿# Song Segmentation
 
 <cite>
 **Referenced Files in This Document**
@@ -8,7 +8,7 @@
 - [routes.py](file://python_backend/blueprints/songformer/routes.py)
 - [songformer_service.py](file://python_backend/services/audio/songformer_service.py)
 - [segmentationAsyncService.ts](file://src/services/api/segmentationAsyncService.ts)
-- [segmentationJobService.ts](file://src/services/firebase/segmentationJobService.ts)
+- [segmentationJobService.ts](file://src/services/local-persistence/segmentationJobService.ts)
 - [songSegmentationService.ts](file://src/services/lyrics/songSegmentationService.ts)
 - [chatbotService.ts](file://src/services/api/chatbotService.ts)
 - [useSegmentationState.ts](file://src/hooks/lyrics/useSegmentationState.ts)
@@ -33,7 +33,7 @@
 10. [Appendices](#appendices)
 
 ## Introduction
-This document explains the SongFormer-based song segmentation feature integrated into ChordMiniApp. It covers the SongFormer architecture, the SSL representation extraction pipeline for MuQ and MusicFM models, the segmentation algorithm for structural sections (verses, choruses, bridges, etc.), and the integration with ChordMiniApp’s frontend and backend. It documents the asynchronous job processing, Firebase-backed caching and persistence, configuration options, user workflow, performance characteristics, and troubleshooting guidance.
+This document explains the SongFormer-based song segmentation feature integrated into ChordMiniApp. It covers the SongFormer architecture, the SSL representation extraction pipeline for MuQ and MusicFM models, the segmentation algorithm for structural sections (verses, choruses, bridges, etc.), and the integration with ChordMiniAppâ€™s frontend and backend. It documents the asynchronous job processing, Local persistence-backed caching and persistence, configuration options, user workflow, performance characteristics, and troubleshooting guidance.
 
 ## Project Structure
 The segmentation feature spans three main areas:
@@ -82,7 +82,7 @@ SFApp --> Normalize
 - [routes.py:14-42](file://python_backend/blueprints/songformer/routes.py#L14-L42)
 - [songformer_service.py:118-140](file://python_backend/services/audio/songformer_service.py#L118-L140)
 - [segmentationAsyncService.ts:120-162](file://src/services/api/segmentationAsyncService.ts#L120-L162)
-- [segmentationJobService.ts:147-179](file://src/services/firebase/segmentationJobService.ts#L147-L179)
+- [segmentationJobService.ts:147-179](file://src/services/local-persistence/segmentationJobService.ts#L147-L179)
 - [songSegmentationService.ts:162-181](file://src/services/lyrics/songSegmentationService.ts#L162-L181)
 - [SongFormer.yaml:1-186](file://SongFormer/src/SongFormer/configs/SongFormer.yaml#L1-L186)
 - [get_embeddings.py:1-203](file://SongFormer/src/data_pipeline/obtain_SSL_representation/MuQ/get_embeddings.py#L1-L203)
@@ -98,14 +98,14 @@ SFApp --> Normalize
 - SongFormer backend (Flask): Provides health checks, info, and segmentation endpoints. Handles model initialization, audio ingestion, SSL embedding extraction (MuQ and MusicFM), downstream inference, and result caching.
 - Python backend service: Wraps the SongFormer runtime, manages model loading, and executes segmentation for given audio URLs.
 - Frontend orchestration: Asynchronous job creation and polling, progress reporting, and result normalization for UI consumption.
-- Firebase job store: Persistent job lifecycle tracking, TTL-based cleanup, and deduplication by request hash.
+- Local persistence job store: Persistent job lifecycle tracking, TTL-based cleanup, and deduplication by request hash.
 - SSL representation extractors: Batched extraction of hidden states from MuQ and MusicFM for training/inference.
 
 **Section sources**
 - [app.py:562-687](file://SongFormer/app.py#L562-L687)
 - [songformer_service.py:21-140](file://python_backend/services/audio/songformer_service.py#L21-L140)
 - [segmentationAsyncService.ts:101-261](file://src/services/api/segmentationAsyncService.ts#L101-L261)
-- [segmentationJobService.ts:29-336](file://src/services/firebase/segmentationJobService.ts#L29-L336)
+- [segmentationJobService.ts:29-336](file://src/services/local-persistence/segmentationJobService.ts#L29-L336)
 - [get_embeddings.py:1-203](file://SongFormer/src/data_pipeline/obtain_SSL_representation/MuQ/get_embeddings.py#L1-L203)
 - [get_embeddings_mp.py:1-215](file://SongFormer/src/data_pipeline/obtain_SSL_representation/MusicFM/get_embeddings_mp.py#L1-L215)
 
@@ -147,7 +147,7 @@ Hook-->>UI : render segments
 - [SegmentationToggleButton.tsx:18-85](file://src/components/analysis/SegmentationToggleButton.tsx#L18-L85)
 - [useSegmentationState.ts:39-82](file://src/hooks/lyrics/useSegmentationState.ts#L39-L82)
 - [segmentationAsyncService.ts:120-196](file://src/services/api/segmentationAsyncService.ts#L120-L196)
-- [segmentationJobService.ts:147-179](file://src/services/firebase/segmentationJobService.ts#L147-L179)
+- [segmentationJobService.ts:147-179](file://src/services/local-persistence/segmentationJobService.ts#L147-L179)
 - [chatbotService.ts:265-284](file://src/services/api/chatbotService.ts#L265-L284)
 - [songformer_service.py:118-140](file://python_backend/services/audio/songformer_service.py#L118-L140)
 - [app.py:597-687](file://SongFormer/app.py#L597-L687)
@@ -185,12 +185,12 @@ Hook-->>UI : render segments
 ### Frontend Orchestration and Job Management
 - Asynchronous job creation and polling with adaptive delays based on song duration
 - Browser worker invokes SongFormer backend directly with async callback
-- Firebase-backed job store tracks created/processing/completed/failed states with TTLs
+- Local persistence-backed job store tracks created/processing/completed/failed states with TTLs
 - Access code validation enforced in production
 
 ```mermaid
 flowchart TD
-Start(["Initiate Segmentation"]) --> CreateJob["Create Job in Firestore"]
+Start(["Initiate Segmentation"]) --> CreateJob["Create Job in SQLite"]
 CreateJob --> Poll["Poll Job Status"]
 Poll --> Completed{"Completed?"}
 Completed --> |No| Backoff["Adaptive Delay"] --> Poll
@@ -201,12 +201,12 @@ Render --> End(["Done"])
 
 **Diagram sources**
 - [segmentationAsyncService.ts:164-196](file://src/services/api/segmentationAsyncService.ts#L164-L196)
-- [segmentationJobService.ts:147-179](file://src/services/firebase/segmentationJobService.ts#L147-L179)
+- [segmentationJobService.ts:147-179](file://src/services/local-persistence/segmentationJobService.ts#L147-L179)
 - [songSegmentationService.ts:162-181](file://src/services/lyrics/songSegmentationService.ts#L162-L181)
 
 **Section sources**
 - [segmentationAsyncService.ts:101-261](file://src/services/api/segmentationAsyncService.ts#L101-L261)
-- [segmentationJobService.ts:29-336](file://src/services/firebase/segmentationJobService.ts#L29-L336)
+- [segmentationJobService.ts:29-336](file://src/services/local-persistence/segmentationJobService.ts#L29-L336)
 - [segmentationAccessService.ts:9-64](file://src/services/api/segmentationAccessService.ts#L9-L64)
 
 ### SSL Representation Extraction Pipeline (MuQ and MusicFM)
@@ -244,7 +244,7 @@ Render --> End(["Done"])
 ## Dependency Analysis
 - Frontend depends on:
   - Async service for job orchestration
-  - Firebase job service for persistence
+  - Local persistence job service for persistence
   - Normalization service for raw segments
   - Access service for code validation
 - Backend depends on:
@@ -267,7 +267,7 @@ FE --> TYPES["chatbotTypes.ts"]
 
 **Diagram sources**
 - [segmentationAsyncService.ts:101-261](file://src/services/api/segmentationAsyncService.ts#L101-L261)
-- [segmentationJobService.ts:147-179](file://src/services/firebase/segmentationJobService.ts#L147-L179)
+- [segmentationJobService.ts:147-179](file://src/services/local-persistence/segmentationJobService.ts#L147-L179)
 - [chatbotService.ts:265-284](file://src/services/api/chatbotService.ts#L265-L284)
 - [songformer_service.py:118-140](file://python_backend/services/audio/songformer_service.py#L118-L140)
 - [app.py:597-687](file://SongFormer/app.py#L597-L687)
@@ -321,7 +321,7 @@ Common issues and resolutions:
 - [segmentationAccessService.ts:26-64](file://src/services/api/segmentationAccessService.ts#L26-L64)
 
 ## Conclusion
-The SongFormer integration provides robust, asynchronous song segmentation with a clear separation of concerns across frontend, backend, and model layers. The system leverages SSL embeddings from MuQ and MusicFM, applies a rule-based post-processor, and normalizes results for seamless UI integration. With Firebase-backed job management and adaptive polling, it delivers a reliable user experience for structural analysis.
+The SongFormer integration provides robust, asynchronous song segmentation with a clear separation of concerns across frontend, backend, and model layers. The system leverages SSL embeddings from MuQ and MusicFM, applies a rule-based post-processor, and normalizes results for seamless UI integration. With Local persistence-backed job management and adaptive polling, it delivers a reliable user experience for structural analysis.
 
 ## Appendices
 
