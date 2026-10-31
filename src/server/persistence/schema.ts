@@ -1,4 +1,4 @@
-import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
@@ -143,6 +143,28 @@ export const stemJobs = sqliteTable('stem_jobs', {
 }, (table) => ({
   sourceIdx: index('stem_jobs_source_idx').on(table.sourceId, table.status, table.updatedAtMs),
   queueIdx: index('stem_jobs_queue_idx').on(table.status, table.nextAttemptAtMs, table.leaseExpiresAtMs),
+}));
+
+export const melodyJobs = sqliteTable('melody_jobs', {
+  jobId: text('job_id').primaryKey(),
+  videoId: text('video_id').notNull(),
+  sourceId: text('source_id').notNull(),
+  status: text('status').notNull(),
+  stage: text('stage').notNull().default('queued'),
+  requestedBy: text('requested_by'),
+  inputPath: text('input_path').notNull(),
+  stemJobId: text('stem_job_id'),
+  progress: real('progress'),
+  error: text('error'),
+  attemptCount: integer('attempt_count').notNull().default(0),
+  nextAttemptAtMs: integer('next_attempt_at_ms').notNull(),
+  leaseExpiresAtMs: integer('lease_expires_at_ms'),
+  createdAtMs: integer('created_at_ms').notNull(),
+  updatedAtMs: integer('updated_at_ms').notNull(),
+  completedAtMs: integer('completed_at_ms'),
+}, (table) => ({
+  videoIdx: index('melody_jobs_video_idx').on(table.videoId, table.status, table.updatedAtMs),
+  queueIdx: index('melody_jobs_queue_idx').on(table.status, table.nextAttemptAtMs, table.leaseExpiresAtMs),
 }));
 
 export const maintenanceLocks = sqliteTable('maintenance_locks', {

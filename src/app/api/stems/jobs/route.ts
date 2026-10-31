@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/server/auth/sessionGuard';
-import { findExistingLocalAudioFile } from '@/services/storage/localAudioStorageService';
-import { findVideoTranscriptions } from '@/server/persistence/transcriptionRepository';
 import { countActiveStemJobsForUser, createStemJob, findActiveStemJob, toPublicStemJob } from '@/server/stems/stemJobService';
-import { getStemSet, toPublicStemSet, upsertPendingStemSet } from '@/server/stems/stemSetRepository';
-import { isValidSourceId, toAudioRootRelative, youtubeSourceId } from '@/server/stems/stemStorage';
+import { getStemSet, toPublicStemSet } from '@/server/stems/stemSetRepository';
+import { isValidSourceId } from '@/server/stems/stemStorage';
 import { startStemWorker } from '@/server/stems/stemWorker';
+import { resolveYouTubeStemSource } from '@/server/stems/youtubeStemSource';
 
 export const runtime = 'nodejs';
 
@@ -34,17 +33,11 @@ export async function POST(request: NextRequest) {
   if (typeof body?.videoId === 'string') {
     const videoId = body.videoId.trim();
     if (!VIDEO_ID_PATTERN.test(videoId)) return error('Invalid YouTube video id', 400);
-    const localAudio = await findExistingLocalAudioFile(videoId);
-    const relative = localAudio ? await toAudioRootRelative(localAudio.filePath) : null;
-    if (!localAudio || !relative) {
+    const source = await resolveYouTubeStemSource(videoId, title);
+    if (!source) {
       return error('Audio for this video is not cached yet. Extract it first.', 409, 'AUDIO_NOT_CACHED');
     }
-    sourceId = youtubeSourceId(videoId);
-    inputPath = relative;
-    const knownTitle = title
-      ?? findVideoTranscriptions(videoId).find((entry) => entry.title)?.title
-      ?? (localAudio.title && localAudio.title !== 'YouTube Video' ? localAudio.title : undefined);
-    upsertPendingStemSet({ sourceId, sourceType: 'youtube', videoId, title: knownTitle, inputPath });
+    ({ sourceId, inputPath } = source);
   } else if (typeof body?.sourceId === 'string') {
     sourceId = body.sourceId.trim();
     const record = isValidSourceId(sourceId) ? getStemSet(sourceId) : null;

@@ -151,7 +151,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (!response.ok || !body.success) {
         return {
           success: false,
-          error: body.error?.message || 'Đăng nhập không thành công',
+          error: body.error?.message || 'Sign-in failed',
         };
       }
 
@@ -170,7 +170,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Lỗi kết nối máy chủ',
+        error: error instanceof Error ? error.message : 'Could not reach the server',
       };
     }
   },

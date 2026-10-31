@@ -20,7 +20,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const { userId } = await context.params;
     if (!userId) {
       return NextResponse.json(
-        { success: false, error: { code: 'MISSING_USER_ID', message: 'Thiếu mã người dùng' } },
+        { success: false, error: { code: 'MISSING_USER_ID', message: 'Missing user ID' } },
         { status: 400 },
       );
     }
@@ -28,7 +28,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const existing = findUserById(userId);
     if (!existing) {
       return NextResponse.json(
-        { success: false, error: { code: 'USER_NOT_FOUND', message: 'Không tìm thấy người dùng' } },
+        { success: false, error: { code: 'USER_NOT_FOUND', message: 'User not found' } },
         { status: 404 },
       );
     }
@@ -46,7 +46,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             success: false,
             error: {
               code: 'INVALID_PIN_FORMAT',
-              message: pinVal.error || 'Mã PIN đặt lại phải từ 4 đến 8 chữ số',
+              message: pinVal.error || 'The new PIN must be 4 to 8 digits',
             },
           },
           { status: 400 },
@@ -57,14 +57,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const updated = updateUserByAdmin(userId, { pin, role, displayName });
     if (!updated) {
       return NextResponse.json(
-        { success: false, error: { code: 'UPDATE_FAILED', message: 'Cập nhật thông tin thất bại' } },
+        { success: false, error: { code: 'UPDATE_FAILED', message: 'Update failed' } },
         { status: 500 },
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: pin ? 'Đã đặt lại mã PIN và cập nhật tài khoản thành công' : 'Cập nhật tài khoản thành công',
+      message: pin ? 'PIN reset and account updated' : 'Account updated',
       data: { user: updated },
     });
   } catch (error) {
@@ -74,7 +74,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Lỗi hệ thống khi cập nhật người dùng',
+          message: error instanceof Error ? error.message : 'Server error while updating the user',
         },
       },
       { status: 500 },
@@ -92,7 +92,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const { userId } = await context.params;
     if (!userId) {
       return NextResponse.json(
-        { success: false, error: { code: 'MISSING_USER_ID', message: 'Thiếu mã người dùng' } },
+        { success: false, error: { code: 'MISSING_USER_ID', message: 'Missing user ID' } },
         { status: 400 },
       );
     }
@@ -103,7 +103,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
           success: false,
           error: {
             code: 'CANNOT_DELETE_SELF',
-            message: 'Không thể tự xóa tài khoản của chính mình',
+            message: 'You cannot delete your own account',
           },
         },
         { status: 400 },
@@ -113,7 +113,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const existing = findUserById(userId);
     if (!existing) {
       return NextResponse.json(
-        { success: false, error: { code: 'USER_NOT_FOUND', message: 'Không tìm thấy người dùng cần xóa' } },
+        { success: false, error: { code: 'USER_NOT_FOUND', message: 'User to delete not found' } },
         { status: 404 },
       );
     }
@@ -121,14 +121,14 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const deleted = deleteUser(userId);
     if (!deleted) {
       return NextResponse.json(
-        { success: false, error: { code: 'DELETE_FAILED', message: 'Không thể xóa người dùng' } },
+        { success: false, error: { code: 'DELETE_FAILED', message: 'Could not delete the user' } },
         { status: 500 },
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: `Đã xóa tài khoản "${existing.username}" thành công`,
+      message: `Account "${existing.username}" deleted`,
     });
   } catch (error) {
     console.error('Delete user error:', error);
@@ -137,7 +137,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Lỗi hệ thống khi xóa người dùng',
+          message: error instanceof Error ? error.message : 'Server error while deleting the user',
         },
       },
       { status: 500 },

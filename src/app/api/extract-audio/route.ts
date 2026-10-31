@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
             success: false,
             error: {
               code: 'ANONYMOUS_QUOTA_EXCEEDED',
-              message: 'Bạn đã sử dụng hết 1 lượt thử miễn phí. Vui lòng đăng nhập để tiếp tục phân tích không giới hạn.',
+              message: 'You have used your 1 free trial. Please sign in to keep analyzing without limits.',
             },
           },
           { status: 403 }

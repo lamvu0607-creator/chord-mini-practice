@@ -2,6 +2,7 @@ const DEFAULT_PYTHON_API_URL = 'http://localhost:5001';
 const DEFAULT_FRONTEND_URL = 'http://localhost:3000';
 const DEFAULT_LOCAL_SHEETSAGE_API_URL = 'http://localhost:8082';
 const DEFAULT_LOCAL_STEMS_API_URL = 'http://localhost:8083';
+const DEFAULT_LOCAL_MUSCRIPTOR_API_URL = 'http://localhost:8084';
 const DEFAULT_DOCKER_FRONTEND_URL = 'http://frontend:3000';
 
 function isProductionLikeEnvironment(): boolean {
@@ -45,6 +46,17 @@ export function getStemsApiUrl(): string {
   return localStemsUrl && isLocalUrl(localStemsUrl)
     ? localStemsUrl
     : DEFAULT_LOCAL_STEMS_API_URL;
+}
+
+export function getMuscriptorApiUrl(): string {
+  if (isProductionLikeEnvironment()) {
+    return process.env.MUSCRIPTOR_API_URL || 'http://muscriptor:8084';
+  }
+
+  const localMuscriptorUrl = process.env.LOCAL_MUSCRIPTOR_API_URL || process.env.MUSCRIPTOR_API_URL;
+  return localMuscriptorUrl && isLocalUrl(localMuscriptorUrl)
+    ? localMuscriptorUrl
+    : DEFAULT_LOCAL_MUSCRIPTOR_API_URL;
 }
 
 export function getFrontendBaseUrl(): string {

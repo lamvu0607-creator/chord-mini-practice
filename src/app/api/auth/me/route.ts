@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
           success: false,
           error: {
             code: 'UNAUTHORIZED',
-            message: 'Chưa đăng nhập hoặc phiên làm việc đã hết hạn',
+            message: 'Not signed in, or the session has expired',
           },
         },
         { status: 401 },
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Lỗi hệ thống khi kiểm tra phiên',
+          message: error instanceof Error ? error.message : 'Server error while checking the session',
         },
       },
       { status: 500 },

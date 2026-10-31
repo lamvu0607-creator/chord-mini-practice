@@ -1,4 +1,4 @@
-import { exportChordEventsToMidi } from '@/utils/midiExport';
+import { exportChordEventsToMidi, exportNoteTracksToMidi } from '@/utils/midiExport';
 import { DynamicsAnalyzer } from '@/services/audio/dynamicsAnalyzer';
 import { parseChordToMidiNotes, type ChordEvent } from '@/utils/chordToMidi';
 function countNoteOnEvents(midiBytes: Uint8Array, statusByte: number): number {
@@ -117,5 +117,23 @@ describe('midiExport dynamics integration', () => {
     expect(countTrackChunks(withoutMelody)).toBe(2);
     expect(countTrackChunks(withMelody)).toBe(3);
     expect(withMelody.length).toBeGreaterThan(withoutMelody.length);
+  });
+});
+
+describe('exportNoteTracksToMidi', () => {
+  it('writes one track per non-empty note track plus the tempo track, with each program change', () => {
+    const midi = exportNoteTracksToMidi([
+      { name: 'Vocal', noteEvents: [{ onset: 0, offset: 0.5, pitch: 72, velocity: 90 }] },
+      { name: 'Guitar', program: 29, noteEvents: [{ onset: 0, offset: 1, pitch: 52, velocity: 80 }] },
+      { name: 'Bass', program: 33, noteEvents: [] },
+    ], { bpm: 120, timeSignature: 4 });
+
+    expect(countTrackChunks(midi)).toBe(3);
+    expect(countNoteOnEvents(midi, 0xc1)).toBeGreaterThanOrEqual(1);
+    expect(Array.from(midi)).toEqual(expect.arrayContaining([0xc1, 29]));
+  });
+
+  it('returns an empty file when no track has notes', () => {
+    expect(exportNoteTracksToMidi([{ name: 'Vocal', noteEvents: [] }]).length).toBe(0);
   });
 });

@@ -24,14 +24,14 @@ const SCRYPT_OPTIONS = {
  */
 export function validatePinFormat(pin: unknown): PinValidationResult {
   if (typeof pin !== 'string') {
-    return { valid: false, error: 'Mã PIN phải là chuỗi ký tự' };
+    return { valid: false, error: 'PIN must be a string' };
   }
   const trimmed = pin.trim();
   if (trimmed.length < 4 || trimmed.length > 8) {
-    return { valid: false, error: 'Mã PIN phải có độ dài từ 4 đến 8 số' };
+    return { valid: false, error: 'PIN must be 4 to 8 digits long' };
   }
   if (!/^\d+$/.test(trimmed)) {
-    return { valid: false, error: 'Mã PIN chỉ được chứa các chữ số' };
+    return { valid: false, error: 'PIN may only contain digits' };
   }
   return { valid: true };
 }

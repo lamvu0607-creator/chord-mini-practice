@@ -1,0 +1,8 @@
+--extra-index-url https://download.pytorch.org/whl/cu126
+Flask==3.0.3
+gunicorn==23.0.0
+soundfile==0.14.0
+torch==2.8.0+cu126
+torchaudio==2.8.0+cu126
+# MuScriptor code (MIT), pinned to the commit evaluated in eval_sandbox/REPORT.md §4.9.
+muscriptor @ git+https://github.com/muscriptor/muscriptor.git@8a1ef88672cc23c26619adaff37ec48d82c0b906

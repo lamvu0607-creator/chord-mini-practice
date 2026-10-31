@@ -252,7 +252,7 @@ const Navigation: React.FC<NavigationProps> = ({ className = '', showStickySearc
                 onPress={() => openLoginModal(false)}
                 className="font-semibold text-xs sm:text-sm px-3"
               >
-                Đăng nhập
+                Sign in
               </Button>
             ) : (
               <Dropdown placement="bottom-end">
@@ -279,8 +279,8 @@ const Navigation: React.FC<NavigationProps> = ({ className = '', showStickySearc
                   </Button>
                 </DropdownTrigger>
                 <DropdownMenu aria-label="User menu" variant="flat">
-                  <DropdownItem key="profile" className="h-12 gap-1 cursor-default" textValue="Thông tin tài khoản">
-                    <p className="text-[11px] text-default-400 leading-tight">Đăng nhập với</p>
+                  <DropdownItem key="profile" className="h-12 gap-1 cursor-default" textValue="Account info">
+                    <p className="text-[11px] text-default-400 leading-tight">Signed in as</p>
                     <p className="font-bold text-xs text-foreground">@{user?.username}</p>
                   </DropdownItem>
                   <DropdownItem
@@ -288,7 +288,7 @@ const Navigation: React.FC<NavigationProps> = ({ className = '', showStickySearc
                     startContent={<FiKey className="w-4 h-4 text-warning" />}
                     onPress={openChangePinModal}
                   >
-                    Đổi mã PIN
+                    Change PIN
                   </DropdownItem>
                   {user?.role === 'admin' ? (
                     <DropdownItem
@@ -296,7 +296,7 @@ const Navigation: React.FC<NavigationProps> = ({ className = '', showStickySearc
                       startContent={<FiShield className="w-4 h-4 text-primary" />}
                       onPress={openAdminUsersModal}
                     >
-                      Quản lý người dùng
+                      Manage users
                     </DropdownItem>
                   ) : null}
                   <DropdownItem
@@ -306,7 +306,7 @@ const Navigation: React.FC<NavigationProps> = ({ className = '', showStickySearc
                     startContent={<FiLogOut className="w-4 h-4" />}
                     onPress={() => logout()}
                   >
-                    Đăng xuất
+                    Sign out
                   </DropdownItem>
                 </DropdownMenu>
               </Dropdown>
@@ -382,13 +382,13 @@ const Navigation: React.FC<NavigationProps> = ({ className = '', showStickySearc
                   openLoginModal(false);
                 }}
               >
-                🔐 Đăng nhập
+                🔐 Sign in
               </Button>
             ) : (
               <div className="flex flex-col gap-2 w-full">
                 <div className="px-2 py-1 text-sm font-medium text-default-500 flex items-center justify-between">
                   <span>
-                    Tài khoản: <strong className="text-foreground">{user?.displayName || user?.username}</strong>
+                    Account: <strong className="text-foreground">{user?.displayName || user?.username}</strong>
                   </span>
                   {user?.role === 'admin' && (
                     <span className="px-1.5 py-0.5 rounded text-[10px] bg-primary text-white font-bold uppercase">
@@ -406,7 +406,7 @@ const Navigation: React.FC<NavigationProps> = ({ className = '', showStickySearc
                     openChangePinModal();
                   }}
                 >
-                  Đổi mã PIN
+                  Change PIN
                 </Button>
                 {user?.role === 'admin' && (
                   <Button
@@ -419,7 +419,7 @@ const Navigation: React.FC<NavigationProps> = ({ className = '', showStickySearc
                       openAdminUsersModal();
                     }}
                   >
-                    Quản lý người dùng (Admin)
+                    Manage users (Admin)
                   </Button>
                 )}
                 <Button
@@ -432,7 +432,7 @@ const Navigation: React.FC<NavigationProps> = ({ className = '', showStickySearc
                     logout();
                   }}
                 >
-                  Đăng xuất
+                  Sign out
                 </Button>
               </div>
             )}

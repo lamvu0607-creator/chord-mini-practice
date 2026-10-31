@@ -32,12 +32,12 @@ export function parseClipTime(value: string): number | null {
 }
 
 export function validateClipRange(start: number, end: number, duration: number): string | null {
-  if (!Number.isFinite(start) || !Number.isFinite(end)) return 'Thời gian không hợp lệ.';
-  if (start < 0 || end > duration + 0.05) return 'Đoạn chọn nằm ngoài độ dài audio.';
-  if (end <= start) return 'Thời điểm kết thúc phải sau thời điểm bắt đầu.';
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return 'Invalid time.';
+  if (start < 0 || end > duration + 0.05) return 'The selection is outside the audio length.';
+  if (end <= start) return 'The end time must be after the start time.';
   const length = end - start;
-  if (length < MIN_CLIP_SECONDS) return `Đoạn cắt phải dài ít nhất ${MIN_CLIP_SECONDS} giây.`;
-  if (length > MAX_CLIP_SECONDS + 0.05) return `Đoạn cắt tối đa ${MAX_CLIP_SECONDS / 60} phút.`;
+  if (length < MIN_CLIP_SECONDS) return `The section must be at least ${MIN_CLIP_SECONDS} seconds long.`;
+  if (length > MAX_CLIP_SECONDS + 0.05) return `The section can be at most ${MAX_CLIP_SECONDS / 60} minutes long.`;
   return null;
 }
 
@@ -87,13 +87,13 @@ export function computePeaks(channels: Float32Array[], buckets: number): Float32
 export async function decodeAudioFile(file: Blob): Promise<AudioBuffer> {
   const AudioContextCtor = window.AudioContext
     ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioContextCtor) throw new Error('Trình duyệt không hỗ trợ Web Audio.');
+  if (!AudioContextCtor) throw new Error('This browser does not support Web Audio.');
   const context = new AudioContextCtor();
   try {
     const data = await file.arrayBuffer();
     return await context.decodeAudioData(data);
   } catch (error) {
-    throw new Error(`Không giải mã được file audio: ${error instanceof Error ? error.message : 'định dạng không hỗ trợ'}`);
+    throw new Error(`Could not decode the audio file: ${error instanceof Error ? error.message : 'unsupported format'}`);
   } finally {
     void context.close().catch(() => undefined);
   }

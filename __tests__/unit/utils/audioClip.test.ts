@@ -16,11 +16,11 @@ describe('audioClip', () => {
     });
 
     it('rejects clips shorter than the minimum', () => {
-      expect(validateClipRange(10, 10 + MIN_CLIP_SECONDS - 1, 240)).toMatch(/ít nhất/);
+      expect(validateClipRange(10, 10 + MIN_CLIP_SECONDS - 1, 240)).toMatch(/at least/);
     });
 
     it('rejects clips longer than the maximum', () => {
-      expect(validateClipRange(0, MAX_CLIP_SECONDS + 1, 600)).toMatch(/tối đa/);
+      expect(validateClipRange(0, MAX_CLIP_SECONDS + 1, 600)).toMatch(/at most/);
     });
 
     it('rejects reversed and out-of-bounds ranges', () => {

@@ -25,7 +25,7 @@ export default function AnonymousTrialBanner() {
         <div className="flex items-center gap-2.5 min-w-0">
           <FiInfo className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
           <span className="truncate sm:whitespace-normal">
-            Bạn đang dùng <strong>bài hát dùng thử miễn phí duy nhất (1/1)</strong>. Hãy đăng nhập để tiếp tục phân tích không giới hạn và lưu lịch sử bài hát!
+            You are using your <strong>single free trial song (1/1)</strong>. Sign in to keep analyzing without limits and save your song history!
           </span>
         </div>
 
@@ -38,13 +38,13 @@ export default function AnonymousTrialBanner() {
             startContent={<FiLogIn className="w-3.5 h-3.5" />}
             onPress={() => openLoginModal(false)}
           >
-            Đăng nhập
+            Sign in
           </Button>
           <button
             type="button"
             onClick={() => setIsDismissed(true)}
             className="text-amber-600/70 dark:text-amber-400/70 hover:text-amber-800 dark:hover:text-amber-200 p-1 rounded-md transition-colors"
-            aria-label="Đóng thông báo"
+            aria-label="Dismiss notice"
           >
             <FiX className="w-3.5 h-3.5" />
           </button>

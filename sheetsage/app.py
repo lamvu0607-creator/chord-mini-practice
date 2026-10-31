@@ -159,6 +159,41 @@ def _get_request_audio_url() -> Optional[str]:
     return None
 
 
+def _resolve_inside_storage(relative_path: str) -> Path:
+    """Resolve a client-supplied relative path and refuse anything outside the shared audio dir."""
+    if not isinstance(relative_path, str) or not relative_path.strip():
+        raise ValueError("path is required")
+    candidate = (STORAGE_AUDIO_DIR / relative_path.strip()).resolve()
+    if candidate != STORAGE_AUDIO_DIR and STORAGE_AUDIO_DIR not in candidate.parents:
+        raise ValueError("path escapes the audio storage directory")
+    if not candidate.is_file():
+        raise ValueError(f"{relative_path} does not exist")
+    return candidate
+
+
+def _transcribe_vocal_stem(payload: dict) -> Any:
+    """Melody v2: `{inputPath: stems/<id>/vocals.flac, mixPath?: <cached mix>}` inside the audio volume."""
+    started_at = time.perf_counter()
+    try:
+        stem_path = _resolve_inside_storage(payload.get("inputPath", ""))
+        mix_value = payload.get("mixPath")
+        mix_path = _resolve_inside_storage(mix_value) if mix_value else None
+    except ValueError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    try:
+        result = runtime.transcribe_file(
+            str(stem_path),
+            source_name=stem_path.name,
+            vocal_stem=True,
+            beat_audio_path=str(mix_path) if mix_path else None,
+        )
+    except Exception as exc:
+        logger.exception("Vocal stem transcription failed for %s", stem_path)
+        return jsonify({"success": False, "error": str(exc)}), 500
+    result["processingTime"] = round(time.perf_counter() - started_at, 3)
+    return jsonify({"success": True, "data": result})
+
+
 def create_app() -> Flask:
     flask_app = Flask(__name__)
     flask_app.config["MAX_CONTENT_LENGTH"] = DEFAULT_MAX_UPLOAD_BYTES
@@ -266,6 +301,10 @@ def create_app() -> Flask:
 
     @flask_app.post("/transcribe")
     def transcribe() -> Any:
+        json_payload = request.get_json(silent=True) if request.is_json else None
+        if isinstance(json_payload, dict) and json_payload.get("inputPath"):
+            return _transcribe_vocal_stem(json_payload)
+
         uploaded_file = request.files.get("file")
         audio_url = _get_request_audio_url()
         if uploaded_file is None and audio_url is None:

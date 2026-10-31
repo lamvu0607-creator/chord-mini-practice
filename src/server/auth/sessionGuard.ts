@@ -81,7 +81,7 @@ export async function requireAuth(
           success: false,
           error: {
             code: 'UNAUTHORIZED',
-            message: 'Vui lòng đăng nhập để tiếp tục',
+            message: 'Please sign in to continue',
           },
         },
         { status: 401 },
@@ -109,7 +109,7 @@ export async function requireAdmin(
           success: false,
           error: {
             code: 'FORBIDDEN',
-            message: 'Yêu cầu quyền Quản trị viên (Admin)',
+            message: 'Administrator (Admin) access required',
           },
         },
         { status: 403 },

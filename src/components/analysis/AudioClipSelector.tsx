@@ -31,7 +31,7 @@ interface AudioClipSelectorProps {
 const DRAG_THRESHOLD_PX = 4;
 const PEAK_BUCKETS = 800;
 
-const AudioClipSelector: React.FC<AudioClipSelectorProps> = ({ file, sourceName, disabled, onClipReady, onCancel, confirmLabel = 'Cắt đoạn này' }) => {
+const AudioClipSelector: React.FC<AudioClipSelectorProps> = ({ file, sourceName, disabled, onClipReady, onCancel, confirmLabel = 'Trim this section' }) => {
   const [buffer, setBuffer] = useState<AudioBuffer | null>(null);
   const [decodeError, setDecodeError] = useState<string | null>(null);
   const [range, setRange] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
@@ -69,7 +69,7 @@ const AudioClipSelector: React.FC<AudioClipSelectorProps> = ({ file, sourceName,
         applyRange(initial.start, initial.end);
       })
       .catch((error: unknown) => {
-        if (!cancelled) setDecodeError(error instanceof Error ? error.message : 'Không giải mã được file audio.');
+        if (!cancelled) setDecodeError(error instanceof Error ? error.message : 'Could not decode the audio file.');
       });
     return () => { cancelled = true; };
   }, [file, applyRange]);
@@ -206,7 +206,7 @@ const AudioClipSelector: React.FC<AudioClipSelectorProps> = ({ file, sourceName,
       const clip = await sliceToMonoWav(buffer, range.start, range.end, buildClipFileName(sourceName || file.name, range.start, range.end));
       await onClipReady(clip, range);
     } catch (error) {
-      setCutError(error instanceof Error ? error.message : 'Cắt audio thất bại.');
+      setCutError(error instanceof Error ? error.message : 'Trimming the audio failed.');
     } finally {
       setIsCutting(false);
     }
@@ -223,7 +223,7 @@ const AudioClipSelector: React.FC<AudioClipSelectorProps> = ({ file, sourceName,
   if (!buffer) {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-4 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
-        <Spinner size="sm" /> Đang đọc audio để vẽ waveform...
+        <Spinner size="sm" /> Reading audio to draw the waveform...
       </div>
     );
   }
@@ -234,12 +234,12 @@ const AudioClipSelector: React.FC<AudioClipSelectorProps> = ({ file, sourceName,
     <div className="space-y-3 rounded-lg border border-gray-200 bg-white/70 p-3 dark:border-gray-700 dark:bg-gray-900/40">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
-          Chọn đoạn cần phân tích
+          Choose the section to analyze
           <span className="ml-2 font-normal text-gray-500 dark:text-gray-400">
-            kéo trên waveform, hoặc nhập thời gian ({MIN_CLIP_SECONDS} giây – {MAX_CLIP_SECONDS / 60} phút)
+            drag on the waveform, or enter times ({MIN_CLIP_SECONDS} s – {MAX_CLIP_SECONDS / 60} min)
           </span>
         </p>
-        <span className="text-xs text-gray-500 dark:text-gray-400">Tổng: {formatClipTime(duration)}</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">Total: {formatClipTime(duration)}</span>
       </div>
 
       <div
@@ -250,7 +250,7 @@ const AudioClipSelector: React.FC<AudioClipSelectorProps> = ({ file, sourceName,
         onPointerUp={handlePointerUp}
         onPointerCancel={() => { dragOrigin.current = null; }}
         role="slider"
-        aria-label="Waveform, kéo để chọn đoạn cần phân tích"
+        aria-label="Waveform, drag to choose the section to analyze"
         aria-valuemin={0}
         aria-valuemax={Math.round(duration)}
         aria-valuenow={Math.round(range.start)}
@@ -269,7 +269,7 @@ const AudioClipSelector: React.FC<AudioClipSelectorProps> = ({ file, sourceName,
 
       <div className="flex flex-wrap items-end gap-3">
         <Input
-          label="Bắt đầu"
+          label="Start"
           size="sm"
           className="w-28"
           value={startText}
@@ -279,7 +279,7 @@ const AudioClipSelector: React.FC<AudioClipSelectorProps> = ({ file, sourceName,
           onKeyDown={(event) => { if (event.key === 'Enter') commitText('start'); }}
         />
         <Input
-          label="Kết thúc"
+          label="End"
           size="sm"
           className="w-28"
           value={endText}
@@ -289,14 +289,14 @@ const AudioClipSelector: React.FC<AudioClipSelectorProps> = ({ file, sourceName,
           onKeyDown={(event) => { if (event.key === 'Enter') commitText('end'); }}
         />
         <span className="pb-2 text-sm text-gray-600 dark:text-gray-300">
-          Độ dài: <strong>{formatClipTime(Math.max(0, range.end - range.start))}</strong>
+          Length: <strong>{formatClipTime(Math.max(0, range.end - range.start))}</strong>
         </span>
         <div className="ml-auto flex flex-wrap gap-2">
           <Button size="sm" variant="flat" onPress={togglePreview} isDisabled={disabled || Boolean(rangeError)}>
-            {isPreviewing ? 'Dừng' : 'Nghe thử đoạn'}
+            {isPreviewing ? 'Stop' : 'Preview section'}
           </Button>
           <Button size="sm" variant="flat" onPress={() => { stopPreview(); onCancel(); }} isDisabled={isCutting}>
-            Hủy
+            Cancel
           </Button>
           <Button
             size="sm"

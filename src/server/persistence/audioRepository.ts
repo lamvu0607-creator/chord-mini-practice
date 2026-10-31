@@ -73,10 +73,11 @@ export function claimAudioForEviction(targetBytes: number): AudioMetadataRecord[
       "SELECT 1 FROM maintenance_locks WHERE name='audio-maintenance' AND expires_at_ms > ?",
     ).get(Date.now());
     if (maintenanceLock) return [];
-    // Audio waiting to be split into stems must survive until its job finishes.
+    // Audio waiting to be split into stems or transcribed must survive until its job finishes.
     // Uploaded audio (upload_*) cannot be re-downloaded like YouTube audio, so it is never evicted.
     const protectedFilenames = new Set(
-      (sqlite.prepare("SELECT input_path FROM stem_jobs WHERE status IN ('queued','processing')").all() as Array<{ input_path: string }>)
+      (sqlite.prepare(`SELECT input_path FROM stem_jobs WHERE status IN ('queued','processing')
+        UNION SELECT input_path FROM melody_jobs WHERE status IN ('queued','processing')`).all() as Array<{ input_path: string }>)
         .map((row) => row.input_path.split('/').pop()),
     );
     const rows = (sqlite.prepare("SELECT * FROM audio_files WHERE state='active' AND video_id NOT LIKE 'upload!_%' ESCAPE '!' ORDER BY last_accessed_at_ms ASC")

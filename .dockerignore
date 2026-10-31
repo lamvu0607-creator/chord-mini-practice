@@ -23,6 +23,13 @@ build/
 python_backend/
 sheetsage/
 stems/
+muscriptor/
+SongFormer/
+pretrained_models/
+
+# Local evaluation sandboxes (datasets, model weights, results; several GB)
+eval_sandbox/
+experiments/
 *.py
 *.pyc
 __pycache__/

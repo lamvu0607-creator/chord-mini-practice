@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({
       success: true,
-      message: 'Đăng xuất thành công',
+      message: 'Signed out',
     });
 
     // Clear cookie
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Lỗi hệ thống khi đăng xuất',
+          message: error instanceof Error ? error.message : 'Server error while signing out',
         },
       },
       { status: 500 },

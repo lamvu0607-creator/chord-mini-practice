@@ -26,7 +26,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
           success: false,
           error: {
             code: 'INVALID_VIDEO_ID',
-            message: 'Video ID không hợp lệ',
+            message: 'Invalid video ID',
           },
         },
         { status: 400 },
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
             success: false,
             error: {
               code: 'TRANSCRIPTION_NOT_FOUND',
-              message: 'Bài hát chưa từng được phân tích với mô hình này',
+              message: 'This song has not been analyzed with this model yet',
             },
           },
           { status: 404 },
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
           success: false,
           error: {
             code: 'TRANSCRIPTION_NOT_FOUND',
-            message: 'Không tìm thấy dữ liệu hợp âm cho bài hát này',
+            message: 'No chord data found for this song',
           },
         },
         { status: 404 },
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Lỗi hệ thống khi đọc dữ liệu hợp âm',
+          message: error instanceof Error ? error.message : 'Server error while reading chord data',
         },
       },
       { status: 500 },
@@ -107,7 +107,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   const { videoId } = await Promise.resolve(context.params);
   if (!isValidVideoId(videoId)) {
     return NextResponse.json(
-      { success: false, error: { code: 'INVALID_VIDEO_ID', message: 'Video ID không hợp lệ' } },
+      { success: false, error: { code: 'INVALID_VIDEO_ID', message: 'Invalid video ID' } },
       { status: 400 },
     );
   }
@@ -115,7 +115,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   const deleted = deleteVideoTranscriptions(videoId);
   if (deleted === 0) {
     return NextResponse.json(
-      { success: false, error: { code: 'TRANSCRIPTION_NOT_FOUND', message: 'Không tìm thấy bài hát này' } },
+      { success: false, error: { code: 'TRANSCRIPTION_NOT_FOUND', message: 'Song not found' } },
       { status: 404 },
     );
   }

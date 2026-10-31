@@ -41,7 +41,12 @@ import {
   getAnalysisDurationLimitReason,
   parseAnalysisDurationSeconds,
 } from '@/utils/analysisDurationLimit';
-import { requestSheetSageTranscription } from '@/services/sheetsage/sheetSageTranscriptionClient';
+import {
+  MelodyAuthRequiredError,
+  requestMelodyV2Transcription,
+  requestSheetSageTranscription,
+} from '@/services/sheetsage/sheetSageTranscriptionClient';
+import { MELODY_PIPELINE_VERSION, type SheetSageResult } from '@/types/sheetSage';
 import { getCachedSheetSageMelody } from '@/services/sheetsage/sheetSageCacheClient';
 import { usePersistenceReadiness } from '@/hooks/persistence/usePersistenceReadiness';
 import { useYouTubeSetup } from '@/hooks/youtube/useYouTubeSetup';
@@ -90,6 +95,14 @@ export function useAnalyzePageViewModel({
   const autoStartRequested = Boolean(routeParams.autoStart);
   const [isCompactViewport, setIsCompactViewport] = useState(false);
   const durationLimitToastShownRef = useRef(false);
+  // Lets a melody job poll stop when the page switches to another song or unmounts.
+  const melodyPageVideoIdRef = useRef<string | null>(videoId);
+  useEffect(() => {
+    melodyPageVideoIdRef.current = videoId;
+    return () => {
+      melodyPageVideoIdRef.current = null;
+    };
+  }, [videoId]);
   const cachePromptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cachePromptToastKeyRef = useRef<string | null>(null);
   const cachePromptShownForRef = useRef<string | null>(null);
@@ -716,7 +729,9 @@ export function useAnalyzePageViewModel({
     const analysisActions = useAnalysisStore.getState();
     const cachedResult = cachedSheetSageMelodyQuery.data;
 
-    if (cachedResult) {
+    // Pre-v2 (mix-based) melodies of YouTube songs are not auto-loaded: the next request recomputes them
+    // with the vocals stem + MuScriptor, and only falls back to the old result if that fails.
+    if (cachedResult && (isUploadSource || cachedResult.pipelineVersion === MELODY_PIPELINE_VERSION)) {
       analysisActions.setSheetSageResult(cachedResult);
       analysisActions.setSheetSageError(null);
     }
@@ -724,6 +739,7 @@ export function useAnalyzePageViewModel({
     audioProcessingState.audioUrl,
     audioProcessingState.isExtracted,
     cachedSheetSageMelodyQuery.data,
+    isUploadSource,
     showSheetSage,
     videoId,
   ]);
@@ -994,7 +1010,7 @@ export function useAnalyzePageViewModel({
         console.warn('🎵 Melodic transcription unavailable:', errorMsg);
         analysisActions.setSheetSageError(errorMsg);
         addToast({
-          title: 'Nhận diện giai điệu chưa khả dụng',
+          title: 'Melody transcription unavailable',
           description: errorMsg,
           color: 'danger',
         });
@@ -1011,7 +1027,29 @@ export function useAnalyzePageViewModel({
           staleTime: queryStaleTimes.cachedMelody,
           gcTime: queryGcTimes.cachedMelody,
         });
-        const result = cachedResult ?? await requestSheetSageTranscription(null, audioProcessingState.audioUrl || null, videoId);
+        let result: SheetSageResult | null = cachedResult?.pipelineVersion === MELODY_PIPELINE_VERSION ? cachedResult : null;
+        if (!result && !isUploadSource) {
+          // Melody v2: SCNet vocals stem → Basic Pitch + MuScriptor instruments, as a background job.
+          const pageVideoId = videoId;
+          try {
+            result = await requestMelodyV2Transcription(
+              videoId,
+              (update) => analysisActions.setSheetSageJobStatus(update),
+              () => melodyPageVideoIdRef.current !== pageVideoId,
+            );
+          } catch (v2Error) {
+            if (!(v2Error instanceof MelodyAuthRequiredError) && !cachedResult) throw v2Error;
+            // Signed-out users (or a failed v2 job with an older cached melody) keep the mix-based result.
+            addToast({
+              title: v2Error instanceof MelodyAuthRequiredError ? 'Using the previous melody result' : 'Melody transcription v2 failed',
+              description: v2Error instanceof Error ? v2Error.message : String(v2Error),
+              color: 'warning',
+            });
+          } finally {
+            analysisActions.setSheetSageJobStatus(null);
+          }
+        }
+        result ??= cachedResult ?? await requestSheetSageTranscription(null, audioProcessingState.audioUrl || null, videoId);
         analysisActions.setSheetSageResult(result);
         analysisActions.setSheetSageError(null);
         queryClient.setQueryData(queryKeys.sheetSage.cachedMelody(videoId), result);
@@ -1020,7 +1058,7 @@ export function useAnalyzePageViewModel({
         console.error('🎵 Melodic transcription error:', error);
         analysisActions.setSheetSageError(message);
         addToast({
-          title: 'Lỗi nhận diện giai điệu',
+          title: 'Melody transcription error',
           description: message,
           color: 'danger',
         });
@@ -1040,6 +1078,7 @@ export function useAnalyzePageViewModel({
     hasSheetSageAudioSource,
     hasSheetSageNotes,
     isComputingSheetSage,
+    isUploadSource,
     isMelodicTranscriptionPlaybackEnabled,
     queryClient,
     setActiveTab,

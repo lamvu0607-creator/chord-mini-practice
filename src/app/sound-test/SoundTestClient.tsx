@@ -47,7 +47,7 @@ const drumMachine = (instrument: string) => async (ctx: AudioContext, destinatio
 
 const SOURCES: Record<Part, SourceOption[]> = {
   drums: [
-    { id: 'none', label: 'Tắt', create: async () => { throw new Error('none'); } },
+    { id: 'none', label: 'Off', create: async () => { throw new Error('none'); } },
     { id: 'dm:LM-2', label: 'LM-2 (drum machine 80s)', create: drumMachine('LM-2') },
     { id: 'dm:TR-808', label: 'TR-808', create: drumMachine('TR-808') },
     { id: 'dm:Casio-RZ1', label: 'Casio RZ-1', create: drumMachine('Casio-RZ1') },
@@ -55,19 +55,19 @@ const SOURCES: Record<Part, SourceOption[]> = {
     { id: 'dm:Roland CR-8000', label: 'Roland CR-8000', create: drumMachine('Roland CR-8000') },
   ],
   bass: [
-    { id: 'none', label: 'Tắt', create: async () => { throw new Error('none'); } },
+    { id: 'none', label: 'Off', create: async () => { throw new Error('none'); } },
     { id: 'mk:electric_bass_finger', label: 'Electric bass (MusyngKite)', create: soundfont('electric_bass_finger', 'MusyngKite') },
     { id: 'fl:electric_bass_finger', label: 'Electric bass (FluidR3)', create: soundfont('electric_bass_finger', 'FluidR3_GM') },
     { id: 'mk:acoustic_bass', label: 'Acoustic bass (MusyngKite)', create: soundfont('acoustic_bass', 'MusyngKite') },
     { id: 'fl:acoustic_bass', label: 'Acoustic bass (FluidR3)', create: soundfont('acoustic_bass', 'FluidR3_GM') },
   ],
   piano: [
-    { id: 'none', label: 'Tắt', create: async () => { throw new Error('none'); } },
-    { id: 'mk:acoustic_grand_piano', label: 'Grand piano (MusyngKite) — đang dùng', create: soundfont('acoustic_grand_piano', 'MusyngKite') },
+    { id: 'none', label: 'Off', create: async () => { throw new Error('none'); } },
+    { id: 'mk:acoustic_grand_piano', label: 'Grand piano (MusyngKite) — current', create: soundfont('acoustic_grand_piano', 'MusyngKite') },
     { id: 'fl:acoustic_grand_piano', label: 'Grand piano (FluidR3)', create: soundfont('acoustic_grand_piano', 'FluidR3_GM') },
     {
       id: 'splendid',
-      label: 'Splendid Grand Piano (sampled, nặng)',
+      label: 'Splendid Grand Piano (sampled, heavy)',
       create: async (ctx, destination) => {
         const { SplendidGrandPiano } = await getSmplr();
         return waitLoaded(new SplendidGrandPiano(ctx, { destination }) as unknown as PlayableInstrument);
@@ -91,8 +91,8 @@ const SOURCES: Record<Part, SourceOption[]> = {
     },
   ],
   guitar: [
-    { id: 'none', label: 'Tắt', create: async () => { throw new Error('none'); } },
-    { id: 'mk:acoustic_guitar_steel', label: 'Acoustic steel (MusyngKite) — đang dùng', create: soundfont('acoustic_guitar_steel', 'MusyngKite') },
+    { id: 'none', label: 'Off', create: async () => { throw new Error('none'); } },
+    { id: 'mk:acoustic_guitar_steel', label: 'Acoustic steel (MusyngKite) — current', create: soundfont('acoustic_guitar_steel', 'MusyngKite') },
     { id: 'fl:acoustic_guitar_steel', label: 'Acoustic steel (FluidR3)', create: soundfont('acoustic_guitar_steel', 'FluidR3_GM') },
     { id: 'mk:acoustic_guitar_nylon', label: 'Nylon (MusyngKite)', create: soundfont('acoustic_guitar_nylon', 'MusyngKite') },
     { id: 'mk:electric_guitar_clean', label: 'Electric clean (MusyngKite)', create: soundfont('electric_guitar_clean', 'MusyngKite') },
@@ -106,7 +106,7 @@ const DEFAULT_SELECTION: Record<Part, string> = {
   guitar: 'none',
 };
 
-const PART_LABELS: Record<Part, string> = { drums: 'Trống', bass: 'Bass', piano: 'Piano / Keys', guitar: 'Guitar' };
+const PART_LABELS: Record<Part, string> = { drums: 'Drums', bass: 'Bass', piano: 'Piano / Keys', guitar: 'Guitar' };
 const PARTS: Part[] = ['drums', 'bass', 'piano', 'guitar'];
 
 const PROGRESSIONS: Record<string, string[]> = {
@@ -569,7 +569,7 @@ export default function SoundTestClient() {
     <main className="mx-auto max-w-3xl px-4 py-8 text-gray-900 dark:text-gray-100">
       <h1 className="text-2xl font-semibold">Sound test</h1>
       <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-        Nghe so sánh các bộ tiếng cho nhạc đệm. Đổi nguồn trong lúc đang phát để so A/B; lần đầu chọn một nguồn sẽ phải tải mẫu âm.
+        Compare sound sets for the accompaniment. Switch sources while playing to A/B them; the first time you pick a source its samples are downloaded.
       </p>
 
       <section className="mt-6 flex flex-wrap items-end gap-4 rounded-lg border border-gray-200 p-4 dark:border-gray-700">
@@ -578,10 +578,10 @@ export default function SoundTestClient() {
           onClick={playing ? stop : play}
           className="rounded-md bg-blue-600 px-5 py-2 font-medium text-white hover:bg-blue-700"
         >
-          {playing ? 'Dừng' : 'Phát'}
+          {playing ? 'Stop' : 'Play'}
         </button>
         <label className="flex flex-col text-sm">
-          Vòng hợp âm
+          Chord loop
           <select
             value={progressionName}
             onChange={(event) => { setProgressionName(event.target.value); voicingRef.current = { piano: null, guitar: null }; }}
@@ -599,11 +599,11 @@ export default function SoundTestClient() {
       <section className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-lg border border-gray-200 p-4 text-sm dark:border-gray-700">
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={mixEnabled} onChange={(event) => setMixEnabled(event.target.checked)} />
-          Mix (reverb, compressor, trái/phải, EQ)
+          Mix (reverb, compressor, stereo pan, EQ)
         </label>
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={humanize} onChange={(event) => setHumanize(event.target.checked)} />
-          Humanize (lực đánh, lệch nhịp, ghost note, fill)
+          Humanize (velocity, timing drift, ghost notes, fills)
         </label>
         <label className={`flex items-center gap-2 ${humanize ? '' : 'opacity-50'}`}>
           Swing {swing}%
@@ -642,13 +642,13 @@ export default function SoundTestClient() {
                 </select>
                 <span className="w-28 text-right text-xs text-gray-500 dark:text-gray-400">
                   {selection[part] === 'none' ? '' :
-                    state?.status === 'loading' ? 'Đang tải…' :
-                    state?.status === 'ready' ? `Tải ${(state.ms! / 1000).toFixed(1)}s` :
-                    state?.status === 'error' ? 'Lỗi tải' : 'Chưa tải'}
+                    state?.status === 'loading' ? 'Loading…' :
+                    state?.status === 'ready' ? `Loaded in ${(state.ms! / 1000).toFixed(1)}s` :
+                    state?.status === 'error' ? 'Load error' : 'Not loaded'}
                 </span>
               </div>
               <label className="mt-3 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                Âm lượng
+                Volume
                 <input
                   type="range"
                   min={0}
@@ -665,8 +665,8 @@ export default function SoundTestClient() {
       </section>
 
       <p className="mt-6 text-xs text-gray-500 dark:text-gray-400">
-        Nguồn mẫu âm: soundfont MusyngKite/FluidR3 (gleitz), drum machines và electric pianos từ thư viện smplr, tải trực tiếp từ GitHub Pages.
-        Chưa có trống acoustic — cần một soundfont .sf2 tự host.
+        Sample sources: MusyngKite/FluidR3 soundfonts (gleitz), drum machines and electric pianos from the smplr library, loaded directly from GitHub Pages.
+        No acoustic drums yet — that needs a self-hosted .sf2 soundfont.
       </p>
     </main>
   );

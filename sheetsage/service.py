@@ -175,8 +175,13 @@ class BasicPitchMelodyRuntime:
         self,
         audio_path: str,
         source_name: Optional[str] = None,
+        vocal_stem: bool = False,
+        beat_audio_path: Optional[str] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
+        """`vocal_stem=True`: `audio_path` is an SCNet vocals stem; reduce the notes to one cleaned
+        vocal line (see vocal_postprocess.py). Beats are tracked on `beat_audio_path` (the mix) when
+        given, since a vocals stem has no drums."""
         import time
         import librosa
         import numpy as np
@@ -202,13 +207,18 @@ class BasicPitchMelodyRuntime:
                 "velocity": velocity,
             })
 
+        raw_note_count = len(note_events)
+        if vocal_stem:
+            from vocal_postprocess import clean_vocal_notes
+
+            note_events = clean_vocal_notes(note_events, audio_path)
         note_events.sort(key=lambda event: (event["onset"], event["pitch"], event["offset"]))
 
         # Compute tempo and beat times using librosa
         beat_times = []
         tempo_bpm = 120
         try:
-            y, sr = librosa.load(audio_path, sr=22050)
+            y, sr = librosa.load(beat_audio_path or audio_path, sr=22050)
             tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
             beat_times = [round(float(t), 3) for t in librosa.frames_to_time(beat_frames, sr=sr).tolist()]
             if isinstance(tempo, (list, np.ndarray)):
@@ -229,9 +239,11 @@ class BasicPitchMelodyRuntime:
         return {
             "source": "sheetsage",
             "engine": "basic-pitch",
+            "input": "stem:vocals" if vocal_stem else "mix",
             "sourceName": source_name,
             "noteEvents": note_events,
             "noteEventCount": len(note_events),
+            "rawNoteEventCount": raw_note_count,
             "beatTimes": beat_times,
             "beatsPerMeasure": 4,
             "tempoBpm": tempo_bpm if tempo_bpm > 0 else 120,

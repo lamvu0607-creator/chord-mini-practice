@@ -1,4 +1,3 @@
-import type { AudioMixerSettings } from '@/services/chord-playback/audioMixerService';
 import { findChordEventForPlayback as findPlayableChordEvent } from '@/utils/chordEventLookup';
 import type { ChordEvent } from '@/utils/chordToMidi';
 import { PLAYBACK_EVENT_BOUNDARY_TOLERANCE } from './constants';
@@ -80,17 +79,4 @@ export function countLeadingNullBeatSlots(beatTimes: Array<number | null> | unde
   }
 
   return count;
-}
-
-export function areMixerSettingsEqual(a: AudioMixerSettings, b: AudioMixerSettings): boolean {
-  return (
-    a.pianoVolume === b.pianoVolume
-    && a.guitarVolume === b.guitarVolume
-    && a.violinVolume === b.violinVolume
-    && a.melodyVolume === b.melodyVolume
-    && a.fluteVolume === b.fluteVolume
-    && a.bassVolume === b.bassVolume
-    && a.saxophoneVolume === b.saxophoneVolume
-    && a.chordPlaybackVolume === b.chordPlaybackVolume
-  );
 }

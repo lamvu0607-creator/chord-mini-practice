@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: {
             code: 'INVALID_PIN_FORMAT',
-            message: 'Mã PIN hiện tại không hợp lệ (4 - 8 số)',
+            message: 'Current PIN is invalid (4 to 8 digits)',
           },
         },
         { status: 400 },
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: {
             code: 'INVALID_PIN_FORMAT',
-            message: newPinVal.error || 'Mã PIN mới phải từ 4 đến 8 chữ số',
+            message: newPinVal.error || 'The new PIN must be 4 to 8 digits',
           },
         },
         { status: 400 },
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: {
             code: 'SAME_PIN',
-            message: 'Mã PIN mới không được trùng với mã PIN hiện tại',
+            message: 'The new PIN must differ from the current PIN',
           },
         },
         { status: 400 },
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: {
             code: 'USER_NOT_FOUND',
-            message: 'Không tìm thấy thông tin tài khoản',
+            message: 'Account not found',
           },
         },
         { status: 404 },
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: {
             code: 'INVALID_OLD_PIN',
-            message: 'Mã PIN hiện tại không chính xác',
+            message: 'Current PIN is incorrect',
           },
         },
         { status: 400 },
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Đổi mã PIN thành công',
+      message: 'PIN changed',
     });
   } catch (error) {
     console.error('Change PIN error:', error);
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Lỗi hệ thống khi đổi mã PIN',
+          message: error instanceof Error ? error.message : 'Server error while changing the PIN',
         },
       },
       { status: 500 },

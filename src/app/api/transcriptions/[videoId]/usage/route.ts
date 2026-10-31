@@ -19,7 +19,7 @@ async function handleIncrement(request: NextRequest, context: RouteContext) {
     const { videoId } = await Promise.resolve(context.params);
     if (!isValidId(videoId)) {
       return NextResponse.json(
-        { success: false, error: { code: 'INVALID_VIDEO_ID', message: 'Video ID không hợp lệ' } },
+        { success: false, error: { code: 'INVALID_VIDEO_ID', message: 'Invalid video ID' } },
         { status: 400 },
       );
     }
@@ -30,7 +30,7 @@ async function handleIncrement(request: NextRequest, context: RouteContext) {
 
     if (!isValidId(beatModel) || !isValidId(chordModel)) {
       return NextResponse.json(
-        { success: false, error: { code: 'INVALID_MODELS', message: 'beatModel và chordModel là bắt buộc' } },
+        { success: false, error: { code: 'INVALID_MODELS', message: 'beatModel and chordModel are required' } },
         { status: 400 },
       );
     }
@@ -38,7 +38,7 @@ async function handleIncrement(request: NextRequest, context: RouteContext) {
     const updated = incrementUsage(videoId, beatModel, chordModel);
     if (!updated) {
       return NextResponse.json(
-        { success: false, error: { code: 'TRANSCRIPTION_NOT_FOUND', message: 'Không tìm thấy bản ghi hợp âm' } },
+        { success: false, error: { code: 'TRANSCRIPTION_NOT_FOUND', message: 'Chord transcription not found' } },
         { status: 404 },
       );
     }
@@ -51,7 +51,7 @@ async function handleIncrement(request: NextRequest, context: RouteContext) {
   } catch (error) {
     console.error('Increment transcription usage error:', error);
     return NextResponse.json(
-      { success: false, error: { code: 'INTERNAL_ERROR', message: 'Lỗi cập nhật lượt xem' } },
+      { success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to update the view count' } },
       { status: 500 },
     );
   }

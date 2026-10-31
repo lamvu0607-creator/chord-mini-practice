@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Lỗi hệ thống khi lấy danh sách người dùng',
+          message: error instanceof Error ? error.message : 'Server error while listing users',
         },
       },
       { status: 500 },
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: {
             code: 'INVALID_USERNAME',
-            message: 'Tên đăng nhập phải từ 3 đến 20 ký tự (chữ cái, số hoặc dấu gạch dưới, không dấu)',
+            message: 'Username must be 3 to 20 characters (letters, digits or underscores)',
           },
         },
         { status: 400 },
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: {
             code: 'INVALID_PIN_FORMAT',
-            message: pinVal.error || 'Mã PIN phải từ 4 đến 8 chữ số',
+            message: pinVal.error || 'PIN must be 4 to 8 digits',
           },
         },
         { status: 400 },
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: {
             code: 'MISSING_DISPLAY_NAME',
-            message: 'Vui lòng nhập tên hiển thị',
+            message: 'Please enter a display name',
           },
         },
         { status: 400 },
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: {
             code: 'USER_EXISTS',
-            message: `Tên đăng nhập "${username}" đã tồn tại trên hệ thống`,
+            message: `Username "${username}" already exists`,
           },
         },
         { status: 409 },
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        message: 'Tạo tài khoản người dùng thành công',
+        message: 'User account created',
         data: { user: newUser },
       },
       { status: 201 },
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Lỗi hệ thống khi tạo tài khoản',
+          message: error instanceof Error ? error.message : 'Server error while creating the account',
         },
       },
       { status: 500 },

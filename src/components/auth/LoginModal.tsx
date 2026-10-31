@@ -26,12 +26,12 @@ export default function LoginModal() {
     setErrorMessage(null);
 
     if (!username.trim()) {
-      setErrorMessage('Vui lòng nhập tên đăng nhập');
+      setErrorMessage('Please enter your username');
       return;
     }
 
     if (!pin.trim() || pin.trim().length < 4 || pin.trim().length > 8) {
-      setErrorMessage('Mã PIN phải từ 4 đến 8 chữ số');
+      setErrorMessage('PIN must be 4 to 8 digits');
       return;
     }
 
@@ -39,7 +39,7 @@ export default function LoginModal() {
     try {
       const result = await login(username, pin);
       if (!result.success) {
-        setErrorMessage(result.error || 'Đăng nhập thất bại');
+        setErrorMessage(result.error || 'Sign-in failed');
       } else {
         setUsername('');
         setPin('');
@@ -81,10 +81,10 @@ export default function LoginModal() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-foreground">
-                    {isMandatoryLogin ? 'Yêu cầu đăng nhập' : 'Đăng nhập ChordMini'}
+                    {isMandatoryLogin ? 'Sign-in required' : 'Sign in to ChordMini'}
                   </h3>
                   <p className="text-xs text-default-500 font-normal">
-                    {isMandatoryLogin ? 'Hết lượt dùng thử ẩn danh' : 'Sử dụng Username và mã PIN được cấp'}
+                    {isMandatoryLogin ? 'Anonymous trial used up' : 'Use the username and PIN you were given'}
                   </p>
                 </div>
               </div>
@@ -96,10 +96,10 @@ export default function LoginModal() {
                   <FiAlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-500" />
                   <div>
                     <strong className="font-semibold block mb-0.5 text-sm text-amber-700 dark:text-amber-300">
-                      Bạn đã dùng hết 1 lượt thử miễn phí!
+                      You have used your 1 free trial!
                     </strong>
                     <span>
-                      Hãy đăng nhập bằng Username và mã PIN được cấp để tiếp tục phân tích bài hát này và sử dụng toàn bộ tính năng không giới hạn.
+                      Sign in with the username and PIN you were given to keep analyzing this song and use every feature without limits.
                     </span>
                   </div>
                 </div>
@@ -114,8 +114,8 @@ export default function LoginModal() {
 
               <Input
                 autoFocus
-                label="Tên đăng nhập"
-                placeholder="Nhập username của bạn"
+                label="Username"
+                placeholder="Enter your username"
                 variant="bordered"
                 value={username}
                 onValueChange={(val) => {
@@ -127,8 +127,8 @@ export default function LoginModal() {
               />
 
               <Input
-                label="Mã PIN"
-                placeholder="4 - 8 chữ số"
+                label="PIN"
+                placeholder="4 to 8 digits"
                 type={showPin ? 'text' : 'password'}
                 inputMode="numeric"
                 variant="bordered"
@@ -152,18 +152,18 @@ export default function LoginModal() {
               />
 
               <div className="text-xs text-default-400 italic">
-                💡 Hệ thống nội bộ chỉ dành cho nhóm bạn. Nếu chưa có mã PIN, vui lòng liên hệ admin.
+                💡 Private instance for a small group. If you don&apos;t have a PIN yet, contact the admin.
               </div>
             </ModalBody>
 
             <ModalFooter>
               {!isMandatoryLogin && (
                 <Button variant="light" onPress={handleClose} disabled={isSubmitting}>
-                  Đóng
+                  Close
                 </Button>
               )}
               <Button color="primary" type="submit" isLoading={isSubmitting} className="font-semibold flex-1">
-                Đăng nhập
+                Sign in
               </Button>
             </ModalFooter>
           </form>

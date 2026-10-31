@@ -81,12 +81,12 @@ export default function AdminUserModal() {
     setCreateSuccess(null);
 
     if (!createUsername.trim() || !/^[a-zA-Z0-9_]{3,20}$/.test(createUsername.trim())) {
-      setCreateError('Tên đăng nhập phải từ 3 đến 20 ký tự (không dấu, chỉ gồm chữ, số hoặc gạch dưới)');
+      setCreateError('Username must be 3 to 20 characters (letters, digits or underscores only)');
       return;
     }
 
     if (!createPin.trim() || createPin.trim().length < 4 || createPin.trim().length > 8) {
-      setCreateError('Mã PIN phải từ 4 đến 8 chữ số');
+      setCreateError('PIN must be 4 to 8 digits');
       return;
     }
 
@@ -105,11 +105,11 @@ export default function AdminUserModal() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setCreateError(data.error?.message || 'Tạo tài khoản thất bại');
+        setCreateError(data.error?.message || 'Creating the account failed');
         return;
       }
 
-      setCreateSuccess(`Đã tạo tài khoản "${createUsername}" thành công!`);
+      setCreateSuccess(`Account "${createUsername}" created!`);
       setCreateUsername('');
       setCreateDisplayName('');
       setCreatePin('');
@@ -120,7 +120,7 @@ export default function AdminUserModal() {
         setActiveTab('list');
       }, 1500);
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Lỗi kết nối máy chủ');
+      setCreateError(err instanceof Error ? err.message : 'Could not reach the server');
     } finally {
       setIsCreating(false);
     }
@@ -133,7 +133,7 @@ export default function AdminUserModal() {
     setResetSuccess(null);
 
     if (!newPinForReset.trim() || newPinForReset.trim().length < 4 || newPinForReset.trim().length > 8) {
-      setResetError('Mã PIN mới phải từ 4 đến 8 chữ số');
+      setResetError('The new PIN must be 4 to 8 digits');
       return;
     }
 
@@ -147,18 +147,18 @@ export default function AdminUserModal() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setResetError(data.error?.message || 'Đặt lại PIN thất bại');
+        setResetError(data.error?.message || 'Resetting the PIN failed');
         return;
       }
 
-      setResetSuccess(`Đã đặt lại mã PIN cho "${resettingUser.username}" thành công!`);
+      setResetSuccess(`PIN reset for "${resettingUser.username}"!`);
       setTimeout(() => {
         setResettingUser(null);
         setNewPinForReset('');
         setResetSuccess(null);
       }, 1500);
     } catch (err) {
-      setResetError(err instanceof Error ? err.message : 'Lỗi kết nối máy chủ');
+      setResetError(err instanceof Error ? err.message : 'Could not reach the server');
     } finally {
       setIsResetting(false);
     }
@@ -176,14 +176,14 @@ export default function AdminUserModal() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setDeleteError(data.error?.message || 'Xóa tài khoản thất bại');
+        setDeleteError(data.error?.message || 'Deleting the account failed');
         return;
       }
 
       setDeletingUser(null);
       fetchUsers();
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : 'Lỗi kết nối máy chủ');
+      setDeleteError(err instanceof Error ? err.message : 'Could not reach the server');
     } finally {
       setIsDeleting(false);
     }
@@ -222,8 +222,8 @@ export default function AdminUserModal() {
                     <FiShield className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-foreground">Quản lý Tài khoản (Admin)</h3>
-                    <p className="text-xs text-default-500 font-normal">Quản lý danh sách người dùng và cấp mã PIN</p>
+                    <h3 className="text-lg font-bold text-foreground">Manage accounts (Admin)</h3>
+                    <p className="text-xs text-default-500 font-normal">Manage users and issue PINs</p>
                   </div>
                 </div>
                 <Button
@@ -233,7 +233,7 @@ export default function AdminUserModal() {
                   isLoading={isLoadingUsers}
                   startContent={<FiRefreshCw className="w-3.5 h-3.5" />}
                 >
-                  Làm mới
+                  Refresh
                 </Button>
               </ModalHeader>
 
@@ -254,15 +254,15 @@ export default function AdminUserModal() {
                     title={
                       <div className="flex items-center gap-2">
                         <FiUsers className="w-4 h-4" />
-                        <span>Danh sách người dùng ({users.length})</span>
+                        <span>Users ({users.length})</span>
                       </div>
                     }
                   >
                     <div className="flex flex-col gap-2 pt-2 max-h-[50vh] overflow-y-auto pr-1">
                       {isLoadingUsers && users.length === 0 ? (
-                        <div className="text-center py-8 text-default-400 text-sm">Đang tải danh sách người dùng...</div>
+                        <div className="text-center py-8 text-default-400 text-sm">Loading users...</div>
                       ) : users.length === 0 ? (
-                        <div className="text-center py-8 text-default-400 text-sm">Chưa có người dùng nào</div>
+                        <div className="text-center py-8 text-default-400 text-sm">No users yet</div>
                       ) : (
                         users.map((u) => {
                           const isSelf = u.id === currentUser?.id;
@@ -289,12 +289,12 @@ export default function AdminUserModal() {
                                     </Chip>
                                     {isSelf && (
                                       <Chip size="sm" color="success" variant="dot" className="text-[10px] h-5">
-                                        Bạn
+                                        You
                                       </Chip>
                                     )}
                                   </div>
                                   <span className="text-[11px] text-default-400">
-                                    Tạo ngày: {formatDate(u.createdAtMs)}
+                                    Created: {formatDate(u.createdAtMs)}
                                   </span>
                                 </div>
                               </div>
@@ -313,7 +313,7 @@ export default function AdminUserModal() {
                                   }}
                                   className="h-8 text-xs font-medium"
                                 >
-                                  Đặt lại PIN
+                                  Reset PIN
                                 </Button>
                                 {!isSelf && (
                                   <Button
@@ -327,7 +327,7 @@ export default function AdminUserModal() {
                                     }}
                                     className="h-8 text-xs font-medium"
                                   >
-                                    Xóa
+                                    Delete
                                   </Button>
                                 )}
                               </div>
@@ -343,7 +343,7 @@ export default function AdminUserModal() {
                     title={
                       <div className="flex items-center gap-2">
                         <FiUserPlus className="w-4 h-4" />
-                        <span>Thêm tài khoản mới</span>
+                        <span>Add a new account</span>
                       </div>
                     }
                   >
@@ -363,8 +363,8 @@ export default function AdminUserModal() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Input
-                          label="Tên đăng nhập (Username)"
-                          placeholder="Ví dụ: nam_guitar"
+                          label="Username"
+                          placeholder="e.g. nam_guitar"
                           variant="bordered"
                           value={createUsername}
                           onValueChange={(val) => {
@@ -374,8 +374,8 @@ export default function AdminUserModal() {
                           isRequired
                         />
                         <Input
-                          label="Tên hiển thị (Display Name)"
-                          placeholder="Ví dụ: Nam Guitarist"
+                          label="Display name"
+                          placeholder="e.g. Nam Guitarist"
                           variant="bordered"
                           value={createDisplayName}
                           onValueChange={setCreateDisplayName}
@@ -384,8 +384,8 @@ export default function AdminUserModal() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Input
-                          label="Mã PIN ban đầu"
-                          placeholder="4 - 8 chữ số"
+                          label="Initial PIN"
+                          placeholder="4 to 8 digits"
                           type="password"
                           inputMode="numeric"
                           variant="bordered"
@@ -397,7 +397,7 @@ export default function AdminUserModal() {
                           isRequired
                         />
                         <Select
-                          label="Vai trò (Role)"
+                          label="Role"
                           selectedKeys={[createRole]}
                           onSelectionChange={(keys) => {
                             const selected = Array.from(keys)[0] as 'member' | 'admin';
@@ -405,18 +405,18 @@ export default function AdminUserModal() {
                           }}
                           variant="bordered"
                         >
-                          <SelectItem key="member" textValue="Thành viên (Member)">
-                            Thành viên (Member) - Sử dụng không giới hạn
+                          <SelectItem key="member" textValue="Member">
+                            Member - unlimited use
                           </SelectItem>
-                          <SelectItem key="admin" textValue="Quản trị viên (Admin)">
-                            Quản trị viên (Admin) - Toàn quyền quản lý
+                          <SelectItem key="admin" textValue="Admin">
+                            Admin - full management access
                           </SelectItem>
                         </Select>
                       </div>
 
                       <div className="flex justify-end pt-2">
                         <Button color="primary" type="submit" isLoading={isCreating} className="font-semibold">
-                          Tạo tài khoản
+                          Create account
                         </Button>
                       </div>
                     </form>
@@ -426,7 +426,7 @@ export default function AdminUserModal() {
 
               <ModalFooter>
                 <Button variant="light" onPress={closeAdminUsersModal}>
-                  Đóng
+                  Close
                 </Button>
               </ModalFooter>
             </>
@@ -446,7 +446,7 @@ export default function AdminUserModal() {
             <form onSubmit={handleResetPin}>
               <ModalHeader className="flex items-center gap-2">
                 <FiKey className="w-5 h-5 text-warning" />
-                <span>Đặt lại mã PIN cho @{resettingUser?.username}</span>
+                <span>Reset PIN for @{resettingUser?.username}</span>
               </ModalHeader>
               <ModalBody className="flex flex-col gap-3">
                 {resetSuccess && (
@@ -462,8 +462,8 @@ export default function AdminUserModal() {
                 )}
                 <Input
                   autoFocus
-                  label="Mã PIN mới"
-                  placeholder="Nhập 4 - 8 chữ số mới"
+                  label="New PIN"
+                  placeholder="Enter 4 to 8 new digits"
                   type="password"
                   inputMode="numeric"
                   variant="bordered"
@@ -475,15 +475,15 @@ export default function AdminUserModal() {
                   isRequired
                 />
                 <p className="text-xs text-default-400">
-                  Lưu ý: Mọi phiên làm việc cũ của tài khoản này sẽ tự động bị hủy sau khi đặt lại mã PIN.
+                  Note: all existing sessions of this account are signed out once the PIN is reset.
                 </p>
               </ModalBody>
               <ModalFooter>
                 <Button variant="light" onPress={() => setResettingUser(null)} disabled={isResetting}>
-                  Hủy
+                  Cancel
                 </Button>
                 <Button color="warning" type="submit" isLoading={isResetting} className="font-semibold">
-                  Lưu mã PIN mới
+                  Save new PIN
                 </Button>
               </ModalFooter>
             </form>
@@ -503,7 +503,7 @@ export default function AdminUserModal() {
             <>
               <ModalHeader className="flex items-center gap-2 text-danger">
                 <FiTrash2 className="w-5 h-5" />
-                <span>Xác nhận xóa tài khoản</span>
+                <span>Confirm account deletion</span>
               </ModalHeader>
               <ModalBody className="flex flex-col gap-2">
                 {deleteError && (
@@ -512,18 +512,18 @@ export default function AdminUserModal() {
                   </div>
                 )}
                 <p className="text-sm">
-                  Bạn có chắc chắn muốn xóa tài khoản <strong>@{deletingUser?.username}</strong> ({deletingUser?.displayName})?
+                  Are you sure you want to delete the account <strong>@{deletingUser?.username}</strong> ({deletingUser?.displayName})?
                 </p>
                 <p className="text-xs text-default-400">
-                  Hành động này không thể hoàn tác. Mọi phiên đăng nhập của tài khoản này sẽ bị hủy ngay lập tức.
+                  This cannot be undone. All sessions of this account are signed out immediately.
                 </p>
               </ModalBody>
               <ModalFooter>
                 <Button variant="light" onPress={() => setDeletingUser(null)} disabled={isDeleting}>
-                  Hủy
+                  Cancel
                 </Button>
                 <Button color="danger" onPress={handleDeleteUser} isLoading={isDeleting} className="font-semibold">
-                  Xóa tài khoản
+                  Delete account
                 </Button>
               </ModalFooter>
             </>

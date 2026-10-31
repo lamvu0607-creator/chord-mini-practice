@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       );
     } catch (error) {
       return NextResponse.json(
-        { success: false, error: { code: 'INVALID_QUERY', message: error instanceof Error ? error.message : 'Tham số không hợp lệ' } },
+        { success: false, error: { code: 'INVALID_QUERY', message: error instanceof Error ? error.message : 'Invalid parameters' } },
         { status: 400 },
       );
     }
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     const parsed = parseTranscriptionPayload(body);
     if (!parsed) {
       return NextResponse.json(
-        { success: false, error: { code: 'INVALID_PAYLOAD', message: 'Dữ liệu phân tích hợp âm không hợp lệ' } },
+        { success: false, error: { code: 'INVALID_PAYLOAD', message: 'Invalid chord analysis data' } },
         { status: 400 },
       );
     }
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
             success: false,
             error: {
               code: 'ANONYMOUS_QUOTA_EXCEEDED',
-              message: 'Bạn đã dùng hết 1 lượt thử miễn phí. Vui lòng đăng nhập để tiếp tục.',
+              message: 'You have used your 1 free trial. Please sign in to continue.',
             },
           },
           { status: 403 },
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        message: 'Đã lưu bản ghi hợp âm thành công',
+        message: 'Chord transcription saved',
         data: saved,
       },
       { status: 201 },
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Save transcription error:', error);
     return NextResponse.json(
-      { success: false, error: { code: 'INTERNAL_ERROR', message: error instanceof Error ? error.message : 'Không thể lưu bản ghi hợp âm' } },
+      { success: false, error: { code: 'INTERNAL_ERROR', message: error instanceof Error ? error.message : 'Could not save the chord transcription' } },
       { status: 500 },
     );
   }

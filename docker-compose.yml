@@ -62,6 +62,8 @@ services:
       - STEMS_API_URL=${STEMS_API_URL:-http://stems:8083}
       - STEMS_BACKEND_TIMEOUT_MS=${STEMS_BACKEND_TIMEOUT_MS:-1800000}
       - STEMS_QUOTA_GB=${STEMS_QUOTA_GB:-10}
+      - MUSCRIPTOR_API_URL=${MUSCRIPTOR_API_URL:-http://muscriptor:8084}
+      - MUSCRIPTOR_BACKEND_TIMEOUT_MS=${MUSCRIPTOR_BACKEND_TIMEOUT_MS:-1800000}
 
       # External APIs & Secrets
       - MUSIC_AI_API_KEY=${MUSIC_AI_API_KEY:-}
@@ -80,6 +82,8 @@ services:
       sheetsage:
         condition: service_healthy
       stems:
+        condition: service_healthy
+      muscriptor:
         condition: service_healthy
     networks:
       - chordmini-network
@@ -200,6 +204,38 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # 4b. MuScriptor - multi-instrument transcription for the melody "instruments" layer (GPU)
+  # Weights are gated (CC BY-NC 4.0): see muscriptor/README.md before enabling.
+  muscriptor:
+    build:
+      context: ./muscriptor
+      dockerfile: Dockerfile
+    container_name: chordmini-muscriptor
+    gpus: all
+    expose:
+      - "8084"
+    environment:
+      - PORT=8084
+      - STORAGE_AUDIO_DIR=/app/storage/audio
+      - MUSCRIPTOR_CKPT_DIR=/app/ckpts
+      - MUSCRIPTOR_DEVICE=${MUSCRIPTOR_DEVICE:-cuda}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Reads the cached source audio; never writes into the shared volume
+      - frontend-audio:/app/storage/audio:ro
+      - ./muscriptor/ckpts:/app/ckpts:ro
+    networks:
+      - chordmini-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/health"]
       interval: 30s
       timeout: 10s
       retries: 3

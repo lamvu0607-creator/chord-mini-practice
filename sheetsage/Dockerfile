@@ -23,6 +23,7 @@ RUN python -m pip install -r requirements.txt
 
 COPY app.py ./app.py
 COPY service.py ./service.py
+COPY vocal_postprocess.py ./vocal_postprocess.py
 COPY cache ./cache
 COPY src/sheetsage_upstream/sheetsage ./src/sheetsage_upstream/sheetsage
 

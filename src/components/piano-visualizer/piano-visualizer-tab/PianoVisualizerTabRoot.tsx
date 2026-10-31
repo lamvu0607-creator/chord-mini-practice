@@ -4,25 +4,31 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ScrollingChordStrip } from '@/components/piano-visualizer/ScrollingChordStrip';
 import type { ActiveInstrument } from '@/components/piano-visualizer/FallingNotesCanvas';
 import SheetMusicDisplay from '@/components/piano-visualizer/SheetMusicDisplay';
-import { exportChordEventsToMidi, downloadMidiFile } from '@/utils/midiExport';
-import { getAudioMixerService, type AudioMixerSettings } from '@/services/chord-playback/audioMixerService';
-import { DEFAULT_AUDIO_MIXER_SETTINGS } from '@/config/audioDefaults';
+import { exportNoteTracksToMidi, downloadMidiFile } from '@/utils/midiExport';
 import { useResolvedChordDisplayData } from '@/hooks/chord-analysis/useResolvedChordDisplayData';
-import { useAnalysisResults, useShowCorrectedChords, useChordCorrections, useKeySignature } from '@/stores/analysisStore';
 import {
-  useGuitarCapoFret,
-  useGuitarSelectedPositions,
+  useAnalysisResults,
+  useChordCorrections,
+  useEnabledInstrumentGroups,
+  useKeySignature,
+  useShowCorrectedChords,
+} from '@/stores/analysisStore';
+import { MELODY_PIPELINE_VERSION } from '@/types/sheetSage';
+import {
+  INSTRUMENT_GROUP_COLORS,
+  INSTRUMENT_GROUP_LABELS,
+  INSTRUMENT_GROUP_MIDI_PROGRAMS,
+  INSTRUMENT_GROUP_ORDER,
+} from '@/utils/instrumentGroups';
+import {
   usePitchShiftSemitones,
   useRomanNumerals,
   useSimplifyChords,
-  useTargetKey,
 } from '@/stores/uiStore';
-import type { GuitarVoicingSelection } from '@/utils/guitarVoicing';
-import { HARMONY_TRANSCRIPTION_COLOR, INSTRUMENT_COLORS, MELODIC_TRANSCRIPTION_COLOR } from './constants';
-import { areMixerSettingsEqual } from './helpers';
+import { HARMONY_TRANSCRIPTION_COLOR, MELODIC_TRANSCRIPTION_COLOR } from './constants';
+import MelodyLayerToggles from './MelodyLayerToggles';
 import { PianoRollPanel } from './PianoRollPanel';
 import { PianoVisualizerHeader } from './PianoVisualizerHeader';
-import { usePianoOnlyPlayback } from './usePianoOnlyPlayback';
 import { usePianoVisualizerTimelineModel } from './usePianoVisualizerTimelineModel';
 import { useSheetMusicModel } from './useSheetMusicModel';
 import type { PianoVisualizerTabProps, VisualizerDisplayMode } from './types';
@@ -37,8 +43,6 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
   sequenceCorrections = null,
   currentTime = 0,
   isPlaying = false,
-  isChordPlaybackEnabled = false,
-  currentBeatIndex = -1,
   audioUrl,
   sheetSageResult = null,
   showMelodicOverlay = false,
@@ -53,22 +57,12 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
   const storeKeySignature = useKeySignature();
   const mergedKeySignature = keySignature ?? storeKeySignature;
 
-  const targetKey = useTargetKey();
-  const guitarCapoFret = useGuitarCapoFret();
-  const guitarSelectedPositions = useGuitarSelectedPositions();
   const pitchShiftSemitones = usePitchShiftSemitones();
   const simplePianoBlockChords = useSimplifyChords();
   const { showRomanNumerals, romanNumeralData } = useRomanNumerals() as {
     showRomanNumerals?: boolean;
     romanNumeralData?: { analysis?: string[] } | null;
   };
-  const guitarVoicing = useMemo<Partial<GuitarVoicingSelection>>(
-    () => ({
-      capoFret: guitarCapoFret,
-      selectedPositions: guitarSelectedPositions,
-    }),
-    [guitarCapoFret, guitarSelectedPositions],
-  );
 
   const [speedIndex, setSpeedIndex] = useState(1);
   const [displayMode, setDisplayMode] = useState<VisualizerDisplayMode>('piano-roll');
@@ -77,14 +71,6 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
   const activeNotesSignatureRef = useRef('');
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
-  const [mixerSettings, setMixerSettings] = useState<AudioMixerSettings>(() => {
-    if (typeof window !== 'undefined') {
-      return getAudioMixerService().getSettings();
-    }
-    return {
-      ...DEFAULT_AUDIO_MIXER_SETTINGS,
-    };
-  });
 
   const measureContainerWidth = useCallback((container: HTMLDivElement | null) => {
     if (!container) {
@@ -121,14 +107,6 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
     resizeObserverRef.current = null;
   }, []);
 
-  useEffect(() => {
-    const mixer = getAudioMixerService();
-    const unsub = mixer.addListener((settings) => {
-      setMixerSettings((prev) => (areMixerSettingsEqual(prev, settings) ? prev : { ...settings }));
-    });
-    return unsub;
-  }, []);
-
   const {
     resolvedChordGridData,
     displayedChords,
@@ -151,8 +129,6 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
     sheetSageResult,
     showMelodicOverlay,
     pitchShiftSemitones,
-    isChordPlaybackEnabled,
-    mixerSettings,
     containerWidth,
     showRomanNumerals,
     romanNumeralData,
@@ -180,22 +156,25 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
     gridLyrics,
   });
 
-  const effectiveActiveInstruments = useMemo(() => {
-    if (isChordPlaybackEnabled) return timelineModel.activeInstruments;
-    return [{ name: 'Piano', color: INSTRUMENT_COLORS.piano }];
-  }, [isChordPlaybackEnabled, timelineModel.activeInstruments]);
+  const enabledInstrumentGroups = useEnabledInstrumentGroups();
+  const isMelodyV2 = sheetSageResult?.pipelineVersion === MELODY_PIPELINE_VERSION;
+  const visibleInstrumentGroups = useMemo(() => {
+    const present = new Set((sheetSageResult?.instrumentNotes ?? []).map((note) => note.group));
+    return INSTRUMENT_GROUP_ORDER.filter((group) => present.has(group) && enabledInstrumentGroups.includes(group));
+  }, [enabledInstrumentGroups, sheetSageResult?.instrumentNotes]);
 
-  const legendInstruments = useMemo(() => {
-    if (showMelodicOverlay && timelineModel.melodyOverlayNotes.length > 0) {
-      const extra: ActiveInstrument[] = [{ name: 'Melody Lead', color: MELODIC_TRANSCRIPTION_COLOR }];
-      if (timelineModel.melodyOverlayNotes.some((n) => n.color === HARMONY_TRANSCRIPTION_COLOR)) {
-        extra.push({ name: 'Harmony (Bè)', color: HARMONY_TRANSCRIPTION_COLOR });
-      }
-      return [...effectiveActiveInstruments, ...extra];
+  // Only model output is drawn in the piano roll; chord-symbol voicings are no longer rendered here.
+  const legendInstruments = useMemo<ActiveInstrument[]>(() => {
+    if (!showMelodicOverlay || timelineModel.melodyOverlayNotes.length === 0) return [];
+    const layers: ActiveInstrument[] = [{ name: isMelodyV2 ? 'Vocal' : 'Melody Lead', color: MELODIC_TRANSCRIPTION_COLOR }];
+    if (timelineModel.melodyOverlayNotes.some((n) => n.color === HARMONY_TRANSCRIPTION_COLOR)) {
+      layers.push({ name: 'Harmony', color: HARMONY_TRANSCRIPTION_COLOR });
     }
-
-    return effectiveActiveInstruments;
-  }, [effectiveActiveInstruments, showMelodicOverlay, timelineModel.melodyOverlayNotes]);
+    for (const group of visibleInstrumentGroups) {
+      layers.push({ name: INSTRUMENT_GROUP_LABELS[group], color: INSTRUMENT_GROUP_COLORS[group] });
+    }
+    return layers;
+  }, [isMelodyV2, showMelodicOverlay, timelineModel.melodyOverlayNotes, visibleInstrumentGroups]);
 
   const handleActiveNotesChange = useCallback((notes: Set<number>, colors: Map<number, string>) => {
     const signature = Array.from(notes)
@@ -212,48 +191,27 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
     setNoteColors(colors);
   }, []);
 
-  usePianoOnlyPlayback(
-    timelineModel.playbackChordEvents,
-    currentTime,
-    currentBeatIndex,
-    isPlaying,
-    isChordPlaybackEnabled,
-    timelineModel.detectedBpm || 120,
-    timelineModel.timeSignature,
-    timelineModel.dynamicsAnalyzer,
-    guitarVoicing,
-    targetKey,
-    simplePianoBlockChords,
-  );
+  const midiTracks = useMemo(() => {
+    if (!showMelodicOverlay || !sheetSageResult) return [];
+    return [
+      { name: isMelodyV2 ? 'Vocal' : 'Melody', noteEvents: sheetSageResult.noteEvents ?? [] },
+      ...visibleInstrumentGroups.map((group) => ({
+        name: INSTRUMENT_GROUP_LABELS[group],
+        noteEvents: (sheetSageResult.instrumentNotes ?? []).filter((note) => note.group === group),
+        program: INSTRUMENT_GROUP_MIDI_PROGRAMS[group],
+      })),
+    ].filter((track) => track.noteEvents.length > 0);
+  }, [isMelodyV2, sheetSageResult, showMelodicOverlay, visibleInstrumentGroups]);
 
   const handleMidiDownload = useCallback(() => {
-    if (timelineModel.playbackChordEvents.length === 0) return;
-
-    const instruments = timelineModel.activeInstruments.length > 0
-      ? timelineModel.activeInstruments.map((instrument) => ({ name: instrument.name, color: instrument.color }))
-      : undefined;
-    const additionalTracks = showMelodicOverlay && sheetSageResult?.noteEvents?.length
-      ? [{ name: 'Melody Violin', noteEvents: sheetSageResult.noteEvents }]
-      : undefined;
-    const midiData = exportChordEventsToMidi(timelineModel.playbackChordEvents, {
-      instruments,
+    const midiData = exportNoteTracksToMidi(midiTracks, {
       bpm: timelineModel.detectedBpm || undefined,
       timeSignature: timelineModel.timeSignature,
-      signalAnalysis: timelineModel.signalAnalysis,
-      additionalTracks,
     });
     if (midiData.length > 0) {
       downloadMidiFile(midiData, 'piano-visualizer.mid');
     }
-  }, [
-    sheetSageResult,
-    showMelodicOverlay,
-    timelineModel.activeInstruments,
-    timelineModel.detectedBpm,
-    timelineModel.playbackChordEvents,
-    timelineModel.signalAnalysis,
-    timelineModel.timeSignature,
-  ]);
+  }, [midiTracks, timelineModel.detectedBpm, timelineModel.timeSignature]);
 
   if (!mergedAnalysisResults) {
     return (
@@ -270,7 +228,7 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
   return (
     <div className={`piano-visualizer-tab space-y-3 ${className}`}>
       <PianoVisualizerHeader
-        playbackChordEventsCount={timelineModel.playbackChordEvents.length}
+        midiTrackCount={midiTracks.length}
         onMidiDownload={handleMidiDownload}
         effectiveDisplayMode={sheetMusicModel.effectiveDisplayMode}
         hasSheetMusicData={sheetMusicModel.hasSheetMusicData}
@@ -279,6 +237,10 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
         speedIndex={speedIndex}
         onSpeedChange={setSpeedIndex}
       />
+
+      {showMelodicOverlay && sheetSageResult?.instrumentNotes?.length ? (
+        <MelodyLayerToggles instrumentNotes={sheetSageResult.instrumentNotes} />
+      ) : null}
 
       <ScrollingChordStrip
         chordEvents={timelineModel.stripChordEvents}
@@ -307,19 +269,10 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
       ) : (
         <PianoRollPanel
           legendInstruments={legendInstruments}
-          isChordPlaybackEnabled={isChordPlaybackEnabled}
           setMeasuredContainerRef={setMeasuredContainerRef}
           keyboardWidth={timelineModel.keyboardWidth}
-          playbackChordEvents={timelineModel.playbackChordEvents}
           currentTime={currentTime}
           isPlaying={isPlaying}
-          effectiveActiveInstruments={effectiveActiveInstruments}
-          detectedBpm={timelineModel.detectedBpm}
-          timeSignature={timelineModel.timeSignature}
-          guitarVoicing={guitarVoicing}
-          targetKey={targetKey}
-          dynamicsAnalyzer={timelineModel.dynamicsAnalyzer}
-          simplePianoBlockChords={simplePianoBlockChords}
           melodyOverlayNotes={timelineModel.melodyOverlayNotes}
           handleActiveNotesChange={handleActiveNotesChange}
           activeNotes={activeNotes}

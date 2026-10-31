@@ -54,7 +54,7 @@ interface MidiNoteEvent {
   isNoteOn: boolean;
 }
 
-interface AdditionalMidiTrackConfig {
+export interface AdditionalMidiTrackConfig {
   name: string;
   noteEvents: SheetSageNoteEvent[];
   program?: number;
@@ -365,32 +365,15 @@ export function exportChordEventsToMidi(
       : [{ name: 'piano', color: '#60a5fa' }];
   const additionalTracks = options?.additionalTracks?.filter((track) => track.noteEvents.length > 0) ?? [];
 
-  const maxPlayableTracks = 15;
   const totalRequestedTracks = instrumentList.length + additionalTracks.length;
-  const numTracks = 1 + Math.min(totalRequestedTracks, maxPlayableTracks);
-
-  // Header chunk
-  const header = new MidiBuffer();
-  header.writeString('MThd');
-  header.writeUint32(6);
-  header.writeUint16(1); // format 1
-  header.writeUint16(numTracks);
-  header.writeUint16(TICKS_PER_QUARTER);
-
-  // Tempo track
-  const tempoTrack = buildTempoTrack(bpm, timeSignature);
 
   // Instrument tracks (MIDI supports channels 0-15; channel 9 is reserved for GM drums)
-  if (typeof console !== 'undefined') {
-    console.info(`MIDI export: BPM=${bpm}, time signature=${timeSignature}/4, tracks=${numTracks}`);
-  }
-
-  if (totalRequestedTracks > maxPlayableTracks) {
+  if (totalRequestedTracks > MAX_PLAYABLE_TRACKS) {
     console.warn(`MIDI export: ${totalRequestedTracks} tracks requested but only 15 channels available (channel 9 reserved for drums). Extra tracks will be ignored.`);
   }
   const allTrackChunks: Uint8Array[] = [];
 
-  instrumentList.slice(0, maxPlayableTracks).forEach((inst, idx) => {
+  instrumentList.slice(0, MAX_PLAYABLE_TRACKS).forEach((inst, idx) => {
     const channel = idx >= 9 ? idx + 1 : idx; // skip channel 9 (GM drums)
     const program = GM_PROGRAMS[inst.name.toLowerCase()] ?? 0;
     const midiNotes = generateInstrumentMidiNotes(
@@ -405,20 +388,68 @@ export function exportChordEventsToMidi(
     allTrackChunks.push(buildTrackChunk(midiNotes, channel, program, displayName));
   });
 
-  const remainingTrackSlots = maxPlayableTracks - allTrackChunks.length;
-  additionalTracks.slice(0, remainingTrackSlots).forEach((track, offset) => {
-    const trackIndex = instrumentList.length + offset;
-    const channel = trackIndex >= 9 ? trackIndex + 1 : trackIndex;
+  const remainingTrackSlots = MAX_PLAYABLE_TRACKS - allTrackChunks.length;
+  allTrackChunks.push(
+    ...buildNoteTrackChunks(additionalTracks.slice(0, remainingTrackSlots), instrumentList.length, bpm),
+  );
+
+  return assembleMidiFile(bpm, timeSignature, allTrackChunks);
+}
+
+/**
+ * Export raw transcribed note tracks (vocal line, instrument layers) to a MIDI file,
+ * one track per entry. Returns an empty array when no track has notes.
+ */
+export function exportNoteTracksToMidi(
+  tracks: AdditionalMidiTrackConfig[],
+  options?: Pick<MidiExportOptions, 'bpm' | 'timeSignature'>,
+): Uint8Array {
+  const playable = tracks.filter((track) => track.noteEvents.length > 0);
+  if (playable.length === 0) return new Uint8Array(0);
+
+  if (playable.length > MAX_PLAYABLE_TRACKS) {
+    console.warn(`MIDI export: ${playable.length} tracks requested but only 15 channels available (channel 9 reserved for drums). Extra tracks will be ignored.`);
+  }
+  const bpm = options?.bpm ?? 120;
+  const chunks = buildNoteTrackChunks(playable.slice(0, MAX_PLAYABLE_TRACKS), 0, bpm);
+  return assembleMidiFile(bpm, options?.timeSignature ?? 4, chunks);
+}
+
+const MAX_PLAYABLE_TRACKS = 15;
+
+function buildNoteTrackChunks(
+  tracks: AdditionalMidiTrackConfig[],
+  firstTrackIndex: number,
+  bpm: number,
+): Uint8Array[] {
+  return tracks.map((track, offset) => {
+    const trackIndex = firstTrackIndex + offset;
+    const channel = trackIndex >= 9 ? trackIndex + 1 : trackIndex; // skip channel 9 (GM drums)
     const midiNotes = generateAdditionalTrackMidiNotes(track.noteEvents, bpm, channel);
-    allTrackChunks.push(
-      buildTrackChunk(
-        midiNotes,
-        channel,
-        track.program ?? GM_PROGRAMS.violin,
-        track.name,
-      ),
-    );
+    return buildTrackChunk(midiNotes, channel, track.program ?? GM_PROGRAMS.violin, track.name);
   });
+}
+
+/** Format-1 file: header, tempo track, then the given track chunks. */
+function assembleMidiFile(bpm: number, timeSignature: number, trackChunks: Uint8Array[]): Uint8Array {
+  const numTracks = 1 + trackChunks.length;
+
+  // Header chunk
+  const header = new MidiBuffer();
+  header.writeString('MThd');
+  header.writeUint32(6);
+  header.writeUint16(1); // format 1
+  header.writeUint16(numTracks);
+  header.writeUint16(TICKS_PER_QUARTER);
+
+  // Tempo track
+  const tempoTrack = buildTempoTrack(bpm, timeSignature);
+
+  if (typeof console !== 'undefined') {
+    console.info(`MIDI export: BPM=${bpm}, time signature=${timeSignature}/4, tracks=${numTracks}`);
+  }
+
+  const allTrackChunks = trackChunks;
 
   // Combine all chunks
   const headerBytes = header.toUint8Array();

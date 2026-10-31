@@ -1,4 +1,4 @@
-import type { SheetSageResult } from '@/types/sheetSage';
+import type { MelodyJob, MelodyJobStage, SheetSageResult } from '@/types/sheetSage';
 import { getCachedSheetSageMelody } from '@/services/sheetsage/sheetSageCacheClient';
 import { buildAudioProxyUrl } from '@/utils/audioProxyUrl';
 import { isLocalBackend } from '@/utils/backendConfig';
@@ -159,4 +159,67 @@ export async function requestSheetSageTranscription(
   } catch (error) {
     return recoverSheetSageResultFromCache(videoId, error);
   }
+}
+
+const MELODY_JOB_POLL_MS = 2000;
+
+/** Melody v2 needs a signed-in user (it queues a stem separation on the GPU). */
+export class MelodyAuthRequiredError extends Error {
+  constructor() {
+    super('Sign in to transcribe the melody from the vocal stem and MuScriptor.');
+    this.name = 'MelodyAuthRequiredError';
+  }
+}
+
+export interface MelodyJobUpdate {
+  stage: MelodyJobStage;
+  progress?: number | null;
+  queuePosition?: number;
+}
+
+/**
+ * Melody v2: vocal line from the SCNet vocals stem + instrument notes from MuScriptor, computed by a
+ * background job. Resolves with the result, or `null` when the source is not supported (uploads),
+ * so the caller can fall back to {@link requestSheetSageTranscription}.
+ */
+export async function requestMelodyV2Transcription(
+  videoId: string,
+  onUpdate?: (update: MelodyJobUpdate) => void,
+  isCancelled: () => boolean = () => false,
+): Promise<SheetSageResult | null> {
+  const response = await fetch('/api/transcribe-sheetsage', {
+    method: 'POST',
+    headers: await buildSheetSageRequestHeaders('application/json'),
+    body: JSON.stringify({ videoId, pipeline: 'v2' }),
+  });
+  const payload = await response.json().catch(() => null);
+  if (response.status === 401) throw new MelodyAuthRequiredError();
+  if (response.status === 400 && payload?.code === 'UNSUPPORTED_SOURCE') return null;
+  if (!response.ok || !payload?.success) {
+    throw new Error(payload?.error || `Melody transcription failed (${response.status})`);
+  }
+  if (payload.data) return payload.data as SheetSageResult;
+
+  const job = payload.job as MelodyJob | undefined;
+  if (!job?.jobId) throw new Error('Melody transcription did not return a job');
+  onUpdate?.({ stage: job.stage, progress: job.progress });
+
+  while (!isCancelled()) {
+    await delay(MELODY_JOB_POLL_MS);
+    if (isCancelled()) break;
+    const poll = await fetch(`/api/transcribe-sheetsage/jobs/${encodeURIComponent(job.jobId)}`, { cache: 'no-store' });
+    const status = await poll.json().catch(() => null);
+    if (poll.status === 401) throw new MelodyAuthRequiredError();
+    if (!poll.ok || !status?.success || !status.job) {
+      throw new Error(status?.error || `Melody job lookup failed (${poll.status})`);
+    }
+    const current = status.job as MelodyJob;
+    if (current.status === 'failed') throw new Error(current.error || 'Melody transcription failed');
+    if (current.status === 'completed') {
+      if (!status.data) throw new Error('Melody job finished without a result');
+      return status.data as SheetSageResult;
+    }
+    onUpdate?.({ stage: current.stage, progress: current.progress, queuePosition: status.queuePosition });
+  }
+  throw new Error('Melody transcription cancelled');
 }

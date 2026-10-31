@@ -86,7 +86,7 @@ export class AudioProcessingService {
           } catch (e) {
             console.error('Failed to trigger mandatory login modal:', e);
           }
-          const quotaMsg = data?.error?.message || 'Bạn đã sử dụng hết 1 lượt thử miễn phí. Vui lòng đăng nhập để tiếp tục.';
+          const quotaMsg = data?.error?.message || 'You have used your 1 free trial. Please sign in to continue.';
           throw new Error(quotaMsg);
         }
         const errorMsg = typeof data?.error === 'string' ? data.error : data?.error?.message || `HTTP error ${response.status}: Failed to extract audio`;

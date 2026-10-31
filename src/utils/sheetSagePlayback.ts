@@ -1,4 +1,5 @@
-import type { SheetSageResult } from '@/types/sheetSage';
+import type { InstrumentGroup, SheetSageResult } from '@/types/sheetSage';
+import { INSTRUMENT_GROUP_COLORS } from '@/utils/instrumentGroups';
 import type { DynamicsAnalyzer } from '@/services/audio/dynamicsAnalyzer';
 import { audioContextManager } from '@/services/audio/audioContextManager';
 import { midiToNoteName, type ChordEvent } from '@/utils/chordToMidi';
@@ -351,6 +352,7 @@ export function buildSheetSageExtraVisualNotes(
   color: string,
   pitchShiftSemitones: number = 0,
   harmonyColor: string = '#ec4899',
+  enabledInstrumentGroups: readonly InstrumentGroup[] = [],
 ): SheetSageVisualNote[] {
   if (!result) {
     return [];
@@ -379,6 +381,19 @@ export function buildSheetSageExtraVisualNotes(
         endTime: event.offset,
         color: harmonyColor,
         labelText: event.intervalTag,
+      });
+    }
+  }
+
+  if (result.instrumentNotes?.length && enabledInstrumentGroups.length > 0) {
+    const enabled = new Set(enabledInstrumentGroups);
+    for (const event of result.instrumentNotes) {
+      if (!enabled.has(event.group)) continue;
+      visualNotes.push({
+        midi: clampMidiPitch(event.pitch + pitchShiftSemitones),
+        startTime: event.onset,
+        endTime: event.offset,
+        color: INSTRUMENT_GROUP_COLORS[event.group],
       });
     }
   }

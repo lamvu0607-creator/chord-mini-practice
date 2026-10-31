@@ -30,7 +30,7 @@ export function uploadAnalyzeAudio(
     request.upload.onprogress = (event) => {
       if (event.lengthComputable) options.onProgress?.(event.loaded / event.total);
     };
-    request.onerror = () => reject(new AnalyzeUploadError('Tải lên thất bại. Kiểm tra kết nối mạng.', 0));
+    request.onerror = () => reject(new AnalyzeUploadError('Upload failed. Check your network connection.', 0));
     request.onload = () => {
       const payload = request.response ?? {};
       if (request.status >= 200 && request.status < 300 && payload.success) {
@@ -39,8 +39,8 @@ export function uploadAnalyzeAudio(
       }
       const error = payload.error;
       const message = request.status === 401
-        ? 'Bạn cần đăng nhập để tải file lên.'
-        : typeof error === 'string' ? error : error?.message || `Tải lên thất bại (${request.status})`;
+        ? 'You need to sign in to upload files.'
+        : typeof error === 'string' ? error : error?.message || `Upload failed (${request.status})`;
       reject(new AnalyzeUploadError(message, request.status));
     };
     const form = new FormData();

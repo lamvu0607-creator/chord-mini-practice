@@ -3,9 +3,12 @@
 import React, { useEffect, useRef, useState, createElement } from 'react';
 import { addToast, closeToast } from '@heroui/react';
 import { mergeToastClassNames } from '@/utils/toastStyles';
+import { useSheetSageJobStatus } from '@/stores/analysisStore';
+import type { MelodyJobStage } from '@/types/sheetSage';
 
 const DEFAULT_REFERENCE_DURATION_SECONDS = 240;
-const DEFAULT_ESTIMATED_MELODY_SECONDS = 100;
+// Melody v2 = stem separation + vocal line + MuScriptor; about 3 minutes for a 4-minute song on an 8 GB GPU.
+const DEFAULT_ESTIMATED_MELODY_SECONDS = 180;
 
 function createNonPausingProgressBar(durationMs: number, id: string) {
   const animName = `toast-progress-${id}`;
@@ -72,6 +75,27 @@ const MelodyCountdownDescription: React.FC<MelodyCountdownDescriptionProps> = ({
   return <span>Estimated wait: about {remainingSeconds}s for this song.</span>;
 };
 
+const MELODY_STAGE_LABELS: Record<MelodyJobStage, string> = {
+  queued: 'Waiting for GPU',
+  waiting_stems: 'Separating stems (SCNet)',
+  vocal: 'Transcribing vocals',
+  instruments: 'Transcribing instruments (MuScriptor)',
+  done: 'Finishing',
+};
+
+/** Melody v2 jobs report their stage; older single-request transcriptions only have the time estimate. */
+const MelodyStatusDescription: React.FC<MelodyCountdownDescriptionProps> = ({ estimateSeconds }) => {
+  const liveStatus = useSheetSageJobStatus();
+  // The status is cleared just before the toast closes; keep the last one so the countdown text does not flash.
+  const [jobStatus, setJobStatus] = useState(liveStatus);
+  if (liveStatus && liveStatus !== jobStatus) setJobStatus(liveStatus);
+  if (!jobStatus) return <MelodyCountdownDescription estimateSeconds={estimateSeconds} />;
+
+  const percent = typeof jobStatus.progress === 'number' ? ` ${Math.round(jobStatus.progress * 100)}%` : '';
+  const queue = jobStatus.stage === 'queued' && jobStatus.queuePosition ? ` (${jobStatus.queuePosition} ${jobStatus.queuePosition === 1 ? 'job' : 'jobs'} ahead)` : '';
+  return <span>{MELODY_STAGE_LABELS[jobStatus.stage]}{percent}{queue}…</span>;
+};
+
 interface MelodyTranscriptionStatusToastProps {
   isComputing: boolean;
   durationSeconds?: number | null;
@@ -97,7 +121,7 @@ const MelodyTranscriptionStatusToast: React.FC<MelodyTranscriptionStatusToastPro
       const durationMs = estimateSeconds * 1000;
       const key = addToast({
         title: 'Transcribing Melody',
-        description: <MelodyCountdownDescription estimateSeconds={estimateSeconds} />,
+        description: <MelodyStatusDescription estimateSeconds={estimateSeconds} />,
         color: 'default',
         timeout: 0,
         hideCloseButton: true,

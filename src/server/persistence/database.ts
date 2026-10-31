@@ -6,7 +6,7 @@ import path from 'path';
 
 import * as schema from './schema';
 
-const DATABASE_SCHEMA_VERSION = 3;
+const DATABASE_SCHEMA_VERSION = 4;
 
 const INITIAL_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -126,6 +126,26 @@ CREATE TABLE IF NOT EXISTS anonymous_quotas (
   created_at_ms INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS anonymous_quotas_ip_idx ON anonymous_quotas(ip_address);
+CREATE TABLE IF NOT EXISTS melody_jobs (
+  job_id TEXT PRIMARY KEY,
+  video_id TEXT NOT NULL,
+  source_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  stage TEXT NOT NULL DEFAULT 'queued',
+  requested_by TEXT,
+  input_path TEXT NOT NULL,
+  stem_job_id TEXT,
+  progress REAL,
+  error TEXT,
+  attempt_count INTEGER NOT NULL DEFAULT 0,
+  next_attempt_at_ms INTEGER NOT NULL,
+  lease_expires_at_ms INTEGER,
+  created_at_ms INTEGER NOT NULL,
+  updated_at_ms INTEGER NOT NULL,
+  completed_at_ms INTEGER
+);
+CREATE INDEX IF NOT EXISTS melody_jobs_video_idx ON melody_jobs(video_id, status, updated_at_ms DESC);
+CREATE INDEX IF NOT EXISTS melody_jobs_queue_idx ON melody_jobs(status, next_attempt_at_ms, lease_expires_at_ms);
 `;
 
 type DatabaseState = {
@@ -194,6 +214,10 @@ function initializeDatabase(): DatabaseState {
         );
         CREATE INDEX IF NOT EXISTS anonymous_quotas_ip_idx ON anonymous_quotas(ip_address);
       `);
+      sqlite.prepare('INSERT INTO schema_migrations(version, applied_at_ms) VALUES (?, ?)').run(3, Date.now());
+    }
+    if (currentVersion < 4) {
+      // melody_jobs is created by INITIAL_SCHEMA_SQL (IF NOT EXISTS); this only records the version.
       sqlite.prepare('INSERT INTO schema_migrations(version, applied_at_ms) VALUES (?, ?)').run(DATABASE_SCHEMA_VERSION, Date.now());
     }
   });

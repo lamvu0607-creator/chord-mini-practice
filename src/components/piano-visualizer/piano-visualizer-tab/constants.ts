@@ -13,14 +13,5 @@ export const SPEED_PRESETS = [
 
 export type SpeedPreset = typeof SPEED_PRESETS[number];
 
-export const INSTRUMENT_COLORS: Record<string, string> = {
-  piano: '#60a5fa',
-  guitar: '#34d399',
-  violin: '#a78bfa',
-  flute: '#fb923c',
-  saxophone: '#facc15',
-  bass: '#f87171',
-};
-
 export const MELODIC_TRANSCRIPTION_COLOR = '#22d3ee';
 export const HARMONY_TRANSCRIPTION_COLOR = '#ec4899';

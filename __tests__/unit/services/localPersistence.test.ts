@@ -32,7 +32,7 @@ describe('local SQLite persistence', () => {
   it('migrates on startup and preserves data across a restart', async () => {
     const persistence = await import('@/server/persistence/database');
     const docs = await import('@/server/persistence/jsonDocumentRepository');
-    expect(persistence.getDatabaseHealth()).toMatchObject({ ready: true, schemaVersion: 3, journalMode: 'wal' });
+    expect(persistence.getDatabaseHealth()).toMatchObject({ ready: true, schemaVersion: 4, journalMode: 'wal' });
     docs.setLocalDocument('lyrics', 'video-one', { lyrics: 'hello', createdAtMs: 10 });
     persistence.closeDatabaseForTests();
     expect(docs.getLocalDocument('lyrics', 'video-one')).toMatchObject({ lyrics: 'hello' });

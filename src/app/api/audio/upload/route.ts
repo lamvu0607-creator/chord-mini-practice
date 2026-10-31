@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
   const declaredLength = Number(request.headers.get('content-length') || 0);
   if (declaredLength > maxUploadBytes() + 1024 * 1024) {
-    return NextResponse.json({ success: false, error: 'File quá lớn' }, { status: 413 });
+    return NextResponse.json({ success: false, error: 'File too large' }, { status: 413 });
   }
 
   const formData = await request.formData().catch(() => null);
@@ -48,16 +48,16 @@ export async function POST(request: NextRequest) {
   // Structural check: runtimes may hand back a File/Blob class from a different realm.
   const file = entry && typeof entry === 'object' && typeof entry.arrayBuffer === 'function' ? entry : null;
   if (!file || file.size === 0) {
-    return NextResponse.json({ success: false, error: 'Thiếu file audio' }, { status: 400 });
+    return NextResponse.json({ success: false, error: 'Missing audio file' }, { status: 400 });
   }
   if (file.size > maxUploadBytes()) {
-    return NextResponse.json({ success: false, error: 'File quá lớn' }, { status: 413 });
+    return NextResponse.json({ success: false, error: 'File too large' }, { status: 413 });
   }
   const originalName = 'name' in file && typeof file.name === 'string' ? file.name : '';
   const extension = path.extname(originalName).toLowerCase();
   const contentType = CONTENT_TYPES[extension];
   if (!contentType) {
-    return NextResponse.json({ success: false, error: 'Định dạng audio không được hỗ trợ' }, { status: 415 });
+    return NextResponse.json({ success: false, error: 'Unsupported audio format' }, { status: 415 });
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());

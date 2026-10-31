@@ -1,21 +1,19 @@
 import { useMemo, type ReactElement } from 'react';
-import type { ActiveInstrument } from '@/components/piano-visualizer/FallingNotesCanvas';
 import { useSharedAudioDynamics } from '@/hooks/audio/useSharedAudioDynamics';
 import { getDisplayAccidentalPreference } from '@/utils/chordUtils';
 import { buildBeatToChordSequenceMap, formatRomanNumeral } from '@/utils/chordFormatting';
 import { createShiftedChords } from '@/utils/chordProcessing';
 import { mergeConsecutiveChordEvents } from '@/utils/instrumentNoteGeneration';
 import { buildSheetSageExtraVisualNotes } from '@/utils/sheetSagePlayback';
+import { useEnabledInstrumentGroups } from '@/stores/analysisStore';
 import {
   buildChordTimeline,
   type ChordEvent,
 } from '@/utils/chordToMidi';
-import type { AudioMixerSettings } from '@/services/chord-playback/audioMixerService';
 import type { AnalysisResult } from '@/services/chord-analysis/chordRecognitionService';
 import type { SheetSageResult } from '@/types/sheetSage';
 import {
   HARMONY_TRANSCRIPTION_COLOR,
-  INSTRUMENT_COLORS,
   MELODIC_TRANSCRIPTION_COLOR,
   PIANO_WHITE_KEY_COUNT,
 } from './constants';
@@ -37,8 +35,6 @@ interface UsePianoVisualizerTimelineModelParams {
   sheetSageResult?: SheetSageResult | null;
   showMelodicOverlay: boolean;
   pitchShiftSemitones: number;
-  isChordPlaybackEnabled: boolean;
-  mixerSettings: AudioMixerSettings;
   containerWidth: number;
   showRomanNumerals?: boolean;
   romanNumeralData?: RomanNumeralDataShape;
@@ -55,8 +51,6 @@ export function usePianoVisualizerTimelineModel({
   sheetSageResult = null,
   showMelodicOverlay,
   pitchShiftSemitones,
-  isChordPlaybackEnabled,
-  mixerSettings,
   containerWidth,
   showRomanNumerals,
   romanNumeralData,
@@ -195,23 +189,18 @@ export function usePianoVisualizerTimelineModel({
     return Math.max(10, Math.min(24, calculated));
   }, [containerWidth]);
 
-  const activeInstruments = useMemo<ActiveInstrument[]>(() => {
-    if (!isChordPlaybackEnabled) return [];
-
-    const instruments: ActiveInstrument[] = [];
-    if (mixerSettings.pianoVolume > 0) instruments.push({ name: 'Piano', color: INSTRUMENT_COLORS.piano });
-    if (mixerSettings.guitarVolume > 0) instruments.push({ name: 'Guitar', color: INSTRUMENT_COLORS.guitar });
-    if (mixerSettings.violinVolume > 0) instruments.push({ name: 'Violin', color: INSTRUMENT_COLORS.violin });
-    if (mixerSettings.fluteVolume > 0) instruments.push({ name: 'Flute', color: INSTRUMENT_COLORS.flute });
-    if (mixerSettings.bassVolume > 0) instruments.push({ name: 'Bass', color: INSTRUMENT_COLORS.bass });
-    return instruments;
-  }, [isChordPlaybackEnabled, mixerSettings]);
-
+  const enabledInstrumentGroups = useEnabledInstrumentGroups();
   const melodyOverlayNotes = useMemo(
     () => showMelodicOverlay
-      ? buildSheetSageExtraVisualNotes(sheetSageResult, MELODIC_TRANSCRIPTION_COLOR, pitchShiftSemitones, HARMONY_TRANSCRIPTION_COLOR)
+      ? buildSheetSageExtraVisualNotes(
+        sheetSageResult,
+        MELODIC_TRANSCRIPTION_COLOR,
+        pitchShiftSemitones,
+        HARMONY_TRANSCRIPTION_COLOR,
+        enabledInstrumentGroups,
+      )
       : [],
-    [pitchShiftSemitones, sheetSageResult, showMelodicOverlay],
+    [enabledInstrumentGroups, pitchShiftSemitones, sheetSageResult, showMelodicOverlay],
   );
 
   const keyboardWidth = useMemo(
@@ -235,7 +224,6 @@ export function usePianoVisualizerTimelineModel({
     beatToChordSequenceMap,
     beatRomanNumerals,
     beatModulations,
-    activeInstruments,
     melodyOverlayNotes,
     whiteKeyWidth,
     keyboardWidth,

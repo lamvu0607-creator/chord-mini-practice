@@ -3,7 +3,38 @@ import { devtools } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
 import { AnalysisResult } from '@/services/chord-analysis/chordRecognitionService';
 import { LyricsData } from '@/types/musicAiTypes';
-import { SheetSageResult } from '@/types/sheetSage';
+import type { InstrumentGroup, MelodyJobStage, SheetSageResult } from '@/types/sheetSage';
+import { DEFAULT_ENABLED_INSTRUMENT_GROUPS, INSTRUMENT_GROUP_ORDER } from '@/utils/instrumentGroups';
+
+/** Live status of a melody v2 background job, shown in the melody toast. */
+export interface SheetSageJobStatus {
+  stage: MelodyJobStage;
+  progress?: number | null;
+  queuePosition?: number;
+}
+
+const INSTRUMENT_GROUPS_STORAGE_KEY = 'chordmini.melody.instrumentGroups';
+
+function readEnabledInstrumentGroups(): InstrumentGroup[] {
+  try {
+    const raw = typeof window !== 'undefined' ? window.localStorage.getItem(INSTRUMENT_GROUPS_STORAGE_KEY) : null;
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    if (Array.isArray(parsed)) {
+      return INSTRUMENT_GROUP_ORDER.filter((group) => parsed.includes(group));
+    }
+  } catch {
+    // Private mode or corrupted value: fall back to the defaults.
+  }
+  return [...DEFAULT_ENABLED_INSTRUMENT_GROUPS];
+}
+
+function writeEnabledInstrumentGroups(groups: InstrumentGroup[]): void {
+  try {
+    window.localStorage.setItem(INSTRUMENT_GROUPS_STORAGE_KEY, JSON.stringify(groups));
+  } catch {
+    // Storage unavailable; the choice just won't persist.
+  }
+}
 
 // Identity wrapper to disable devtools middleware in production with proper typing
 function identityDevtools<S, Mps extends [] = [], Mcs extends [] = []>(
@@ -50,6 +81,9 @@ interface AnalysisStore {
   isCheckingSheetSageBackend: boolean;
   isSheetSageBackendAvailable: boolean | null;
   sheetSageBackendError: string | null;
+  sheetSageJobStatus: SheetSageJobStatus | null;
+  /** Instrument layers (MuScriptor groups) shown in the piano roll; the vocal line is always shown. */
+  enabledInstrumentGroups: InstrumentGroup[];
 
   // Analysis operations
   startAnalysis: () => void;
@@ -96,6 +130,8 @@ interface AnalysisStore {
   setIsCheckingSheetSageBackend: (checking: boolean) => void;
   setIsSheetSageBackendAvailable: (available: boolean | null) => void;
   setSheetSageBackendError: (error: string | null) => void;
+  setSheetSageJobStatus: (status: SheetSageJobStatus | null) => void;
+  toggleInstrumentGroup: (group: InstrumentGroup) => void;
   clearSheetSage: () => void;
 }
 
@@ -127,6 +163,8 @@ export const useAnalysisStore = create<AnalysisStore>()(
       isCheckingSheetSageBackend: false,
       isSheetSageBackendAvailable: null,
       sheetSageBackendError: null,
+      sheetSageJobStatus: null,
+      enabledInstrumentGroups: readEnabledInstrumentGroups(),
 
       // Analysis operations
       startAnalysis: () =>
@@ -180,6 +218,7 @@ export const useAnalysisStore = create<AnalysisStore>()(
             isCheckingSheetSageBackend: false,
             isSheetSageBackendAvailable: null,
             sheetSageBackendError: null,
+            sheetSageJobStatus: null,
           },
           false,
           'resetAnalysis'
@@ -280,12 +319,28 @@ export const useAnalysisStore = create<AnalysisStore>()(
       setSheetSageBackendError: (error) =>
         set({ sheetSageBackendError: error }, false, 'setSheetSageBackendError'),
 
+      setSheetSageJobStatus: (status) => set({ sheetSageJobStatus: status }, false, 'setSheetSageJobStatus'),
+
+      toggleInstrumentGroup: (group) =>
+        set(
+          (state) => {
+            const enabled = state.enabledInstrumentGroups.includes(group)
+              ? state.enabledInstrumentGroups.filter((entry) => entry !== group)
+              : INSTRUMENT_GROUP_ORDER.filter((entry) => entry === group || state.enabledInstrumentGroups.includes(entry));
+            writeEnabledInstrumentGroups(enabled);
+            return { enabledInstrumentGroups: enabled };
+          },
+          false,
+          'toggleInstrumentGroup'
+        ),
+
       clearSheetSage: () =>
         set(
           {
             sheetSageResult: null,
             isComputingSheetSage: false,
             sheetSageError: null,
+            sheetSageJobStatus: null,
           },
           false,
           'clearSheetSage'
@@ -328,6 +383,8 @@ export const useSheetSageError = () => useAnalysisStore((state) => state.sheetSa
 export const useIsCheckingSheetSageBackend = () => useAnalysisStore((state) => state.isCheckingSheetSageBackend);
 export const useIsSheetSageBackendAvailable = () => useAnalysisStore((state) => state.isSheetSageBackendAvailable);
 export const useSheetSageBackendError = () => useAnalysisStore((state) => state.sheetSageBackendError);
+export const useSheetSageJobStatus = () => useAnalysisStore((state) => state.sheetSageJobStatus);
+export const useEnabledInstrumentGroups = () => useAnalysisStore((state) => state.enabledInstrumentGroups);
 
 // Action selectors
 export const useAnalysisActions = () =>
@@ -363,5 +420,7 @@ export const useSheetSageActions = () =>
     setIsCheckingSheetSageBackend: state.setIsCheckingSheetSageBackend,
     setIsSheetSageBackendAvailable: state.setIsSheetSageBackendAvailable,
     setSheetSageBackendError: state.setSheetSageBackendError,
+    setSheetSageJobStatus: state.setSheetSageJobStatus,
+    toggleInstrumentGroup: state.toggleInstrumentGroup,
     clearSheetSage: state.clearSheetSage,
   })));

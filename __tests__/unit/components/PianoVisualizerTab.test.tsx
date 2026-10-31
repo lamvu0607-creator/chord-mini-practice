@@ -29,7 +29,7 @@ jest.mock('@/utils/chordToMidi', () => ({
 }));
 
 jest.mock('@/utils/midiExport', () => ({
-  exportChordEventsToMidi: jest.fn(),
+  exportNoteTracksToMidi: jest.fn(() => new Uint8Array([1])),
   downloadMidiFile: jest.fn(),
 }));
 
@@ -69,6 +69,8 @@ jest.mock('@/stores/analysisStore', () => ({
   useShowCorrectedChords: () => false,
   useChordCorrections: () => null,
   useKeySignature: () => null,
+  useEnabledInstrumentGroups: () => ['guitar'],
+  useAnalysisStore: () => () => undefined,
 }));
 
 jest.mock('@/stores/uiStore', () => ({
@@ -116,39 +118,7 @@ jest.mock('@/hooks/chord-analysis/useResolvedChordDisplayData', () => ({
 
 const mockExportPianoVisualizerScoreToMusicXml = exportPianoVisualizerScoreToMusicXml as jest.Mock;
 
-describe('PianoVisualizerTab piano-only playback', () => {
-  const expectLatestPlayback = (expectedChord: string, expectedPlaybackTime: number) => {
-    expect(mockPlayChord).toHaveBeenCalled();
-    const [chord, duration, bpm, velocity, timingContext, timeSignature, guitarVoicing, targetKey] =
-      mockPlayChord.mock.calls.at(-1) as [
-        string,
-        number,
-        number,
-        number,
-        {
-          startTime?: number;
-          playbackTime?: number;
-          totalDuration?: number;
-          beatCount?: number;
-        } | undefined,
-        number,
-        { capoFret?: number | null; selectedPositions?: Record<string, number> },
-        string | null,
-      ];
-
-    expect(chord).toBe(expectedChord);
-    expect(duration).toBeGreaterThan(0);
-    expect(bpm).toBe(120);
-    expect(velocity).toBe(0.9);
-    expect(timingContext).toEqual(expect.objectContaining({
-      playbackTime: expectedPlaybackTime,
-      totalDuration: expect.any(Number),
-    }));
-    expect(timeSignature).toBe(4);
-    expect(guitarVoicing).toEqual({ capoFret: null, selectedPositions: {} });
-    expect(targetKey).toBeNull();
-  };
-
+describe('PianoVisualizerTab', () => {
   const openSheetMusicMode = async () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('tab', { name: 'Sheet Music' }));
@@ -168,7 +138,22 @@ describe('PianoVisualizerTab piano-only playback', () => {
     } as typeof ResizeObserver;
   });
 
-  it('passes late-entry timing context into piano-only playback so pattern hits stay aligned', async () => {
+  const melodyV2Result = {
+    source: 'sheetsage' as const,
+    pipelineVersion: 2,
+    noteEvents: [{ onset: 10, offset: 10.5, pitch: 72, velocity: 90 }],
+    noteEventCount: 1,
+    instrumentNotes: [
+      { onset: 10, offset: 11, pitch: 52, velocity: 80, instrument: 'distorted_electric_guitar', group: 'guitar' as const },
+      { onset: 10, offset: 11, pitch: 40, velocity: 80, instrument: 'electric_bass', group: 'bass' as const },
+    ],
+    beatTimes: [10, 10.5],
+    beatsPerMeasure: 4,
+    tempoBpm: 120,
+    usedJukebox: false,
+  };
+
+  it('does not play rule-generated chord voicings while the Piano tab is open', () => {
     render(
       <PianoVisualizerTab
         chordGridData={{ chords: ['C'], beats: [0], hasPadding: false, paddingCount: 0, shiftCount: 0 }}
@@ -179,46 +164,42 @@ describe('PianoVisualizerTab piano-only playback', () => {
       />,
     );
 
-    await waitFor(() => {
-      expectLatestPlayback('C', 10.75);
-    });
+    expect(mockPlayChord).not.toHaveBeenCalled();
+    expect(mockUpdateOptions).not.toHaveBeenCalled();
   });
 
-  it('passes total song duration for final long chords so end-of-song piano shaping can apply', async () => {
-    mockChordEvents = [
-      { chordName: 'C', notes: [60, 64, 67], startTime: 27, endTime: 32, beatIndex: 54 },
-    ];
-
+  it('shows a transcription hint instead of chord notes when no model notes are loaded', () => {
     render(
       <PianoVisualizerTab
         chordGridData={{ chords: ['C'], beats: [0], hasPadding: false, paddingCount: 0, shiftCount: 0 }}
         analysisResults={{ beatDetectionResult: { bpm: 120, time_signature: 4 } } as any}
-        currentTime={29}
-        isPlaying
-        isChordPlaybackEnabled={false}
+        currentTime={10}
+        isPlaying={false}
       />,
     );
 
-    await waitFor(() => {
-      expectLatestPlayback('C', 29);
-    });
+    expect(screen.getByText(/No model notes yet/)).toBeInTheDocument();
+    expect(screen.queryByText('Piano')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /MIDI/ })).not.toBeInTheDocument();
   });
 
-  it('prefers the beat-index chord near a boundary when currentTime lags slightly behind', async () => {
+  it('lists only model layers in the legend for a melody v2 result', () => {
     render(
       <PianoVisualizerTab
         chordGridData={{ chords: ['C'], beats: [0], hasPadding: false, paddingCount: 0, shiftCount: 0 }}
         analysisResults={{ beatDetectionResult: { bpm: 120, time_signature: 4 } } as any}
-        currentTime={11.96}
-        currentBeatIndex={4}
-        isPlaying
-        isChordPlaybackEnabled={false}
+        currentTime={10}
+        isPlaying={false}
+        showMelodicOverlay
+        sheetSageResult={melodyV2Result}
       />,
     );
 
-    await waitFor(() => {
-      expectLatestPlayback('F', 11.96);
-    });
+    expect(screen.getByText('Layers:')).toBeInTheDocument();
+    expect(screen.getByText('Vocal')).toBeInTheDocument();
+    expect(screen.queryByText('Piano')).not.toBeInTheDocument();
+    expect(screen.queryByText(/No model notes yet/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /MIDI/ })).toBeInTheDocument();
   });
 
   it('switches between piano roll and sheet music modes from the visualizer header toggle', async () => {

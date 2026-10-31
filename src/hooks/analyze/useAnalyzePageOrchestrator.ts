@@ -782,8 +782,8 @@ export function useAnalyzePageOrchestrator({
         isExtracting: false,
         isDownloading: false,
         isExtracted: false,
-        error: 'File audio này không còn trên server.',
-        suggestion: 'Hãy tải file lên lại ở trang Analyze Audio.',
+        error: 'This audio file is no longer on the server.',
+        suggestion: 'Please upload the file again on the Analyze Audio page.',
       }));
       return;
     }

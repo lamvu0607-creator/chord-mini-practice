@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: {
             code: 'MISSING_USERNAME',
-            message: 'Vui lòng nhập tên đăng nhập',
+            message: 'Please enter your username',
           },
         },
         { status: 400 },
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: {
             code: 'INVALID_PIN_FORMAT',
-            message: pinValidation.error || 'Mã PIN không hợp lệ (4 - 8 số)',
+            message: pinValidation.error || 'Invalid PIN (4 to 8 digits)',
           },
         },
         { status: 400 },
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: {
             code: 'INVALID_CREDENTIALS',
-            message: 'Tên đăng nhập hoặc mã PIN không chính xác',
+            message: 'Incorrect username or PIN',
           },
         },
         { status: 401 },
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: {
             code: 'INVALID_CREDENTIALS',
-            message: 'Tên đăng nhập hoặc mã PIN không chính xác',
+            message: 'Incorrect username or PIN',
           },
         },
         { status: 401 },
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
           role: user.role,
         },
       },
-      message: 'Đăng nhập thành công',
+      message: 'Signed in',
     });
 
     const cookieOptions = getSessionCookieOptions();
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Lỗi hệ thống khi đăng nhập',
+          message: error instanceof Error ? error.message : 'Server error while signing in',
         },
       },
       { status: 500 },

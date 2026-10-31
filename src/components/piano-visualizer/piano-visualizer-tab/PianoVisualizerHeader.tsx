@@ -7,7 +7,7 @@ import { SPEED_PRESETS } from './constants';
 import type { VisualizerDisplayMode } from './types';
 
 interface PianoVisualizerHeaderProps {
-  playbackChordEventsCount: number;
+  midiTrackCount: number;
   onMidiDownload: () => void;
   effectiveDisplayMode: VisualizerDisplayMode;
   hasSheetMusicData: boolean;
@@ -18,7 +18,7 @@ interface PianoVisualizerHeaderProps {
 }
 
 export const PianoVisualizerHeader: React.FC<PianoVisualizerHeaderProps> = ({
-  playbackChordEventsCount,
+  midiTrackCount,
   onMidiDownload,
   effectiveDisplayMode,
   hasSheetMusicData,
@@ -39,8 +39,8 @@ export const PianoVisualizerHeader: React.FC<PianoVisualizerHeaderProps> = ({
         </h3>
 
         <div className="flex items-center space-x-3 flex-wrap justify-end">
-          {playbackChordEventsCount > 0 && (
-            <AppTooltip content="Download the currently visible piano visualizer notes as MIDI">
+          {midiTrackCount > 0 && (
+            <AppTooltip content="Download the visible transcription layers as MIDI">
               <button
                 onClick={onMidiDownload}
                 className="flex items-center gap-1.5 rounded-md border border-gray-300 bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"

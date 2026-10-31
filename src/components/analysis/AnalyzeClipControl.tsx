@@ -47,8 +47,8 @@ export default function AnalyzeClipControl({ videoId, title, variant = 'icon', i
       setSource(await loadSourceAudioForClip(videoId, title));
     } catch (error) {
       addToast({
-        title: 'Không mở được trình cắt đoạn',
-        description: error instanceof Error ? error.message : 'Không tải được audio.',
+        title: 'Could not open the trimmer',
+        description: error instanceof Error ? error.message : 'Could not load the audio.',
         color: 'danger',
       });
     } finally {
@@ -70,8 +70,8 @@ export default function AnalyzeClipControl({ videoId, title, variant = 'icon', i
       }));
     } catch (error) {
       addToast({
-        title: 'Không lưu được đoạn cắt',
-        description: error instanceof Error ? error.message : 'Tải lên thất bại.',
+        title: 'Could not save the trimmed section',
+        description: error instanceof Error ? error.message : 'Upload failed.',
         color: 'danger',
       });
     }
@@ -87,14 +87,14 @@ export default function AnalyzeClipControl({ videoId, title, variant = 'icon', i
       isDisabled={isDisabled}
       onPress={() => void handleOpen()}
     >
-      Cắt một đoạn
+      Trim a section
     </Button>
   ) : (
-    <Tooltip content="Cắt một đoạn để phân tích riêng" placement="top" classNames={tooltipClassNames}>
+    <Tooltip content="Trim a section to analyze on its own" placement="top" classNames={tooltipClassNames}>
       <button
         type="button"
         className={buttonClassName}
-        aria-label="Cắt một đoạn để phân tích"
+        aria-label="Trim a section to analyze"
         onClick={() => void handleOpen()}
         disabled={isLoading || isDisabled}
       >
@@ -126,7 +126,7 @@ export default function AnalyzeClipControl({ videoId, title, variant = 'icon', i
                   <HiOutlineScissors className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-lg font-bold text-foreground">Cắt một đoạn để phân tích</h3>
+                  <h3 className="text-lg font-bold text-foreground">Trim a section to analyze</h3>
                   <p className="truncate text-sm font-normal text-default-500">{source?.title}</p>
                 </div>
               </ModalHeader>
@@ -135,7 +135,7 @@ export default function AnalyzeClipControl({ videoId, title, variant = 'icon', i
                   <AudioClipSelector
                     file={source.file}
                     sourceName={source.title}
-                    confirmLabel="Cắt & phân tích đoạn này"
+                    confirmLabel="Trim & analyze this section"
                     onClipReady={handleClipReady}
                     onCancel={() => setSource(null)}
                   />

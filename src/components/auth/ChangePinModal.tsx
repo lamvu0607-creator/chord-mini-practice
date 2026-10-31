@@ -41,22 +41,22 @@ export default function ChangePinModal() {
     setSuccessMessage(null);
 
     if (!oldPin.trim() || oldPin.trim().length < 4 || oldPin.trim().length > 8) {
-      setErrorMessage('Mã PIN hiện tại phải từ 4 đến 8 chữ số');
+      setErrorMessage('Current PIN must be 4 to 8 digits');
       return;
     }
 
     if (!newPin.trim() || newPin.trim().length < 4 || newPin.trim().length > 8) {
-      setErrorMessage('Mã PIN mới phải từ 4 đến 8 chữ số');
+      setErrorMessage('The new PIN must be 4 to 8 digits');
       return;
     }
 
     if (oldPin.trim() === newPin.trim()) {
-      setErrorMessage('Mã PIN mới không được trùng với mã PIN hiện tại');
+      setErrorMessage('The new PIN must differ from the current PIN');
       return;
     }
 
     if (newPin.trim() !== confirmPin.trim()) {
-      setErrorMessage('Mã PIN xác nhận không khớp với mã PIN mới');
+      setErrorMessage('The confirmation does not match the new PIN');
       return;
     }
 
@@ -73,16 +73,16 @@ export default function ChangePinModal() {
 
       const data = await response.json();
       if (!response.ok || !data.success) {
-        setErrorMessage(data.error?.message || 'Đổi mã PIN thất bại');
+        setErrorMessage(data.error?.message || 'Changing the PIN failed');
         return;
       }
 
-      setSuccessMessage('Đổi mã PIN thành công! Hãy ghi nhớ mã PIN mới của bạn.');
+      setSuccessMessage('PIN changed! Remember your new PIN.');
       setTimeout(() => {
         handleClose();
       }, 1800);
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Lỗi kết nối máy chủ');
+      setErrorMessage(err instanceof Error ? err.message : 'Could not reach the server');
     } finally {
       setIsSubmitting(false);
     }
@@ -109,8 +109,8 @@ export default function ChangePinModal() {
                 <FiKey className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-foreground">Đổi mã PIN</h3>
-                <p className="text-xs text-default-500 font-normal">Cập nhật mã PIN đăng nhập của bạn</p>
+                <h3 className="text-lg font-bold text-foreground">Change PIN</h3>
+                <p className="text-xs text-default-500 font-normal">Update the PIN you sign in with</p>
               </div>
             </ModalHeader>
 
@@ -130,8 +130,8 @@ export default function ChangePinModal() {
               )}
 
               <Input
-                label="Mã PIN hiện tại"
-                placeholder="Nhập PIN đang dùng (4 - 8 số)"
+                label="Current PIN"
+                placeholder="Your current PIN (4 to 8 digits)"
                 type="password"
                 inputMode="numeric"
                 variant="bordered"
@@ -146,8 +146,8 @@ export default function ChangePinModal() {
               />
 
               <Input
-                label="Mã PIN mới"
-                placeholder="4 - 8 chữ số"
+                label="New PIN"
+                placeholder="4 to 8 digits"
                 type="password"
                 inputMode="numeric"
                 variant="bordered"
@@ -162,8 +162,8 @@ export default function ChangePinModal() {
               />
 
               <Input
-                label="Xác nhận mã PIN mới"
-                placeholder="Nhập lại mã PIN mới"
+                label="Confirm new PIN"
+                placeholder="Re-enter the new PIN"
                 type="password"
                 inputMode="numeric"
                 variant="bordered"
@@ -178,16 +178,16 @@ export default function ChangePinModal() {
               />
 
               <p className="text-xs text-default-400 italic">
-                🔒 Sau khi đổi mã PIN, bạn có thể tiếp tục sử dụng phiên hiện tại bình thường.
+                🔒 After changing your PIN you can keep using the current session.
               </p>
             </ModalBody>
 
             <ModalFooter>
               <Button variant="light" onPress={handleClose} disabled={isSubmitting}>
-                Đóng
+                Close
               </Button>
               <Button color="primary" type="submit" isLoading={isSubmitting} disabled={Boolean(successMessage)} className="font-semibold">
-                Xác nhận đổi PIN
+                Change PIN
               </Button>
             </ModalFooter>
           </form>

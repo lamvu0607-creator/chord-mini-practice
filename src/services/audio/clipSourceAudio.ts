@@ -40,7 +40,7 @@ function toFile(blob: Blob, title: string): File {
 function errorMessage(body: ExtractAudioResponse, status: number): string {
   if (typeof body.error === 'object' && body.error?.message) return body.error.message;
   if (typeof body.error === 'string') return body.details ? `${body.error}: ${body.details}` : body.error;
-  return `Không tải được audio từ YouTube (${status}).`;
+  return `Could not load audio from YouTube (${status}).`;
 }
 
 async function ensureYouTubeAudioExtracted(videoId: string, knownTitle?: string): Promise<string | undefined> {
@@ -51,7 +51,7 @@ async function ensureYouTubeAudioExtracted(videoId: string, knownTitle?: string)
   });
   const body = await extractResponse.json().catch(() => ({})) as ExtractAudioResponse;
   if (body.requiresBrowserExtraction) {
-    throw new Error('Server chưa bật tải audio YouTube (NEXT_PUBLIC_AUDIO_STRATEGY phải là "ytdlp").');
+    throw new Error('YouTube audio download is not enabled on the server (NEXT_PUBLIC_AUDIO_STRATEGY must be "ytdlp").');
   }
   if (!extractResponse.ok || !body.success) {
     throw new Error(errorMessage(body, extractResponse.status));
@@ -70,10 +70,10 @@ export async function loadSourceAudioForClip(videoId: string, knownTitle?: strin
 
   const audioResponse = await fetch(`/api/audio/${encodeURIComponent(videoId)}`);
   if (!audioResponse.ok) {
-    throw new Error(`Không đọc được audio (${audioResponse.status}).`);
+    throw new Error(`Could not read the audio (${audioResponse.status}).`);
   }
   const blob = await audioResponse.blob();
-  if (blob.size === 0) throw new Error('File audio bị rỗng.');
+  if (blob.size === 0) throw new Error('The audio file is empty.');
 
   const title = knownTitle || extractedTitle || videoId;
   return { file: toFile(blob, title), title, videoId };

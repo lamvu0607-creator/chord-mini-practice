@@ -31,7 +31,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const { videoId } = await Promise.resolve(context.params);
     if (!videoId || typeof videoId !== 'string') {
       return NextResponse.json(
-        { success: false, error: { code: 'INVALID_VIDEO_ID', message: 'Video ID không hợp lệ' } },
+        { success: false, error: { code: 'INVALID_VIDEO_ID', message: 'Invalid video ID' } },
         { status: 400 },
       );
     }
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const localAudio = await findExistingLocalAudioFile(videoId);
     if (!localAudio) {
       return NextResponse.json(
-        { success: false, error: { code: 'FILE_NOT_FOUND', message: 'Không tìm thấy file âm thanh cho video này' } },
+        { success: false, error: { code: 'FILE_NOT_FOUND', message: 'No audio file found for this video' } },
         { status: 404 },
       );
     }
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   } catch (error) {
     console.error('Audio streaming error:', error);
     return NextResponse.json(
-      { success: false, error: { code: 'INTERNAL_ERROR', message: 'Lỗi trong quá trình phát file âm thanh' } },
+      { success: false, error: { code: 'INTERNAL_ERROR', message: 'Error while serving the audio file' } },
       { status: 500 },
     );
   }
@@ -138,7 +138,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const { videoId } = await Promise.resolve(context.params);
     if (!videoId) {
       return NextResponse.json(
-        { success: false, error: { code: 'INVALID_VIDEO_ID', message: 'Video ID không hợp lệ' } },
+        { success: false, error: { code: 'INVALID_VIDEO_ID', message: 'Invalid video ID' } },
         { status: 400 },
       );
     }
@@ -146,7 +146,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const localAudio = await findExistingLocalAudioFile(videoId);
     if (!localAudio) {
       return NextResponse.json(
-        { success: false, error: { code: 'FILE_NOT_FOUND', message: 'Không tìm thấy file để xóa' } },
+        { success: false, error: { code: 'FILE_NOT_FOUND', message: 'No file found to delete' } },
         { status: 404 },
       );
     }
@@ -154,19 +154,19 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const deleted = await deleteLocalAudioFile(localAudio.filename);
     if (!deleted) {
       return NextResponse.json(
-        { success: false, error: { code: 'DELETE_FAILED', message: 'Không thể xóa file âm thanh' } },
+        { success: false, error: { code: 'DELETE_FAILED', message: 'Could not delete the audio file' } },
         { status: 500 },
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Đã xóa file âm thanh thành công',
+      message: 'Audio file deleted',
     });
   } catch (error) {
     console.error('Audio delete error:', error);
     return NextResponse.json(
-      { success: false, error: { code: 'INTERNAL_ERROR', message: 'Lỗi khi xóa file âm thanh' } },
+      { success: false, error: { code: 'INTERNAL_ERROR', message: 'Error while deleting the audio file' } },
       { status: 500 },
     );
   }

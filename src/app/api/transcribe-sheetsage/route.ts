@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSheetSageApiUrl } from '@/config/serverBackend';
 import { createSafeTimeoutSignal } from '@/utils/environmentUtils';
-import type { SheetSageResult } from '@/types/sheetSage';
-import { setDocument } from '@/server/persistence/documentService';
+import { MELODY_PIPELINE_VERSION, type SheetSageResult } from '@/types/sheetSage';
+import { getDocument, setDocument } from '@/server/persistence/documentService';
 import { validateAudioSourceUrl } from '@/utils/audioSourceValidation';
-import { getAuthenticatedUser } from '@/server/auth/sessionGuard';
+import { getAuthenticatedUser, requireAuth } from '@/server/auth/sessionGuard';
 import { checkTrialQuota, getOrCreateAnonymousToken } from '@/server/auth/quotaGuard';
 import { isUploadSourceId } from '@/utils/uploadSourceId';
+import {
+  countActiveMelodyJobsForUser,
+  createMelodyJob,
+  findActiveMelodyJob,
+  toPublicMelodyJob,
+} from '@/server/melody/melodyJobService';
+import { normalizeMelodyResultForCache } from '@/server/melody/melodyResult';
+import { startStemWorker } from '@/server/stems/stemWorker';
+import { resolveYouTubeStemSource } from '@/server/stems/youtubeStemSource';
 
 export const maxDuration = 300;
 
@@ -91,52 +100,53 @@ function resolveAudioSourceFromJson(payload: unknown): SheetSageAudioSource {
   };
 }
 
-function normalizeMelodyResultForCache(videoId: string, result: SheetSageResult) {
-  const noteEvents = Array.isArray(result.noteEvents)
-    ? [...result.noteEvents]
-      .filter((note) => (
-        typeof note?.onset === 'number'
-        && Number.isFinite(note.onset)
-        && typeof note?.offset === 'number'
-        && Number.isFinite(note.offset)
-        && typeof note?.pitch === 'number'
-        && Number.isFinite(note.pitch)
-        && typeof note?.velocity === 'number'
-        && Number.isFinite(note.velocity)
-      ))
-      .sort((left, right) => (
-        left.onset - right.onset
-        || left.pitch - right.pitch
-        || left.offset - right.offset
-      ))
-      .map((note) => ({
-        onset: note.onset,
-        offset: Math.max(note.offset, note.onset),
-        pitch: Math.max(0, Math.min(127, Math.round(note.pitch))),
-        velocity: Math.max(0, Math.min(127, Math.round(note.velocity))),
-      }))
-    : [];
+const MAX_ACTIVE_MELODY_JOBS_PER_USER = 2;
+const YOUTUBE_VIDEO_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/;
 
-  return {
-    ...result,
-    source: 'sheetsage' as const,
-    videoId,
-    model: 'sheetsage-v0.2-handcrafted-melody-transformer',
-    createdAt: new Date().toISOString(),
-    noteEvents,
-    noteEventCount: noteEvents.length,
-    beatTimes: Array.isArray(result.beatTimes)
-      ? result.beatTimes.filter((beatTime) => typeof beatTime === 'number' && Number.isFinite(beatTime))
-      : [],
-    beatsPerMeasure:
-      typeof result.beatsPerMeasure === 'number' && Number.isFinite(result.beatsPerMeasure) && result.beatsPerMeasure > 0
-        ? result.beatsPerMeasure
-        : 4,
-    tempoBpm:
-      typeof result.tempoBpm === 'number' && Number.isFinite(result.tempoBpm) && result.tempoBpm > 0
-        ? result.tempoBpm
-        : 120,
-  };
+/**
+ * Melody v2 (`{ videoId, pipeline: 'v2' }`): vocal line from the SCNet vocals stem, instrument notes from
+ * MuScriptor. Returns the cached v2 result, or queues a background job (separating stems first if needed).
+ */
+async function handleMelodyV2(request: NextRequest, videoId: string) {
+  if (!YOUTUBE_VIDEO_ID_PATTERN.test(videoId)) {
+    return NextResponse.json(
+      { success: false, error: 'Melody v2 only supports cached YouTube songs', code: 'UNSUPPORTED_SOURCE' },
+      { status: 400 },
+    );
+  }
+
+  const cached = await getDocument<SheetSageResult>('melody', videoId);
+  if (cached?.pipelineVersion === MELODY_PIPELINE_VERSION) {
+    return NextResponse.json({ success: true, data: cached });
+  }
+
+  const auth = await requireAuth(request);
+  if (auth.errorResponse) return auth.errorResponse;
+  const { user } = auth;
+
+  const active = findActiveMelodyJob(videoId);
+  if (active) {
+    startStemWorker();
+    return NextResponse.json({ success: true, job: toPublicMelodyJob(active) }, { status: 202 });
+  }
+  if (user.role !== 'admin' && countActiveMelodyJobsForUser(user.userId) >= MAX_ACTIVE_MELODY_JOBS_PER_USER) {
+    return NextResponse.json(
+      { success: false, error: `You already have ${MAX_ACTIVE_MELODY_JOBS_PER_USER} melody transcriptions in progress.`, code: 'TOO_MANY_JOBS' },
+      { status: 429 },
+    );
+  }
+
+  const source = await resolveYouTubeStemSource(videoId);
+  if (!source) {
+    return NextResponse.json(
+      { success: false, error: 'Audio for this video is not cached yet. Extract it first.', code: 'AUDIO_NOT_CACHED' },
+      { status: 409 },
+    );
+  }
+
+  const job = createMelodyJob({ videoId, sourceId: source.sourceId, inputPath: source.inputPath, requestedBy: user.userId });
+  startStemWorker();
+  return NextResponse.json({ success: true, job: toPublicMelodyJob(job) }, { status: 202 });
 }
 
 export async function POST(request: NextRequest) {
@@ -146,6 +156,9 @@ export async function POST(request: NextRequest) {
     const contentType = request.headers.get('content-type') || '';
     const isJsonRequest = contentType.toLowerCase().includes('application/json');
     const requestPayload = isJsonRequest ? await request.json().catch(() => null) : null;
+    if (getJsonString(requestPayload, 'pipeline') === 'v2') {
+      return await handleMelodyV2(request, getJsonString(requestPayload, 'videoId') ?? '');
+    }
     const formData = isJsonRequest ? null : await request.formData();
     const videoIdField = isJsonRequest
       ? getJsonString(requestPayload, 'videoId')
@@ -162,7 +175,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            error: 'Bạn đã dùng hết 1 lượt thử miễn phí. Vui lòng đăng nhập để sử dụng tính năng nhận diện giai điệu.',
+            error: 'You have used your 1 free trial. Please sign in to use melody transcription.',
           },
           { status: 403 },
         );

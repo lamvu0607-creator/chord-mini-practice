@@ -33,7 +33,7 @@ export default function AnalyzeSourcePage() {
     event.preventDefault();
     const videoId = parseYouTubeVideoId(link);
     if (!videoId) {
-      setLinkError('Hãy dán link YouTube (watch, youtu.be, shorts) hoặc id video 11 ký tự.');
+      setLinkError('Paste a YouTube link (watch, youtu.be, shorts) or an 11-character video ID.');
       return;
     }
     setLinkError(null);
@@ -47,7 +47,7 @@ export default function AnalyzeSourcePage() {
       return;
     }
     if (file.size > ANALYZE_UPLOAD_MAX_MB * 1024 * 1024) {
-      setUploadError(`File lớn hơn ${ANALYZE_UPLOAD_MAX_MB} MB.`);
+      setUploadError(`File is larger than ${ANALYZE_UPLOAD_MAX_MB} MB.`);
       return;
     }
     setUploadError(null);
@@ -56,7 +56,7 @@ export default function AnalyzeSourcePage() {
       const uploaded = await uploadAnalyzeAudio(file, { onProgress: setUploadProgress });
       router.push(buildAnalyzePageUrl(uploaded.id, { title: uploaded.title }));
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : 'Tải lên thất bại.');
+      setUploadError(error instanceof Error ? error.message : 'Upload failed.');
       setUploadProgress(null);
     }
   };
@@ -69,8 +69,8 @@ export default function AnalyzeSourcePage() {
         <header className="mb-6 px-1">
           <h1 className="text-3xl md:text-4xl font-extrabold font-outfit text-black dark:text-white dark:drop-shadow-[0_4px_12px_rgba(0,0,0,0.95)]">Analyze Audio</h1>
           <p className="mt-3 text-base text-default-500 dark:text-slate-200 leading-relaxed font-outfit">
-            Nhận diện hợp âm, nhịp và giai điệu từ một video YouTube hoặc file nhạc của bạn.
-            Trên trang kết quả, bấm ✂️ &quot;Cắt một đoạn&quot; để chỉ phân tích một phần bài.
+            Detect chords, beats and melody from a YouTube video or your own audio file.
+            On the results page, click ✂️ &quot;Trim a section&quot; to analyze only part of the song.
           </p>
         </header>
 
@@ -94,11 +94,11 @@ export default function AnalyzeSourcePage() {
                   errorMessage={linkError ?? undefined}
                   className="flex-1"
                 />
-                <Button type="submit" color="primary" isDisabled={!link.trim()}>Phân tích</Button>
+                <Button type="submit" color="primary" isDisabled={!link.trim()}>Analyze</Button>
               </form>
             </Tab>
 
-            <Tab key="upload" title={<span className="flex items-center gap-1.5"><HiOutlineArrowUpTray className="h-4 w-4" />Tải file lên</span>}>
+            <Tab key="upload" title={<span className="flex items-center gap-1.5"><HiOutlineArrowUpTray className="h-4 w-4" />Upload file</span>}>
               <button
                 type="button"
                 disabled={isUploading}
@@ -117,9 +117,9 @@ export default function AnalyzeSourcePage() {
                 }`}
               >
                 <HiOutlineArrowUpTray className="h-6 w-6 text-gray-500" />
-                <span className="font-medium text-gray-700 dark:text-gray-200">Kéo thả file nhạc vào đây, hoặc bấm để chọn</span>
+                <span className="font-medium text-gray-700 dark:text-gray-200">Drag and drop an audio file here, or click to choose</span>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  MP3, WAV, M4A, FLAC, OGG · tối đa {ANALYZE_UPLOAD_MAX_MB} MB · cần đăng nhập · chỉ người có link mới xem được
+                  MP3, WAV, M4A, FLAC, OGG · up to {ANALYZE_UPLOAD_MAX_MB} MB · sign-in required · only people with the link can view
                 </span>
               </button>
               <input
@@ -139,7 +139,7 @@ export default function AnalyzeSourcePage() {
                   className="mt-3"
                   value={Math.round((uploadProgress ?? 0) * 100)}
                   showValueLabel
-                  label="Đang tải lên..."
+                  label="Uploading..."
                 />
               )}
               {uploadError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{uploadError}</p>}
