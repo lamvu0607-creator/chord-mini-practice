@@ -146,12 +146,11 @@ const HelpPage: React.FC = () => {
           </h2>
           <div className="space-y-4 text-gray-700 dark:text-gray-300">
             <p>
-              If you can&apos;t find the answer to your question, please reach out to our support team:
+              If you can&apos;t find the answer to your question, please get in touch:
             </p>
             <div className="space-y-2">
-              <p><strong>Email Support:</strong> <a href="mailto:phantrongnghia510@gmail.com" className="text-blue-600 dark:text-blue-400 hover:underline">phantrongnghia510@gmail.com</a></p>
-              <p><strong>GitHub Issues:</strong> <a href="https://github.com/ptnghia-j/ChordMiniApp/issues" className="text-blue-600 dark:text-blue-400 hover:underline">Report bugs or request features</a></p>
-              <p><strong>Response Time:</strong> We typically respond within 24-48 hours</p>
+              <p><strong>Email Support:</strong> <a href="mailto:lamvu0607@gmail.com" className="text-blue-600 dark:text-blue-400 hover:underline">lamvu0607@gmail.com</a></p>
+              <p><strong>GitHub Issues:</strong> <a href="https://github.com/lamvu0607-creator/chord-mini-practice/issues" className="text-blue-600 dark:text-blue-400 hover:underline">Report bugs or request features</a></p>
             </div>
           </div>
         </div>

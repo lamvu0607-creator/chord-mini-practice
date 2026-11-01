@@ -231,7 +231,7 @@ const nextConfig = {
     return [
       {
         source: '/github',
-        destination: 'https://github.com/ptnghia-j/ChordMiniApp',
+        destination: 'https://github.com/lamvu0607-creator/chord-mini-practice',
         permanent: false,
       },
     ];

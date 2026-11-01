@@ -27,9 +27,9 @@ const HERO_CHORDS = [
 const HERO_BEATS = HERO_CHORDS.map((_, index) => index * 0.5);
 const HERO_LOOP_DURATION = HERO_BEATS[HERO_BEATS.length - 1] + 0.5;
 const HERO_ACTIVE_INSTRUMENTS: ActiveInstrument[] = [
-  { name: 'piano', color: '#60a5fa' },
+  { name: 'vocal', color: '#60a5fa' },
   { name: 'guitar', color: '#34d399' },
-  { name: 'violin', color: '#f472b6' },
+  { name: 'keys', color: '#f472b6' },
   { name: 'bass', color: '#f59e0b' },
 ];
 const HERO_CHORD_EVENTS = buildChordTimeline(HERO_CHORDS, HERO_BEATS);
@@ -158,7 +158,7 @@ export default function HeroPianoVisualizerMock({
       <div className="px-3 pb-2 pt-3">
         <div className="flex items-center justify-between gap-2">
           <h4 className={`text-sm font-semibold ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
-            Piano Visualizer
+            Melody & Piano
           </h4>
           <div className="flex items-center gap-1.5">
             <span className={`font-varela text-xs font-medium ${isDark ? 'text-blue-300' : 'text-blue-600'}`}>

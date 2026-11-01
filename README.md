@@ -16,8 +16,8 @@ filesystem.
 
 ```bash
 git lfs install
-git clone --recursive https://github.com/ptnghia-j/ChordMiniApp.git
-cd ChordMiniApp
+git clone --recursive https://github.com/lamvu0607-creator/chord-mini-practice.git
+cd chord-mini-practice
 git lfs pull
 npm install
 cp .env.example .env.local

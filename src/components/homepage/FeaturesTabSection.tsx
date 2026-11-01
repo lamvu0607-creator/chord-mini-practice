@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Tabs, Tab, Tooltip } from '@heroui/react';
+import Link from 'next/link';
+import { Chip, Tabs, Tab, Tooltip } from '@heroui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
 import HeroPianoVisualizerMock from '@/components/homepage/HeroPianoVisualizerMock';
+import { getStemColor } from '@/components/stems/stemColors';
 
 // ============================================================
 // Mock Data
@@ -72,46 +74,71 @@ const LYRIC_LINES: MockLyricLine[] = [
     beatRange: [32, 40] },
 ];
 
-const TAB_CONTENT = {
+interface FeatureItem { text: string; color: string; optional?: boolean }
+interface FeatureTabContent {
+  title: string;
+  description: string;
+  features: FeatureItem[];
+  beta?: boolean;
+  note?: string;
+  link?: { href: string; label: string };
+}
+
+const TAB_CONTENT: Record<string, FeatureTabContent> = {
   'chord-grid': {
-    title: 'Beat & Chord Grid',
-    description: 'Real-time chord progression visualization synchronized with audio playback.',
+    title: 'Chords & Beats',
+    description: 'A beat-aligned chord grid that follows the song as it plays.',
     features: [
-      { text: 'AI-powered chord detection with multiple models (Chord-CNN-LSTM, BTC)', color: 'blue' },
-      { text: 'Beat-aligned grid with automatic time signature detection', color: 'blue' },
-      { text: 'Roman numeral analysis & key detection via Gemini AI', color: 'blue' },
-      { text: 'Interactive click-to-seek playback navigation', color: 'blue' },
+      { text: 'Chord recognition with BTC models, beat tracking with Beat Transformer or madmom', color: 'blue' },
+      { text: 'Automatic time signature and estimated key', color: 'blue' },
+      { text: 'Click any beat to jump there, and loop a section to practice it', color: 'blue' },
+      { text: 'Metronome, pitch shift and chord playback', color: 'blue' },
+      { text: 'Roman numerals, key changes and enharmonic corrections via Gemini', color: 'blue', optional: true },
     ],
+  },
+  'melody-piano': {
+    title: 'Melody & Piano',
+    beta: true,
+    description: 'See the notes of a song on a falling-note piano roll, transcribed from the audio itself.',
+    features: [
+      { text: 'Vocal line transcribed from the separated vocal stem (SCNet and Basic Pitch)', color: 'orange' },
+      { text: 'Instrument layers from MuScriptor: Guitar, Keys, Bass, Winds, Strings, Synth', color: 'orange' },
+      { text: 'Turn each instrument layer on or off', color: 'orange' },
+      { text: 'Export the transcribed tracks to MIDI', color: 'orange' },
+    ],
+    note: 'Sign in to run a new transcription.',
+  },
+  stems: {
+    title: 'Split Stems',
+    description: 'Separate a song into four stems and mix them yourself.',
+    features: [
+      { text: 'Vocals, drums, bass and other, separated with SCNet', color: 'pink' },
+      { text: 'Play the stems together and adjust each one', color: 'pink' },
+      { text: 'Export a karaoke track or your own custom mix as WAV', color: 'pink' },
+      { text: 'Finished songs appear in your stem library', color: 'pink' },
+    ],
+    note: 'Sign in to split new songs. Songs already separated from YouTube can be played by anyone.',
+    link: { href: '/stems', label: 'Open Split Stems' },
   },
   guitar: {
     title: 'Guitar Chord Diagrams',
-    description: 'Interactive guitar fingering charts with accurate voicings from the official chord database.',
+    beta: true,
+    description: 'Fingering charts for the chords in the song, moving along with playback.',
     features: [
-      { text: 'Verified fingering patterns with multiple chord positions', color: 'green' },
+      { text: 'Fingering patterns with multiple chord positions', color: 'green' },
       { text: 'Animated chord progression synced with audio playback', color: 'green' },
       { text: 'Responsive layout adapting to any screen size', color: 'green' },
-      { text: 'To be updated ...', color: 'green' },
     ],
   },
   lyrics: {
-    title: 'Lead Sheet & Lyrics',
-    description: 'Synchronized lyrics with chord annotations and external-AI translation support.',
+    title: 'Lyrics & AI',
+    beta: true,
+    description: 'Line up lyrics with the chords, and add AI tools with your own API keys.',
     features: [
-      { text: 'Word-level timing synchronization via Music.ai', color: 'purple' },
-      { text: 'Chords positioned precisely above corresponding words', color: 'purple' },
-      { text: 'Multi-language translation powered by Gemini AI', color: 'purple' },
-      { text: 'AI chat assistant for contextual music theory Q&A', color: 'purple' },
-    ],
-  },
-  'piano-visualizer': {
-    title: 'Piano Visualizer & MIDI Export',
-    description: 'Interactive piano roll visualization with falling notes synced to chord progressions and multi-instrument support.',
-    features: [
-      { text: 'Falling notes visualization with real-time chord playback', color: 'orange' },
-      { text: 'Full 88-key piano keyboard with active note highlighting', color: 'orange' },
-      { text: 'Multi-instrument support: Piano, Guitar, Violin, Flute, Bass', color: 'orange' },
-      { text: 'One-click MIDI export of chord progressions', color: 'orange' },
-      { text: 'To be updated ...', color: 'orange' },
+      { text: 'Search LRCLIB for lyrics and show them on the chord grid, no key needed', color: 'purple' },
+      { text: 'Lead sheet with word-level timing and chords above the words, via Music.ai', color: 'purple', optional: true },
+      { text: 'Lyrics translation via Gemini', color: 'purple', optional: true },
+      { text: 'Chat assistant for questions about the song, via Gemini', color: 'purple', optional: true },
     ],
   },
 };
@@ -479,36 +506,124 @@ function PianoVisualizerMockup() {
 }
 
 // ============================================================
+// Mockup: Split Stems (mixer rows with animated levels)
+// ============================================================
+
+const STEM_ROWS: { name: string; pattern: number[] }[] = [
+  { name: 'vocals', pattern: [0.3, 0.7, 0.9, 0.6, 0.8, 0.4, 0.7, 0.5] },
+  { name: 'drums', pattern: [0.9, 0.3, 0.6, 0.3, 0.9, 0.3, 0.7, 0.4] },
+  { name: 'bass', pattern: [0.7, 0.7, 0.5, 0.5, 0.6, 0.6, 0.8, 0.8] },
+  { name: 'other', pattern: [0.5, 0.6, 0.4, 0.7, 0.5, 0.8, 0.6, 0.4] },
+];
+const STEM_BAR_COUNT = 32;
+
+function StemsMockup({ isDark, currentBeat }: { isDark: boolean; currentBeat: number }) {
+  const [muted, setMuted] = useState<Record<string, boolean>>({});
+  const playhead = currentBeat % STEM_BAR_COUNT;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className={`rounded-xl p-3 sm:p-4 border shadow-lg ${
+        isDark ? 'bg-[#1E252E] border-gray-600/60' : 'bg-white border-gray-200'
+      }`}
+    >
+      <h4 className={`text-sm font-semibold mb-3 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+        Stem Mixer
+      </h4>
+      <div className="space-y-3">
+        {STEM_ROWS.map(({ name, pattern }) => {
+          const color = getStemColor(name);
+          const isMuted = !!muted[name];
+          return (
+            <div key={name} className="flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={() => setMuted((prev) => ({ ...prev, [name]: !prev[name] }))}
+                aria-pressed={!isMuted}
+                className={`w-16 flex-shrink-0 rounded-lg px-2 py-1 text-xs font-medium cursor-pointer transition-opacity ${color.chip} ${
+                  isMuted ? 'opacity-40' : ''
+                }`}
+              >
+                {color.label}
+              </button>
+              <div className="flex h-10 min-w-0 flex-1 items-center gap-[2px]">
+                {Array.from({ length: STEM_BAR_COUNT }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="min-w-0 flex-1 rounded-sm transition-opacity duration-150"
+                    style={{
+                      height: `${pattern[i % pattern.length] * 100}%`,
+                      backgroundColor: isMuted ? (isDark ? '#4b5563' : '#d1d5db') : color.wave,
+                      opacity: isMuted ? 0.5 : i <= playhead ? 1 : 0.35,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================
 // Feature Content Panel
 // ============================================================
 
-const COLOR_MAP: Record<string, string> = { blue: 'text-blue-500', green: 'text-green-500', purple: 'text-purple-500', orange: 'text-orange-500' };
+const COLOR_MAP: Record<string, string> = { blue: 'text-blue-500', green: 'text-green-500', purple: 'text-purple-500', orange: 'text-orange-500', pink: 'text-pink-500' };
 const FEATURE_PANEL_CLASS = 'grid grid-cols-1 gap-8 lg:grid-cols-5 lg:gap-12 lg:items-stretch min-h-[40rem] md:min-h-[36rem] lg:min-h-[28rem]';
 const FEATURE_TAB_CLASSNAMES = {
   base: 'mx-auto flex w-full max-w-4xl justify-center',
-  tabList: 'mx-auto w-full justify-center rounded-full bg-white/75 px-2 py-1 shadow-sm backdrop-blur dark:bg-gray-800/50',
+  tabList: 'mx-auto w-full justify-start md:justify-center rounded-full bg-white/75 px-2 py-1 shadow-sm backdrop-blur dark:bg-gray-800/50',
   cursor: 'bg-slate-900 dark:bg-gray-900',
   tab: 'text-sm sm:text-base text-gray-700 data-[selected=true]:text-white dark:text-gray-200 dark:data-[selected=true]:text-white',
   tabContent: 'text-gray-700 group-data-[selected=true]:text-white dark:text-gray-200 dark:group-data-[selected=true]:text-white',
 };
 
-function FeatureContent({ title, description, features }: {
-  title: string; description: string; features: { text: string; color: string }[];
-}) {
+function FeatureContent({ title, description, features, beta, note, link }: FeatureTabContent) {
+  const hasOptional = features.some((f) => f.optional);
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.05 }}
       className="flex h-full flex-col justify-center space-y-4 px-1 py-2 sm:px-2"
     >
-      <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{title}</h3>
+      <h3 className="flex items-center gap-2 text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
+        {title}
+        {beta && (
+          <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 px-1.5 py-0.5 rounded-full font-medium">
+            beta
+          </span>
+        )}
+      </h3>
       <p className="text-gray-600 dark:text-gray-400 leading-relaxed">{description}</p>
       <ul className="space-y-3 mt-2">
         {features.map((f, i) => (
           <li key={i} className="flex items-start gap-2.5 text-gray-600 dark:text-gray-400">
             <span className={`${COLOR_MAP[f.color] || 'text-blue-500'} mt-1.5 text-xs flex-shrink-0`}>●</span>
-            <span className="text-sm leading-relaxed">{f.text}</span>
+            <span className="text-sm leading-relaxed">
+              {f.text}
+              {f.optional && (
+                <Chip size="sm" variant="flat" color="warning" className="ml-2 h-5 align-middle">Optional</Chip>
+              )}
+            </span>
           </li>
         ))}
       </ul>
+      {hasOptional && (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Optional features need your own API key, added in{' '}
+          <Link href="/settings" className="underline hover:text-blue-600 dark:hover:text-blue-400">Settings</Link>.
+        </p>
+      )}
+      {note && <p className="text-xs text-gray-500 dark:text-gray-400">{note}</p>}
+      {link && (
+        <Link href={link.href} className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400">
+          {link.label} →
+        </Link>
+      )}
     </motion.div>
   );
 }
@@ -543,7 +658,7 @@ export default function FeaturesTabSection() {
         >
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">Features</h2>
           <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Music analysis tools for chord recognition, beat detection, and lyrics synchronization
+            Everything you can pull out of a song: chords, beats, melody, stems and lyrics
           </p>
         </motion.div>
 
@@ -560,31 +675,42 @@ export default function FeaturesTabSection() {
             panel: 'pt-0',
           }}
         >
-          <Tab key="chord-grid" title="Beat & Chord Grid">
+          <Tab key="chord-grid" title="Chords & Beats">
             <div className={FEATURE_PANEL_CLASS}>
               <div className="lg:col-span-3"><ChordGridMockup isDark={isDark} currentBeat={beat} /></div>
               <div className="lg:col-span-2"><FeatureContent {...TAB_CONTENT['chord-grid']} /></div>
             </div>
           </Tab>
-          <Tab key="guitar" title="Guitar Tab">
-            <div className={FEATURE_PANEL_CLASS}>
-              <div className="lg:col-span-3"><GuitarMockup isDark={isDark} currentBeat={beat} /></div>
-              <div className="lg:col-span-2"><FeatureContent {...TAB_CONTENT.guitar} /></div>
-            </div>
-          </Tab>
-          <Tab key="lyrics" title="Lyrics Sync">
-            <div className={FEATURE_PANEL_CLASS}>
-              <div className="lg:col-span-3"><LyricsMockup isDark={isDark} currentBeat={beat} /></div>
-              <div className="lg:col-span-2"><FeatureContent {...TAB_CONTENT.lyrics} /></div>
-            </div>
-          </Tab>
-          <Tab key="piano-visualizer" title="Piano Visualizer">
+          <Tab key="melody-piano" title="Melody & Piano">
             <div className={FEATURE_PANEL_CLASS}>
               <div className="lg:col-span-3"><PianoVisualizerMockup /></div>
-              <div className="lg:col-span-2"><FeatureContent {...TAB_CONTENT['piano-visualizer']} /></div>
+              <div className="lg:col-span-2"><FeatureContent {...TAB_CONTENT['melody-piano']} /></div>
+            </div>
+          </Tab>
+          <Tab key="stems" title="Split Stems">
+            <div className={FEATURE_PANEL_CLASS}>
+              <div className="lg:col-span-3"><StemsMockup isDark={isDark} currentBeat={beat} /></div>
+              <div className="lg:col-span-2"><FeatureContent {...TAB_CONTENT['stems']} /></div>
+            </div>
+          </Tab>
+          <Tab key="guitar" title="Guitar">
+            <div className={FEATURE_PANEL_CLASS}>
+              <div className="lg:col-span-3"><GuitarMockup isDark={isDark} currentBeat={beat} /></div>
+              <div className="lg:col-span-2"><FeatureContent {...TAB_CONTENT['guitar']} /></div>
+            </div>
+          </Tab>
+          <Tab key="lyrics" title="Lyrics & AI">
+            <div className={FEATURE_PANEL_CLASS}>
+              <div className="lg:col-span-3"><LyricsMockup isDark={isDark} currentBeat={beat} /></div>
+              <div className="lg:col-span-2"><FeatureContent {...TAB_CONTENT['lyrics']} /></div>
             </div>
           </Tab>
         </Tabs>
+
+        <p className="mt-10 text-center text-sm text-gray-600 dark:text-gray-400">
+          Waiting on an analysis? Practice theory, ear training and guitar shapes in{' '}
+          <Link href="/games" className="font-medium text-blue-600 hover:underline dark:text-blue-400">Games</Link>.
+        </p>
       </div>
     </section>
   );

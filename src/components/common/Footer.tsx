@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { HiMail, HiHeart } from 'react-icons/hi';
+import { HiMail } from 'react-icons/hi';
 import { SiGithub } from 'react-icons/si';
 import { FaExternalLinkAlt } from 'react-icons/fa';
 
@@ -22,7 +22,7 @@ const Footer: React.FC = () => {
       links: [
         { name: 'Help & Support', href: '/help', external: false },
         { name: 'Documentation', href: '/docs', external: false },
-        { name: 'GitHub Issues', href: 'https://github.com/ptnghia-j/ChordMiniApp/issues', external: true },
+        { name: 'GitHub Issues', href: 'https://github.com/lamvu0607-creator/chord-mini-practice/issues', external: true },
       ]
     },
     legal: {
@@ -37,7 +37,7 @@ const Footer: React.FC = () => {
   const socialLinks = [
     {
       name: 'GitHub',
-      href: 'https://github.com/ptnghia-j/ChordMiniApp',
+      href: 'https://github.com/lamvu0607-creator/chord-mini-practice',
       icon: <SiGithub className="w-5 h-5" />,
     },
     // {
@@ -161,20 +161,11 @@ const Footer: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Side - Version and Support */}
+            {/* Right Side - Version */}
             <div className="flex items-center space-x-6">
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 Version 0.6.5
               </span>
-              <a
-                href="https://buymeacoffee.com/nghiaphan"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 hover:text-orange-500 dark:hover:text-orange-400 transition-colors duration-200"
-              >
-                <HiHeart className="w-4 h-4" />
-                <span>Support</span>
-              </a>
             </div>
           </div>
         </div>

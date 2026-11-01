@@ -28,7 +28,7 @@ const TermsPage: React.FC = () => {
           </h2>
           <div className="space-y-4 text-gray-700 dark:text-gray-300">
             <p>
-              Welcome to ChordMini, a research project developed at California State University, Fullerton.
+              Welcome to ChordMini, a self-hosted music analysis application.
               These Terms of Service govern your use of our AI-powered chord recognition platform.
             </p>
             <p>
@@ -53,7 +53,6 @@ const TermsPage: React.FC = () => {
               </p>
             </div>
             <ul className="space-y-2">
-              <li>• This platform is part of ongoing research at CSU Fullerton</li>
               <li>• Usage data may be collected for research purposes</li>
               <li>• Features and availability may change as research progresses</li>
               <li>• No warranty or guarantee of service availability</li>

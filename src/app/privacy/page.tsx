@@ -28,7 +28,7 @@ const PrivacyPage: React.FC = () => {
           </h2>
           <div className="space-y-4 text-gray-700 dark:text-gray-300">
             <p>
-              ChordMini is a research project developed at California State University, Fullerton.
+              ChordMini is a self-hosted music analysis application.
               This Privacy Policy explains how we collect, use, and protect your information when you use our service.
             </p>
             <p>

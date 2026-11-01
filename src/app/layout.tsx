@@ -65,12 +65,12 @@ export const metadata: Metadata = {
   ],
   authors: [
     {
-      name: 'Nghia Phan',
-      url: 'https://github.com/ptnghia-j'
+      name: 'lamvu0607',
+      url: 'https://github.com/lamvu0607-creator'
     }
   ],
-  creator: 'Nghia Phan',
-  publisher: 'California State University, Fullerton',
+  creator: 'lamvu0607',
+  publisher: 'ChordMini',
   category: 'Music Technology',
   classification: 'Open Source Software',
   robots: {

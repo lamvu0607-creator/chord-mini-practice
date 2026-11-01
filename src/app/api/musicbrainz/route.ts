@@ -7,7 +7,7 @@ import { parseVideoTitle } from '@/services/lyrics/lrclibService';
 
 const MB_BASE = 'https://musicbrainz.org/ws/2';
 const USER_AGENT =
-  'ChordMiniApp/1.0 (https://github.com/ptnghia-j/ChordMiniApp)';
+  'ChordMiniApp/1.0 (https://github.com/lamvu0607-creator/chord-mini-practice)';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */

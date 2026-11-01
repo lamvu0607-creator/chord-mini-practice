@@ -15,12 +15,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { IoMusicalNotes, IoMusicalNote } from 'react-icons/io5';
 import { useSearchBoxVisibility } from '@/hooks/ui/useSearchBoxVisibility';
 import { useSharedSearchState } from '@/hooks/search/useSharedSearchState';
-import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
-import { Chip } from '@heroui/react';
-import { HiSparkles, HiExclamationTriangle, HiXMark } from 'react-icons/hi2';
-import { isDevelopmentEnvironment } from '@/utils/modelFiltering';
+import { motion, useScroll, useTransform } from 'framer-motion';
 // import { WarningBanner } from '@/components/WarningBanner';
-import SupportChordMini from '@/components/homepage/SupportChordMini'
 import FeaturesTabSection from '@/components/homepage/FeaturesTabSection';
 
 
@@ -60,24 +56,12 @@ function NewHomePageContentInner() {
   const searchParams = useSearchParams();
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [showToast, setShowToast] = useState(false);
 
   // Track when component has mounted to prevent hydration mismatch
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
-
-    // Delay the warning toast by 2 seconds after page load/mount
-    const timer = setTimeout(() => {
-      setShowToast(true);
-    }, 2000);
-
-    return () => clearTimeout(timer);
   }, []);
-
-  const handleDismissToast = () => {
-    setShowToast(false);
-  };
 
   // Scroll-based animations
   const { scrollYProgress } = useScroll();
@@ -155,7 +139,7 @@ function NewHomePageContentInner() {
                     }}
                     className="text-base md:text-lg text-slate-600 dark:text-gray-200 font-normal tracking-wide text-center leading-relaxed max-w-lg mx-auto"
                   >
-                    Open source chord & beat detection application. Get your favorite songs transcribed!
+                    Turn any song into chords, beats, melody and stems. Search YouTube or upload your own audio.
                   </motion.p>
                 </div>
               </div>
@@ -201,7 +185,7 @@ function NewHomePageContentInner() {
                   <HeroChordGridLyricsMock />
                   <div className="p-3">
                     <h4 className="font-medium text-gray-800 dark:text-gray-100 mb-1 text-sm">Beat & Chord Analysis & Lyrics</h4>
-                    <p className="text-xs text-gray-600 dark:text-gray-300">Progressions with Roman numeral analysis, key changes, and sync lyrics</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-300">Beat-aligned chord progressions with synced lyrics. Roman numerals and key changes with an optional Gemini key</p>
                   </div>
                 </motion.div>
 
@@ -212,8 +196,8 @@ function NewHomePageContentInner() {
                 >
                   <HeroPianoVisualizerMock />
                   <div className="p-3">
-                    <h4 className="font-medium text-gray-800 dark:text-gray-100 mb-1 text-sm">Piano Visualizer</h4>
-                    <p className="text-xs text-gray-600 dark:text-gray-300">Falling notes visualization with multi-instrument support and MIDI export</p>
+                    <h4 className="font-medium text-gray-800 dark:text-gray-100 mb-1 text-sm">Melody & Piano</h4>
+                    <p className="text-xs text-gray-600 dark:text-gray-300">Vocal and instrument notes transcribed from the song, with MIDI export</p>
                   </div>
                 </motion.div>
               </div>
@@ -242,10 +226,10 @@ function NewHomePageContentInner() {
             className="text-center mb-12"
           >
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-              Recent Analyses
+              Recently Analyzed
             </h2>
             <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              Explore recently analyzed songs and discover new music through our community
+              Pick up where you left off, or open a song that has already been analyzed
             </p>
           </motion.div>
 
@@ -261,93 +245,6 @@ function NewHomePageContentInner() {
 
       {/* Features Section - Tab-based design */}
       <FeaturesTabSection />
-
-      {/* Animated Support Section - Diffuse glow */}
-      <section className="relative z-20 mx-0 w-full overflow-hidden rounded-t-[36px] border border-divider/60 bg-[#faf6ee] py-20 shadow-[0_24px_80px_rgba(15,23,42,0.08)] transition-colors duration-300 dark:border-white/5 dark:bg-[#050b18]">
-        {/* Background Gradient */}
-        <div className="absolute inset-0 z-0 pointer-events-none">
-          {theme === 'dark' ? (
-            <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse at 50% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 70%)` }} />
-          ) : (
-            <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, rgba(255, 167, 38, 0.1) 0%, transparent 50%)` }} />
-          )}
-        </div>
-
-        {/* Content */}
-        <div className="relative z-10 max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-12 items-start">
-            {/* Left Column: Description (40%) */}
-            <div className="lg:col-span-2 lg:text-left">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.6, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-              >
-                <h3 className="text-lg font-medium flex items-center gap-2 text-gray-900 dark:text-white">
-                  <HiSparkles className="w-5 h-5 text-primary" />
-                  Support ChordMini
-                </h3>
-                <Chip size="sm" variant="flat" color="success">
-                  Open Source
-                </Chip>
-
-                <p className="text-md text-gray-700 dark:text-gray-200 leading-relaxed">
-                  ChordMini is a free, open-source project. The backend server is not guaranteed to be maintained and running for extended periods due to budget constraints. We try our best to keep it running and add new features/models. If you&apos;d like to support the project to keep the backend server running, you can use the donation link. We really appreciate your support! <br />
-                  <em className="text-sm">Note: current server is CPU-based computation, GPU acceleration is more than 10 times faster.</em>
-                  <br />
-                  <em className="text-sm">You can always clone/self-host the app from the source code in <a className="text-yellow-500"href="https://github.com/ptnghia-j/ChordMiniApp" target="_blank" rel="noopener noreferrer">github</a> and deploy it on your own server.</em>
-                </p>
-              </motion.div>
-            </div>
-
-            {/* Right Column: Support Actions and Research Project (60%) */}
-            <div className="lg:col-span-3 w-full">
-              <motion.div
-                initial={{ opacity: 0, x: 30 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.6, delay: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
-                className="space-y-6 w-full"
-              >
-                <SupportChordMini />
-              </motion.div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <AnimatePresence>
-        {showToast && !isDevelopmentEnvironment() && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-            className="fixed bottom-6 right-6 z-50 max-w-md w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-gray-200/80 dark:border-white/10 rounded-xl shadow-2xl p-4 flex gap-3 pointer-events-auto"
-            id="production-warning-toast"
-          >
-            <div className="text-amber-500 mt-0.5 flex-shrink-0">
-              <HiExclamationTriangle className="w-6 h-6" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                YouTube Extraction Pipeline Degradation
-              </h4>
-              <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
-                We are experiencing degradation in our cloud-based YouTube extraction pipeline for this online demo. Note: Local audio file extraction and uploads remain fully stable.
-              </p>
-            </div>
-            <button
-              onClick={handleDismissToast}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1 self-start rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
-              aria-label="Close warning"
-            >
-              <HiXMark className="w-5 h-5" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
 
   );
