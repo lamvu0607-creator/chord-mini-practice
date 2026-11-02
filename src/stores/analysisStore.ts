@@ -3,7 +3,7 @@ import { devtools } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
 import { AnalysisResult } from '@/services/chord-analysis/chordRecognitionService';
 import { LyricsData } from '@/types/musicAiTypes';
-import type { InstrumentGroup, MelodyJobStage, SheetSageResult } from '@/types/sheetSage';
+import type { InstrumentGroup, MelodyJobStage, MelodyLayer, SheetSageResult } from '@/types/sheetSage';
 import { DEFAULT_ENABLED_INSTRUMENT_GROUPS, INSTRUMENT_GROUP_ORDER } from '@/utils/instrumentGroups';
 
 /** Live status of a melody v2 background job, shown in the melody toast. */
@@ -34,6 +34,37 @@ function writeEnabledInstrumentGroups(groups: InstrumentGroup[]): void {
   } catch {
     // Storage unavailable; the choice just won't persist.
   }
+}
+
+export type PianoRollRangeMode = 'fit' | 'full';
+export type PianoRollHeight = 280 | 420 | 600;
+
+const PIANO_ROLL_RANGE_STORAGE_KEY = 'chordmini.pianoRoll.rangeMode';
+const PIANO_ROLL_HEIGHT_STORAGE_KEY = 'chordmini.pianoRoll.height';
+
+function readStoredString(key: string): string | null {
+  try {
+    return typeof window !== 'undefined' ? window.localStorage.getItem(key) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredString(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Storage unavailable; the choice just won't persist.
+  }
+}
+
+function readPianoRollRangeMode(): PianoRollRangeMode {
+  return readStoredString(PIANO_ROLL_RANGE_STORAGE_KEY) === 'full' ? 'full' : 'fit';
+}
+
+function readPianoRollHeight(): PianoRollHeight {
+  const stored = Number(readStoredString(PIANO_ROLL_HEIGHT_STORAGE_KEY));
+  return stored === 280 || stored === 600 ? stored : 420;
 }
 
 // Identity wrapper to disable devtools middleware in production with proper typing
@@ -84,6 +115,10 @@ interface AnalysisStore {
   sheetSageJobStatus: SheetSageJobStatus | null;
   /** Instrument layers (MuScriptor groups) shown in the piano roll; the vocal line is always shown. */
   enabledInstrumentGroups: InstrumentGroup[];
+  /** Layer kept at full strength in the piano roll while the others are dimmed; visual only. */
+  focusedMelodyLayer: MelodyLayer | null;
+  pianoRollRangeMode: PianoRollRangeMode;
+  pianoRollHeight: PianoRollHeight;
 
   // Analysis operations
   startAnalysis: () => void;
@@ -132,6 +167,10 @@ interface AnalysisStore {
   setSheetSageBackendError: (error: string | null) => void;
   setSheetSageJobStatus: (status: SheetSageJobStatus | null) => void;
   toggleInstrumentGroup: (group: InstrumentGroup) => void;
+  /** Focus a layer, or clear focus when it is already focused. Focusing a hidden group shows it. */
+  toggleMelodyLayerFocus: (layer: MelodyLayer) => void;
+  setPianoRollRangeMode: (mode: PianoRollRangeMode) => void;
+  setPianoRollHeight: (height: PianoRollHeight) => void;
   clearSheetSage: () => void;
 }
 
@@ -165,6 +204,9 @@ export const useAnalysisStore = create<AnalysisStore>()(
       sheetSageBackendError: null,
       sheetSageJobStatus: null,
       enabledInstrumentGroups: readEnabledInstrumentGroups(),
+      focusedMelodyLayer: null,
+      pianoRollRangeMode: readPianoRollRangeMode(),
+      pianoRollHeight: readPianoRollHeight(),
 
       // Analysis operations
       startAnalysis: () =>
@@ -219,6 +261,7 @@ export const useAnalysisStore = create<AnalysisStore>()(
             isSheetSageBackendAvailable: null,
             sheetSageBackendError: null,
             sheetSageJobStatus: null,
+            focusedMelodyLayer: null,
           },
           false,
           'resetAnalysis'
@@ -328,11 +371,45 @@ export const useAnalysisStore = create<AnalysisStore>()(
               ? state.enabledInstrumentGroups.filter((entry) => entry !== group)
               : INSTRUMENT_GROUP_ORDER.filter((entry) => entry === group || state.enabledInstrumentGroups.includes(entry));
             writeEnabledInstrumentGroups(enabled);
-            return { enabledInstrumentGroups: enabled };
+            return {
+              enabledInstrumentGroups: enabled,
+              focusedMelodyLayer:
+                state.focusedMelodyLayer === group && !enabled.includes(group) ? null : state.focusedMelodyLayer,
+            };
           },
           false,
           'toggleInstrumentGroup'
         ),
+
+      toggleMelodyLayerFocus: (layer) =>
+        set(
+          (state) => {
+            if (state.focusedMelodyLayer === layer) {
+              return { focusedMelodyLayer: null };
+            }
+            const group = INSTRUMENT_GROUP_ORDER.find((entry) => entry === layer);
+            if (!group || state.enabledInstrumentGroups.includes(group)) {
+              return { focusedMelodyLayer: layer };
+            }
+            const enabled = INSTRUMENT_GROUP_ORDER.filter(
+              (entry) => entry === group || state.enabledInstrumentGroups.includes(entry),
+            );
+            writeEnabledInstrumentGroups(enabled);
+            return { focusedMelodyLayer: layer, enabledInstrumentGroups: enabled };
+          },
+          false,
+          'toggleMelodyLayerFocus'
+        ),
+
+      setPianoRollRangeMode: (mode) => {
+        writeStoredString(PIANO_ROLL_RANGE_STORAGE_KEY, mode);
+        set({ pianoRollRangeMode: mode }, false, 'setPianoRollRangeMode');
+      },
+
+      setPianoRollHeight: (height) => {
+        writeStoredString(PIANO_ROLL_HEIGHT_STORAGE_KEY, String(height));
+        set({ pianoRollHeight: height }, false, 'setPianoRollHeight');
+      },
 
       clearSheetSage: () =>
         set(
@@ -341,6 +418,7 @@ export const useAnalysisStore = create<AnalysisStore>()(
             isComputingSheetSage: false,
             sheetSageError: null,
             sheetSageJobStatus: null,
+            focusedMelodyLayer: null,
           },
           false,
           'clearSheetSage'
@@ -385,6 +463,9 @@ export const useIsSheetSageBackendAvailable = () => useAnalysisStore((state) => 
 export const useSheetSageBackendError = () => useAnalysisStore((state) => state.sheetSageBackendError);
 export const useSheetSageJobStatus = () => useAnalysisStore((state) => state.sheetSageJobStatus);
 export const useEnabledInstrumentGroups = () => useAnalysisStore((state) => state.enabledInstrumentGroups);
+export const useFocusedMelodyLayer = () => useAnalysisStore((state) => state.focusedMelodyLayer);
+export const usePianoRollRangeMode = () => useAnalysisStore((state) => state.pianoRollRangeMode);
+export const usePianoRollHeight = () => useAnalysisStore((state) => state.pianoRollHeight);
 
 // Action selectors
 export const useAnalysisActions = () =>

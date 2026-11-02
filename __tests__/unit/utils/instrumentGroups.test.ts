@@ -49,8 +49,8 @@ describe('instrument groups', () => {
 
     const withGuitar = buildSheetSageExtraVisualNotes(result, '#22d3ee', 0, '#ec4899', ['guitar']);
     expect(withGuitar).toEqual([
-      { midi: 64, startTime: 0, endTime: 1, color: '#22d3ee' },
-      { midi: 52, startTime: 0, endTime: 1, color: INSTRUMENT_GROUP_COLORS.guitar },
+      { midi: 64, startTime: 0, endTime: 1, color: '#22d3ee', layer: 'vocal' },
+      { midi: 52, startTime: 0, endTime: 1, color: INSTRUMENT_GROUP_COLORS.guitar, layer: 'guitar' },
     ]);
   });
 });

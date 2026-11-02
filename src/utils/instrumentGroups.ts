@@ -58,8 +58,8 @@ export const INSTRUMENT_GROUP_LABELS: Record<InstrumentGroup, string> = {
 export const INSTRUMENT_GROUP_COLORS: Record<InstrumentGroup, string> = {
   guitar: '#f59e0b',
   keys: '#d946ef',
-  bass: '#b45309',
-  brass_winds: '#e11d48',
+  bass: '#3b82f6',
+  brass_winds: '#ef4444',
   strings: '#7c3aed',
   synth: '#84cc16',
   other: '#94a3b8',

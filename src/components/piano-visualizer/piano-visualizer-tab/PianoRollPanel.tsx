@@ -1,10 +1,18 @@
 'use client';
 
 import React from 'react';
-import { FallingNotesCanvas, type ActiveInstrument } from '@/components/piano-visualizer/FallingNotesCanvas';
+import { FallingNotesCanvas, type ActiveInstrument, type ExtraVisualNote } from '@/components/piano-visualizer/FallingNotesCanvas';
 import { PianoKeyboard } from '@/components/piano-visualizer/PianoKeyboard';
+import {
+  useAnalysisStore,
+  useFocusedMelodyLayer,
+  usePianoRollHeight,
+  usePianoRollRangeMode,
+  type PianoRollHeight,
+  type PianoRollRangeMode,
+} from '@/stores/analysisStore';
 import type { ChordEvent } from '@/utils/chordToMidi';
-import { PIANO_END_MIDI, PIANO_START_MIDI } from './constants';
+import type { BeatLine, PianoRange } from './pianoRollLayout';
 
 interface PianoRollPanelProps {
   legendInstruments: ActiveInstrument[];
@@ -12,7 +20,9 @@ interface PianoRollPanelProps {
   keyboardWidth: number;
   currentTime: number;
   isPlaying: boolean;
-  melodyOverlayNotes: Array<{ midi: number; startTime: number; endTime: number; color: string }>;
+  melodyOverlayNotes: ExtraVisualNote[];
+  pianoRange: PianoRange;
+  beatLines: BeatLine[];
   handleActiveNotesChange: (notes: Set<number>, colors: Map<number, string>) => void;
   activeNotes: Set<number>;
   noteColors: Map<number, string>;
@@ -21,6 +31,41 @@ interface PianoRollPanelProps {
 }
 
 const NO_CHORD_EVENTS: ChordEvent[] = [];
+const RANGE_OPTIONS: Array<{ value: PianoRollRangeMode; label: string; title: string }> = [
+  { value: 'fit', label: 'Fit', title: 'Show only the octaves this song uses' },
+  { value: 'full', label: '88 keys', title: 'Show the full keyboard' },
+];
+const HEIGHT_OPTIONS: Array<{ value: PianoRollHeight; label: string; title: string }> = [
+  { value: 280, label: 'S', title: 'Small piano roll' },
+  { value: 420, label: 'M', title: 'Medium piano roll' },
+  { value: 600, label: 'L', title: 'Large piano roll' },
+];
+
+function SegmentedControl<T extends string | number>({ label, options, value, onChange }: {
+  label: string;
+  options: Array<{ value: T; label: string; title: string }>;
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div role="group" aria-label={label} className="flex overflow-hidden rounded border border-gray-700">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          title={option.title}
+          aria-pressed={option.value === value}
+          onClick={() => onChange(option.value)}
+          className={`px-2 py-0.5 text-xs font-medium transition-colors ${
+            option.value === value ? 'bg-gray-700 text-gray-100' : 'text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /** Piano roll of model-transcribed notes only (vocal line + MuScriptor instrument layers). */
 export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
@@ -30,12 +75,20 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
   currentTime,
   isPlaying,
   melodyOverlayNotes,
+  pianoRange,
+  beatLines,
   handleActiveNotesChange,
   activeNotes,
   noteColors,
   whiteKeyWidth,
   lookAheadSeconds,
 }) => {
+  const focusedLayer = useFocusedMelodyLayer();
+  const rangeMode = usePianoRollRangeMode();
+  const rollHeight = usePianoRollHeight();
+  const setRangeMode = useAnalysisStore((state) => state.setPianoRollRangeMode);
+  const setRollHeight = useAnalysisStore((state) => state.setPianoRollHeight);
+
   return (
     <div
       ref={setMeasuredContainerRef}
@@ -55,6 +108,10 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
               <span className="text-xs font-medium text-gray-400">{inst.name}</span>
             </div>
           ))}
+          <div className="ml-auto flex items-center gap-2">
+            <SegmentedControl label="Keyboard range" options={RANGE_OPTIONS} value={rangeMode} onChange={setRangeMode} />
+            <SegmentedControl label="Piano roll height" options={HEIGHT_OPTIONS} value={rollHeight} onChange={setRollHeight} />
+          </div>
         </div>
       )}
 
@@ -72,22 +129,25 @@ export const PianoRollPanel: React.FC<PianoRollPanelProps> = ({
               chordEvents={NO_CHORD_EVENTS}
               currentTime={currentTime}
               isPlaying={isPlaying}
-              startMidi={PIANO_START_MIDI}
-              endMidi={PIANO_END_MIDI}
+              startMidi={pianoRange.startMidi}
+              endMidi={pianoRange.endMidi}
               whiteKeyWidth={whiteKeyWidth}
               lookAheadSeconds={lookAheadSeconds}
               lookBehindSeconds={0.5}
-              height={280}
+              height={rollHeight}
               playbackTime={currentTime}
               extraVisualNotes={melodyOverlayNotes}
+              readabilityMode
+              beatLines={beatLines}
+              focusedLayer={focusedLayer}
               onActiveNotesChange={handleActiveNotesChange}
             />
           </div>
 
           <div className="flex w-full justify-center bg-gradient-to-b from-gray-950 to-gray-900 pb-2">
             <PianoKeyboard
-              startMidi={PIANO_START_MIDI}
-              endMidi={PIANO_END_MIDI}
+              startMidi={pianoRange.startMidi}
+              endMidi={pianoRange.endMidi}
               activeNotes={activeNotes}
               noteColors={noteColors}
               whiteKeyWidth={whiteKeyWidth}

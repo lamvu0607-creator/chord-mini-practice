@@ -5,7 +5,7 @@ import { buildBeatToChordSequenceMap, formatRomanNumeral } from '@/utils/chordFo
 import { createShiftedChords } from '@/utils/chordProcessing';
 import { mergeConsecutiveChordEvents } from '@/utils/instrumentNoteGeneration';
 import { buildSheetSageExtraVisualNotes } from '@/utils/sheetSagePlayback';
-import { useEnabledInstrumentGroups } from '@/stores/analysisStore';
+import { useEnabledInstrumentGroups, usePianoRollRangeMode } from '@/stores/analysisStore';
 import {
   buildChordTimeline,
   type ChordEvent,
@@ -15,9 +15,14 @@ import type { SheetSageResult } from '@/types/sheetSage';
 import {
   HARMONY_TRANSCRIPTION_COLOR,
   MELODIC_TRANSCRIPTION_COLOR,
-  PIANO_WHITE_KEY_COUNT,
 } from './constants';
 import { countLeadingShiftChordSlots, hasPlayableNotes } from './helpers';
+import {
+  buildBeatLines,
+  computePianoRange,
+  computeWhiteKeyWidth,
+  countWhiteKeys,
+} from './pianoRollLayout';
 import type { ChordGridData, SequenceCorrections } from './types';
 
 type RomanNumeralDataShape = {
@@ -183,12 +188,6 @@ export function usePianoVisualizerTimelineModel({
     return map;
   }, [beatToChordSequenceMap, sequenceCorrections?.keyAnalysis?.modulations, stripChordEvents]);
 
-  const whiteKeyWidth = useMemo(() => {
-    if (containerWidth <= 0) return 14;
-    const calculated = Math.floor(containerWidth / PIANO_WHITE_KEY_COUNT);
-    return Math.max(10, Math.min(24, calculated));
-  }, [containerWidth]);
-
   const enabledInstrumentGroups = useEnabledInstrumentGroups();
   const melodyOverlayNotes = useMemo(
     () => showMelodicOverlay
@@ -203,9 +202,18 @@ export function usePianoVisualizerTimelineModel({
     [enabledInstrumentGroups, pitchShiftSemitones, sheetSageResult, showMelodicOverlay],
   );
 
-  const keyboardWidth = useMemo(
-    () => PIANO_WHITE_KEY_COUNT * whiteKeyWidth,
-    [whiteKeyWidth],
+  const pianoRollRangeMode = usePianoRollRangeMode();
+  const pianoRange = useMemo(
+    () => computePianoRange(melodyOverlayNotes, pianoRollRangeMode),
+    [melodyOverlayNotes, pianoRollRangeMode],
+  );
+  const whiteKeyCount = useMemo(() => countWhiteKeys(pianoRange), [pianoRange]);
+  const whiteKeyWidth = computeWhiteKeyWidth(containerWidth, whiteKeyCount);
+  const keyboardWidth = whiteKeyCount * whiteKeyWidth;
+
+  const beatLines = useMemo(
+    () => buildBeatLines(resolvedChordGridData?.beats, timeSignature),
+    [resolvedChordGridData?.beats, timeSignature],
   );
 
   return {
@@ -225,6 +233,8 @@ export function usePianoVisualizerTimelineModel({
     beatRomanNumerals,
     beatModulations,
     melodyOverlayNotes,
+    pianoRange,
+    beatLines,
     whiteKeyWidth,
     keyboardWidth,
   };

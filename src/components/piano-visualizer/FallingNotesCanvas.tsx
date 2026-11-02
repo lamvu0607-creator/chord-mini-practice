@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useRef, useEffect, useCallback, useMemo } from 'react';
-import { ChordEvent, isBlackKey } from '@/utils/chordToMidi';
+import { ChordEvent, isBlackKey, midiToNoteName } from '@/utils/chordToMidi';
+import type { MelodyLayer } from '@/types/sheetSage';
+import { getNoteDrawRank, type BeatLine } from '@/components/piano-visualizer/piano-visualizer-tab/pianoRollLayout';
 import {
   attachVisualNotePositions,
   findInstrumentVisualEventPlanIndexAtTime,
@@ -61,6 +63,12 @@ interface FallingNotesCanvasProps {
   playbackTime?: number;
   /** Optional precomputed overlay notes such as melodic transcription */
   extraVisualNotes?: ExtraVisualNote[];
+  /** Analysis styling for `extraVisualNotes`: outlines, note names, key shading and octave marks */
+  readabilityMode?: boolean;
+  /** Beat and measure lines drawn in readability mode */
+  beatLines?: BeatLine[];
+  /** Layer kept at full strength in readability mode; other layers are dimmed */
+  focusedLayer?: MelodyLayer | null;
   /** Callback: set of active MIDI notes at current time */
   onActiveNotesChange?: (notes: Set<number>, colors: Map<number, string>) => void;
 }
@@ -94,6 +102,12 @@ const HIT_LINE_Y_RATIO = 0.88;
 const SOFT_SYNC_DRIFT_THRESHOLD = 0.05;
 const HARD_SYNC_DRIFT_THRESHOLD = 0.24;
 const DRIFT_BLEND_FACTOR = 0.35;
+const NO_BEAT_LINES: BeatLine[] = [];
+const DIMMED_LAYER_OPACITY = 0.25;
+const NOTE_OUTLINE_COLOR = 'rgba(3, 7, 18, 0.85)';
+const NOTE_VERTICAL_GAP = 1;
+const MIN_NOTE_HEIGHT = 3;
+const MIN_WIDTH_FOR_OCTAVE_IN_LABEL = 18;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -193,6 +207,9 @@ export const FallingNotesCanvas: React.FC<FallingNotesCanvasProps> = React.memo(
   simplePianoBlockChords = false,
   playbackTime,
   extraVisualNotes = [],
+  readabilityMode = false,
+  beatLines = NO_BEAT_LINES,
+  focusedLayer = null,
   onActiveNotesChange,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -245,6 +262,21 @@ export const FallingNotesCanvas: React.FC<FallingNotesCanvasProps> = React.memo(
 
     return { midiKeyPositions: positions, whiteKeyXPositions: whiteXs };
   }, [startMidi, endMidi, whiteKeyWidth]);
+
+  const keyGuides = useMemo(() => {
+    const blackKeyColumns: Array<{ x: number; width: number }> = [];
+    const octaveMarks: Array<{ x: number; label: string }> = [];
+    for (let midi = startMidi; midi <= endMidi; midi++) {
+      const pos = midiKeyPositions.get(midi);
+      if (!pos) continue;
+      if (isBlackKey(midi)) {
+        blackKeyColumns.push(pos);
+      } else if (midi % 12 === 0) {
+        octaveMarks.push({ x: pos.x, label: midiToNoteName(midi) });
+      }
+    }
+    return { blackKeyColumns, octaveMarks };
+  }, [startMidi, endMidi, midiKeyPositions]);
 
   // Check if we have instrument-specific coloring
   const hasInstruments = activeInstruments.length > 0;
@@ -383,6 +415,35 @@ export const FallingNotesCanvas: React.FC<FallingNotesCanvasProps> = React.memo(
       ctx.stroke();
     }
 
+    if (readabilityMode) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+      for (const column of keyGuides.blackKeyColumns) {
+        ctx.fillRect(column.x, 0, column.width, h);
+      }
+
+      ctx.font = '10px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      for (const mark of keyGuides.octaveMarks) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+        ctx.fillRect(mark.x, 0, 1, h);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.fillText(mark.label, mark.x + 3, 3);
+      }
+
+      ctx.textBaseline = 'bottom';
+      for (const line of getVisibleTimeRangeItems(beatLines, windowStart, windowEnd, 0)) {
+        const y = hitLineY - (line.startTime - time) * pixelsPerSecond;
+        const isMeasureStart = line.measureNumber !== undefined;
+        ctx.fillStyle = isMeasureStart ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.08)';
+        ctx.fillRect(0, y, w, 1);
+        if (isMeasureStart) {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+          ctx.fillText(String(line.measureNumber), 3, y - 1);
+        }
+      }
+    }
+
     // Draw hit line (subtle glow)
     const hitGradient = ctx.createLinearGradient(0, hitLineY - 2, 0, hitLineY + 2);
     hitGradient.addColorStop(0, 'rgba(96, 165, 250, 0)');
@@ -413,6 +474,7 @@ export const FallingNotesCanvas: React.FC<FallingNotesCanvasProps> = React.memo(
       noteX: number, noteW: number, drawTop: number, drawHeight: number,
       noteColor: string, isActive: boolean, opacity: number,
       labelText?: string,
+      analysisStyle = false,
     ) => {
       ctx.globalAlpha = opacity;
       const radius = Math.min(3, drawHeight / 2, noteW / 2);
@@ -430,6 +492,12 @@ export const FallingNotesCanvas: React.FC<FallingNotesCanvasProps> = React.memo(
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
 
+      if (analysisStyle) {
+        ctx.strokeStyle = NOTE_OUTLINE_COLOR;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
       // Highlight on top edge
       if (drawHeight > 6) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
@@ -439,7 +507,19 @@ export const FallingNotesCanvas: React.FC<FallingNotesCanvasProps> = React.memo(
       }
 
       // Label text
-      if (labelText && isActive && drawHeight > 14 && noteW > 16) {
+      if (analysisStyle) {
+        if (labelText && drawHeight > 14 && noteW > 11) {
+          ctx.font = 'bold 9px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.lineWidth = 2.5;
+          ctx.lineJoin = 'round';
+          ctx.strokeStyle = NOTE_OUTLINE_COLOR;
+          ctx.strokeText(labelText, noteX + noteW / 2, drawTop + drawHeight / 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(labelText, noteX + noteW / 2, drawTop + drawHeight / 2);
+        }
+      } else if (labelText && isActive && drawHeight > 14 && noteW > 16) {
         ctx.globalAlpha = 0.9;
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 9px system-ui, sans-serif';
@@ -533,12 +613,20 @@ export const FallingNotesCanvas: React.FC<FallingNotesCanvasProps> = React.memo(
       }
     }
 
-    for (const note of getVisibleTimeRangeItems(
+    const visibleExtraNotes = getVisibleTimeRangeItems(
       sortedExtraVisualNotes,
       windowStart,
       windowEnd,
       maxExtraVisualNoteDuration,
-    )) {
+    );
+    if (readabilityMode) {
+      // Array.sort is stable, so notes in one layer keep their time order.
+      visibleExtraNotes.sort((left, right) => (
+        getNoteDrawRank(left.layer, focusedLayer) - getNoteDrawRank(right.layer, focusedLayer)
+      ));
+    }
+
+    for (const note of visibleExtraNotes) {
       const pos = midiKeyPositions.get(note.midi);
       if (!pos) continue;
       if (note.endTime < windowStart || note.startTime > windowEnd) continue;
@@ -549,12 +637,45 @@ export const FallingNotesCanvas: React.FC<FallingNotesCanvasProps> = React.memo(
       const noteX = pos.x + 1;
       const noteW = pos.width - 2;
 
-      if (geom.isActive) {
+      if (!readabilityMode) {
+        if (geom.isActive) {
+          activeNotes.add(note.midi);
+          activeColors.set(note.midi, note.color);
+        }
+
+        drawNote(noteX, noteW, geom.drawTop, geom.drawHeight, note.color, geom.isActive, geom.opacity, note.labelText);
+        continue;
+      }
+
+      const isDimmed = focusedLayer !== null && note.layer !== focusedLayer;
+      const isHighlighted = geom.isActive && !isDimmed;
+      if (isHighlighted) {
         activeNotes.add(note.midi);
         activeColors.set(note.midi, note.color);
       }
 
-      drawNote(noteX, noteW, geom.drawTop, geom.drawHeight, note.color, geom.isActive, geom.opacity, note.labelText);
+      // Inset each end so repeated notes on one pitch stay visually separate.
+      const hasRoomForGap = geom.drawHeight > MIN_NOTE_HEIGHT + 2 * NOTE_VERTICAL_GAP;
+      const drawTop = hasRoomForGap ? geom.drawTop + NOTE_VERTICAL_GAP : geom.drawTop;
+      const drawHeight = hasRoomForGap
+        ? geom.drawHeight - 2 * NOTE_VERTICAL_GAP
+        : Math.max(MIN_NOTE_HEIGHT, geom.drawHeight);
+      const noteName = midiToNoteName(note.midi);
+      const label = isDimmed
+        ? undefined
+        : note.labelText ?? (noteW >= MIN_WIDTH_FOR_OCTAVE_IN_LABEL ? noteName : noteName.replace(/-?\d+$/, ''));
+
+      drawNote(
+        noteX,
+        noteW,
+        drawTop,
+        drawHeight,
+        note.color,
+        isHighlighted,
+        isDimmed ? geom.opacity * DIMMED_LAYER_OPACITY : geom.opacity,
+        label,
+        true,
+      );
     }
 
     ctx.restore();
@@ -571,8 +692,12 @@ export const FallingNotesCanvas: React.FC<FallingNotesCanvasProps> = React.memo(
   }, [
     activeInstrumentVisualEventIndex,
     activeInstrumentVisualNotes,
+    beatLines,
     eventPositions,
+    focusedLayer,
+    keyGuides,
     midiKeyPositions,
+    readabilityMode,
     maxExtraVisualNoteDuration,
     sortedExtraVisualNotes,
     staticInstrumentVisualEventRanges,

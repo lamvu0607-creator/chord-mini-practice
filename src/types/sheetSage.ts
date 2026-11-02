@@ -10,6 +10,9 @@ export interface SheetSageNoteEvent {
 /** Instrument groups shown as separate piano-roll layers (see src/utils/instrumentGroups.ts). */
 export type InstrumentGroup = 'guitar' | 'keys' | 'bass' | 'brass_winds' | 'strings' | 'synth' | 'other';
 
+/** Every layer the piano roll can draw; focus mode targets one of these. */
+export type MelodyLayer = 'vocal' | 'harmony' | InstrumentGroup;
+
 export interface InstrumentNoteEvent extends SheetSageNoteEvent {
   /** MuScriptor MT3_FULL_PLUS group name, e.g. `distorted_electric_guitar`. */
   instrument: string;

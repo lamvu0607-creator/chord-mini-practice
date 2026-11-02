@@ -1,4 +1,4 @@
-import type { InstrumentGroup, SheetSageResult } from '@/types/sheetSage';
+import type { InstrumentGroup, MelodyLayer, SheetSageResult } from '@/types/sheetSage';
 import { INSTRUMENT_GROUP_COLORS } from '@/utils/instrumentGroups';
 import type { DynamicsAnalyzer } from '@/services/audio/dynamicsAnalyzer';
 import { audioContextManager } from '@/services/audio/audioContextManager';
@@ -11,6 +11,7 @@ export interface SheetSageVisualNote {
   endTime: number;
   color: string;
   labelText?: string;
+  layer?: MelodyLayer;
 }
 
 interface PreparedSheetSageMelodyNote {
@@ -370,6 +371,7 @@ export function buildSheetSageExtraVisualNotes(
       startTime: event.onset,
       endTime: event.offset,
       color,
+      layer: 'vocal',
     });
   }
 
@@ -381,6 +383,7 @@ export function buildSheetSageExtraVisualNotes(
         endTime: event.offset,
         color: harmonyColor,
         labelText: event.intervalTag,
+        layer: 'harmony',
       });
     }
   }
@@ -394,6 +397,7 @@ export function buildSheetSageExtraVisualNotes(
         startTime: event.onset,
         endTime: event.offset,
         color: INSTRUMENT_GROUP_COLORS[event.group],
+        layer: event.group,
       });
     }
   }

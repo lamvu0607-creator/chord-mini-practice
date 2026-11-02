@@ -3,7 +3,6 @@ export const PLAYBACK_EVENT_MISS_GRACE_PERIOD = 0.12;
 
 export const PIANO_START_MIDI = 21;
 export const PIANO_END_MIDI = 108;
-export const PIANO_WHITE_KEY_COUNT = 52;
 
 export const SPEED_PRESETS = [
   { label: 'Slow', lookAhead: 6, description: 'More time to read ahead' },

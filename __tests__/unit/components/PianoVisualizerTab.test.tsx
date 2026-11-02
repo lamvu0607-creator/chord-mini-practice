@@ -70,6 +70,9 @@ jest.mock('@/stores/analysisStore', () => ({
   useChordCorrections: () => null,
   useKeySignature: () => null,
   useEnabledInstrumentGroups: () => ['guitar'],
+  useFocusedMelodyLayer: () => null,
+  usePianoRollRangeMode: () => 'fit',
+  usePianoRollHeight: () => 420,
   useAnalysisStore: () => () => undefined,
 }));
 
@@ -196,7 +199,8 @@ describe('PianoVisualizerTab', () => {
     );
 
     expect(screen.getByText('Layers:')).toBeInTheDocument();
-    expect(screen.getByText('Vocal')).toBeInTheDocument();
+    expect(screen.getAllByText('Vocal').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Focus Vocal' })).toBeInTheDocument();
     expect(screen.queryByText('Piano')).not.toBeInTheDocument();
     expect(screen.queryByText(/No model notes yet/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /MIDI/ })).toBeInTheDocument();
