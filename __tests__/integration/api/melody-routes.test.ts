@@ -32,6 +32,8 @@ jest.mock('@/server/stems/stemWorker', () => ({
 }));
 
 const VIDEO_ID = 'dQw4w9WgXcQ';
+const UPLOAD_ID = 'upload_abcdef0123456789abcdef01';
+const UPLOAD_STEM_ID = 'up_abcdef0123456789abcdef01';
 const URL_BASE = 'http://localhost/api/transcribe-sheetsage';
 
 function v2Request(videoId: string) {
@@ -75,11 +77,62 @@ describe('melody v2 API routes', () => {
     expect((await cached.json()).data).toMatchObject({ pipelineVersion: 2 });
   });
 
-  it('rejects uploads so the client can fall back to the mix-based engine', async () => {
+  it('rejects ids that are neither YouTube songs nor well-formed uploads', async () => {
     const { POST } = await import('@/app/api/transcribe-sheetsage/route');
     const response = await POST(v2Request('upload_0123456789abcdef'));
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ code: 'UNSUPPORTED_SOURCE' });
+  });
+
+  it('queues uploads against a private stem set owned by the uploader', async () => {
+    currentUser = { userId: 'owner', role: 'member' };
+    const { POST } = await import('@/app/api/transcribe-sheetsage/route');
+    const storage = await import('@/services/storage/localAudioStorageService');
+    const { claimAudioOwner } = await import('@/server/persistence/audioRepository');
+    const { canViewStemSet, getStemSet } = await import('@/server/stems/stemSetRepository');
+
+    expect((await POST(v2Request(UPLOAD_ID))).status).toBe(409);
+
+    await storage.saveLocalAudioFile(UPLOAD_ID, new Uint8Array([1, 2, 3]), { filename: 'clip.wav' });
+    claimAudioOwner(UPLOAD_ID, 'owner');
+
+    // Another signed-in user with the link triggers the job; the set still belongs to the uploader.
+    currentUser = { userId: 'friend', role: 'member' };
+    const created = await POST(v2Request(UPLOAD_ID));
+    expect(created.status).toBe(202);
+    expect((await created.json()).job).toMatchObject({ videoId: UPLOAD_ID, status: 'queued' });
+
+    const stemSet = getStemSet(UPLOAD_STEM_ID)!;
+    expect(stemSet).toMatchObject({ sourceType: 'upload', ownerUserId: 'owner', videoId: UPLOAD_ID });
+    expect(canViewStemSet(stemSet, null)).toBe(false);
+  });
+
+  it('assigns an upload from before owners were stored to the first requester', async () => {
+    currentUser = { userId: 'first', role: 'member' };
+    const { POST } = await import('@/app/api/transcribe-sheetsage/route');
+    const storage = await import('@/services/storage/localAudioStorageService');
+    const { findAudioMetadataByVideoId } = await import('@/server/persistence/audioRepository');
+    const { getStemSet } = await import('@/server/stems/stemSetRepository');
+
+    await storage.saveLocalAudioFile(UPLOAD_ID, new Uint8Array([1]), { filename: 'old.mp3' });
+    expect((await POST(v2Request(UPLOAD_ID))).status).toBe(202);
+    expect(findAudioMetadataByVideoId(UPLOAD_ID)?.ownerUserId).toBe('first');
+    expect(getStemSet(UPLOAD_STEM_ID)?.ownerUserId).toBe('first');
+  });
+
+  it('does not evict stems while a melody job still needs them', async () => {
+    const { upsertPendingStemSet, markStemSetReady, listEvictableStemSets } = await import('@/server/stems/stemSetRepository');
+    const { createMelodyJob, completeMelodyJob } = await import('@/server/melody/melodyJobService');
+
+    upsertPendingStemSet({ sourceId: UPLOAD_STEM_ID, sourceType: 'upload', ownerUserId: 'u1', inputPath: 'a.wav' });
+    markStemSetReady(UPLOAD_STEM_ID, { model: 'scnet', stems: [] });
+    expect(listEvictableStemSets().map((set) => set.sourceId)).toEqual([UPLOAD_STEM_ID]);
+
+    const job = createMelodyJob({ videoId: UPLOAD_ID, sourceId: UPLOAD_STEM_ID, inputPath: 'a.wav', requestedBy: 'u1' });
+    expect(listEvictableStemSets()).toEqual([]);
+
+    completeMelodyJob(job.jobId);
+    expect(listEvictableStemSets().map((set) => set.sourceId)).toEqual([UPLOAD_STEM_ID]);
   });
 
   it('queues one job per song once the audio is cached and reports it until it completes', async () => {

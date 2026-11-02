@@ -179,7 +179,7 @@ export interface MelodyJobUpdate {
 
 /**
  * Melody v2: vocal line from the SCNet vocals stem + instrument notes from MuScriptor, computed by a
- * background job. Resolves with the result, or `null` when the source is not supported (uploads),
+ * background job. Resolves with the result, or `null` when the source ID is not supported,
  * so the caller can fall back to {@link requestSheetSageTranscription}.
  */
 export async function requestMelodyV2Transcription(

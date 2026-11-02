@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardBody, Button, Chip, Select, SelectItem, Skeleton } from '@heroui/react';
 import { useIsVisible } from '@/hooks/scroll/useIntersectionObserver';
@@ -44,6 +44,15 @@ const KEY_OPTIONS = [
 export default function RecentVideos() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedKey, setSelectedKey] = useState(ALL_KEYS_VALUE);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   // PERFORMANCE FIX #5: Lazy load using Intersection Observer
   const [containerRef, isVisible] = useIsVisible<HTMLDivElement>({
@@ -63,6 +72,8 @@ export default function RecentVideos() {
   } = useRecentVideosQuery({
     selectedKey,
     enabled: isVisible,
+    includeUploads: isAuthenticated,
+    search: search || undefined,
   });
   const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
 
@@ -116,6 +127,19 @@ export default function RecentVideos() {
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">Recently Transcribed Songs</h3>
           {status}
         </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <input
+          type="search"
+          value={searchInput}
+          onChange={(event) => {
+            setSearchInput(event.target.value);
+            setIsExpanded(false);
+          }}
+          maxLength={120}
+          placeholder="Search by name..."
+          aria-label="Search songs by name"
+          className="w-full rounded-lg border border-default-300 bg-background px-3 py-1.5 text-sm text-gray-800 dark:border-white/10 dark:bg-gray-800/50 dark:text-gray-100 sm:w-56"
+        />
         <div className="flex items-center gap-2 md:min-w-[250px]">
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Key
@@ -145,6 +169,7 @@ export default function RecentVideos() {
               </SelectItem>
             ))}
           </Select>
+        </div>
         </div>
       </div>
   );
@@ -182,9 +207,11 @@ export default function RecentVideos() {
             <p className="text-sm text-gray-600 dark:text-gray-300">
               {errorMessage
                 ? 'Please retry or check your connection.'
-                : selectedKey === ALL_KEYS_VALUE
-                  ? 'New analyses will appear here as they are created.'
-                  : `No recent analyses matched ${selectedKeyLabel}.`}
+                : search
+                  ? `No songs matched "${search}".`
+                  : selectedKey === ALL_KEYS_VALUE
+                    ? 'New analyses will appear here as they are created.'
+                    : `No recent analyses matched ${selectedKeyLabel}.`}
             </p>
           </div>
         </div>
@@ -237,7 +264,7 @@ export default function RecentVideos() {
                     {video.duration && <div className="absolute bottom-0.5 right-0.5 bg-black bg-opacity-75 text-white text-xs px-1 py-0.5 rounded">{formatDuration(video.duration)}</div>}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-base font-medium text-gray-800 dark:text-gray-100 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors mb-1">{video.title}</h4>
+                    <h4 className="text-base font-medium text-gray-800 dark:text-gray-100 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors mb-1">{video.customName ?? video.title}</h4>
                     {video.channelTitle && (
                       <div className="text-xs text-gray-600 dark:text-gray-300 mb-1 truncate">
                         {video.channelTitle}

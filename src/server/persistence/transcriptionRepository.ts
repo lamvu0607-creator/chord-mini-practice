@@ -1,5 +1,6 @@
 import 'server-only';
 import { buildSearchableKeys } from '@/utils/keySignatureUtils';
+import { isUploadSourceId } from '@/utils/uploadSourceId';
 import { normalizeThumbnailUrl } from '@/utils/youtubeMetadata';
 import { buildTranscriptionId, type TranscriptionData, type TranscriptionEnrichmentUpdate } from '@/types/transcription';
 import { getDatabase } from './database';
@@ -133,10 +134,17 @@ export function incrementUsage(videoId: string, beatModel: string, chordModel: s
 export type RecentVideo = {
   videoId: string; title?: string; channelTitle?: string; thumbnailUrl?: string; processedAt: number;
   duration?: number; beatModel?: string; chordModel?: string; bpm?: number; timeSignature?: number;
-  keySignature?: string; usageCount?: number;
+  keySignature?: string; usageCount?: number; customName?: string;
 };
 
-export function findRecentTranscriptions(options: { selectedKey: string; cursor?: string | null; limit: number }) {
+export function findRecentTranscriptions(options: {
+  selectedKey: string; cursor?: string | null; limit: number;
+  /** Uploads and clips are listed for signed-in users only; leave off for public lists. */
+  includeUploads?: boolean;
+  /** Custom names are returned and searched for signed-in users only. */
+  includeCustomNames?: boolean;
+  search?: string;
+}) {
   const { sqlite } = getDatabase();
   let cursor: { createdAtMs: number; id: string } | null = null;
   if (options.cursor) {
@@ -152,8 +160,20 @@ export function findRecentTranscriptions(options: { selectedKey: string; cursor?
   }
   const selectedKeys = options.selectedKey === 'all' ? [] : buildSearchableKeys(options.selectedKey);
   const params: Array<string | number> = [];
-  // Uploaded audio is private (reachable only by its link), so it never appears in public lists.
-  let sql = "SELECT t.* FROM transcriptions t WHERE t.is_primary_variant = 1 AND t.video_id NOT LIKE 'upload!_%' ESCAPE '!'";
+  const nameColumn = options.includeCustomNames ? 's.name' : 'NULL';
+  let sql = `SELECT t.*, a.title AS audio_title, ${nameColumn} AS custom_name FROM transcriptions t
+    LEFT JOIN audio_files a ON a.video_id = t.video_id
+    ${options.includeCustomNames ? 'LEFT JOIN saved_songs s ON s.video_id = t.video_id' : ''}
+    WHERE t.is_primary_variant = 1`;
+  if (!options.includeUploads) {
+    sql += " AND t.video_id NOT LIKE 'upload!_%' ESCAPE '!'";
+  }
+  if (options.search) {
+    const pattern = `%${options.search.replace(/[!%_]/g, '!$&')}%`;
+    const columns = ['t.title', 'a.title', ...(options.includeCustomNames ? ['s.name'] : [])];
+    sql += ` AND (${columns.map((column) => `${column} LIKE ? ESCAPE '!'`).join(' OR ')})`;
+    params.push(...columns.map(() => pattern));
+  }
   if (selectedKeys.length) {
     sql += ` AND EXISTS (SELECT 1 FROM transcription_search_keys k WHERE k.transcription_id=t.id AND k.search_key IN (${selectedKeys.map(() => '?').join(',')}))`;
     params.push(...selectedKeys);
@@ -164,14 +184,17 @@ export function findRecentTranscriptions(options: { selectedKey: string; cursor?
   }
   sql += ' ORDER BY t.created_at_ms DESC, t.id DESC LIMIT ?';
   params.push(options.limit + 1);
-  const rows = sqlite.prepare(sql).all(...params) as TranscriptionRow[];
+  const rows = sqlite.prepare(sql).all(...params) as Array<TranscriptionRow & { audio_title: string | null; custom_name: string | null }>;
   const hasMore = rows.length > options.limit;
   const page = rows.slice(0, options.limit);
   const videos: RecentVideo[] = page.map((row) => {
     const item = parseRow(row);
     return {
-      videoId: item.videoId, title: item.title || `Video ${item.videoId}`, channelTitle: item.channelTitle,
-      thumbnailUrl: normalizeThumbnailUrl(item.videoId, item.thumbnail, 'mqdefault'), processedAt: item.createdAt,
+      videoId: item.videoId, title: item.title || row.audio_title || `Video ${item.videoId}`, channelTitle: item.channelTitle,
+      customName: row.custom_name ?? undefined,
+      // Uploads have no YouTube thumbnail to fall back on.
+      thumbnailUrl: isUploadSourceId(item.videoId) ? (item.thumbnail ?? undefined) : normalizeThumbnailUrl(item.videoId, item.thumbnail, 'mqdefault'),
+      processedAt: item.createdAt,
       duration: item.audioDuration, beatModel: item.beatModel, chordModel: item.chordModel,
       bpm: item.bpm ?? undefined, timeSignature: item.timeSignature ?? 4,
       keySignature: item.keySignature ?? item.primaryKey ?? undefined, usageCount: item.usageCount,

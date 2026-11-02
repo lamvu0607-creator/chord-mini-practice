@@ -6,7 +6,7 @@ import path from 'path';
 
 import * as schema from './schema';
 
-const DATABASE_SCHEMA_VERSION = 4;
+const DATABASE_SCHEMA_VERSION = 5;
 
 const INITIAL_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -218,7 +218,21 @@ function initializeDatabase(): DatabaseState {
     }
     if (currentVersion < 4) {
       // melody_jobs is created by INITIAL_SCHEMA_SQL (IF NOT EXISTS); this only records the version.
-      sqlite.prepare('INSERT INTO schema_migrations(version, applied_at_ms) VALUES (?, ?)').run(DATABASE_SCHEMA_VERSION, Date.now());
+      sqlite.prepare('INSERT INTO schema_migrations(version, applied_at_ms) VALUES (?, ?)').run(4, Date.now());
+    }
+    if (currentVersion < DATABASE_SCHEMA_VERSION) {
+      sqlite.exec(`
+        ALTER TABLE audio_files ADD COLUMN owner_user_id TEXT;
+        CREATE TABLE IF NOT EXISTS saved_songs (
+          video_id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          saved_by_user_id TEXT NOT NULL,
+          created_at_ms INTEGER NOT NULL,
+          updated_at_ms INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS saved_songs_updated_idx ON saved_songs(updated_at_ms);
+      `);
+      sqlite.prepare('INSERT INTO schema_migrations(version, applied_at_ms) VALUES (?, ?)').run(5, Date.now());
     }
   });
   migrate();

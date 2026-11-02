@@ -81,6 +81,8 @@ export interface AnalyzeResultsPaneProps {
   estimatedWaitSeconds?: number | null;
   statusMessage?: string;
   videoTitle: string;
+  /** The custom name if the song has one, otherwise its title. Display only. */
+  headerTitle: string;
   isEditMode: boolean;
   editedTitle: string;
   onTitleChange: (title: string) => void;

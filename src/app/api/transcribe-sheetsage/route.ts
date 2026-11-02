@@ -15,6 +15,7 @@ import {
 } from '@/server/melody/melodyJobService';
 import { normalizeMelodyResultForCache } from '@/server/melody/melodyResult';
 import { startStemWorker } from '@/server/stems/stemWorker';
+import { resolveUploadStemSource } from '@/server/stems/uploadStemSource';
 import { resolveYouTubeStemSource } from '@/server/stems/youtubeStemSource';
 
 export const maxDuration = 300;
@@ -108,9 +109,10 @@ const YOUTUBE_VIDEO_ID_PATTERN = /^[a-zA-Z0-9_-]{11}$/;
  * MuScriptor. Returns the cached v2 result, or queues a background job (separating stems first if needed).
  */
 async function handleMelodyV2(request: NextRequest, videoId: string) {
-  if (!YOUTUBE_VIDEO_ID_PATTERN.test(videoId)) {
+  const isUpload = isUploadSourceId(videoId);
+  if (!isUpload && !YOUTUBE_VIDEO_ID_PATTERN.test(videoId)) {
     return NextResponse.json(
-      { success: false, error: 'Melody v2 only supports cached YouTube songs', code: 'UNSUPPORTED_SOURCE' },
+      { success: false, error: 'Melody v2 only supports cached YouTube songs and uploads', code: 'UNSUPPORTED_SOURCE' },
       { status: 400 },
     );
   }
@@ -136,10 +138,16 @@ async function handleMelodyV2(request: NextRequest, videoId: string) {
     );
   }
 
-  const source = await resolveYouTubeStemSource(videoId);
+  const source = isUpload
+    ? await resolveUploadStemSource(videoId, user.userId)
+    : await resolveYouTubeStemSource(videoId);
   if (!source) {
     return NextResponse.json(
-      { success: false, error: 'Audio for this video is not cached yet. Extract it first.', code: 'AUDIO_NOT_CACHED' },
+      {
+        success: false,
+        error: isUpload ? 'This audio file is no longer on the server.' : 'Audio for this video is not cached yet. Extract it first.',
+        code: 'AUDIO_NOT_CACHED',
+      },
       { status: 409 },
     );
   }

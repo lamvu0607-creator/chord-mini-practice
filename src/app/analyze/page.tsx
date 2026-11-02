@@ -119,7 +119,7 @@ export default function AnalyzeSourcePage() {
                 <HiOutlineArrowUpTray className="h-6 w-6 text-gray-500" />
                 <span className="font-medium text-gray-700 dark:text-gray-200">Drag and drop an audio file here, or click to choose</span>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  MP3, WAV, M4A, FLAC, OGG · up to {ANALYZE_UPLOAD_MAX_MB} MB · sign-in required · only people with the link can view
+                  MP3, WAV, M4A, FLAC, OGG · up to {ANALYZE_UPLOAD_MAX_MB} MB · sign-in required · listed for signed-in users, and anyone with the link can open it
                 </span>
               </button>
               <input

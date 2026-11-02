@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/server/auth/sessionGuard';
+import { claimAudioOwner } from '@/server/persistence/audioRepository';
 import { findExistingLocalAudioFile, saveLocalAudioFile } from '@/services/storage/localAudioStorageService';
 import { toUploadSourceId } from '@/utils/uploadSourceId';
 
@@ -67,9 +68,12 @@ export async function POST(request: NextRequest) {
 
   const existing = await findExistingLocalAudioFile(id);
   if (existing) {
+    // The id is derived from this user, so this also fills in the owner of files uploaded before owners were stored.
+    claimAudioOwner(id, user.userId);
     return NextResponse.json({ success: true, id, title: existing.title || title, existing: true });
   }
 
   await saveLocalAudioFile(id, bytes, { filename: originalName, title, contentType });
+  claimAudioOwner(id, user.userId);
   return NextResponse.json({ success: true, id, title, existing: false });
 }

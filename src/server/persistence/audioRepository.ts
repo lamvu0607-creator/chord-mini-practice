@@ -11,11 +11,13 @@ export interface AudioMetadataRecord {
   createdAtMs: number;
   lastAccessedAtMs: number;
   state: 'active' | 'deleting';
+  ownerUserId?: string;
 }
 
 type AudioRow = {
   video_id: string; filename: string; file_size: number; mime_type: string | null; title: string | null;
   duration_ms: number | null; created_at_ms: number; last_accessed_at_ms: number; state: 'active' | 'deleting';
+  owner_user_id: string | null;
 };
 
 function mapRow(row: AudioRow): AudioMetadataRecord {
@@ -24,10 +26,16 @@ function mapRow(row: AudioRow): AudioMetadataRecord {
     mimeType: row.mime_type ?? undefined, title: row.title ?? undefined,
     duration: row.duration_ms == null ? undefined : row.duration_ms / 1000,
     createdAtMs: row.created_at_ms, lastAccessedAtMs: row.last_accessed_at_ms, state: row.state,
+    ownerUserId: row.owner_user_id ?? undefined,
   };
 }
 
-export function upsertAudioMetadata(input: Omit<AudioMetadataRecord, 'createdAtMs' | 'lastAccessedAtMs' | 'state'> & { createdAtMs?: number }) {
+/** Record who uploaded a file; a file that already has an owner keeps it. */
+export function claimAudioOwner(videoId: string, userId: string): void {
+  getDatabase().sqlite.prepare('UPDATE audio_files SET owner_user_id = ? WHERE video_id = ? AND owner_user_id IS NULL').run(userId, videoId);
+}
+
+export function upsertAudioMetadata(input: Omit<AudioMetadataRecord, 'createdAtMs' | 'lastAccessedAtMs' | 'state' | 'ownerUserId'> & { createdAtMs?: number }) {
   const { sqlite } = getDatabase();
   const now = Date.now();
   sqlite.prepare(`INSERT INTO audio_files(video_id, filename, file_size, mime_type, title, duration_ms, created_at_ms, last_accessed_at_ms, state)
@@ -75,12 +83,13 @@ export function claimAudioForEviction(targetBytes: number): AudioMetadataRecord[
     if (maintenanceLock) return [];
     // Audio waiting to be split into stems or transcribed must survive until its job finishes.
     // Uploaded audio (upload_*) cannot be re-downloaded like YouTube audio, so it is never evicted.
+    // Songs with a custom name are kept too.
     const protectedFilenames = new Set(
       (sqlite.prepare(`SELECT input_path FROM stem_jobs WHERE status IN ('queued','processing')
         UNION SELECT input_path FROM melody_jobs WHERE status IN ('queued','processing')`).all() as Array<{ input_path: string }>)
         .map((row) => row.input_path.split('/').pop()),
     );
-    const rows = (sqlite.prepare("SELECT * FROM audio_files WHERE state='active' AND video_id NOT LIKE 'upload!_%' ESCAPE '!' ORDER BY last_accessed_at_ms ASC")
+    const rows = (sqlite.prepare("SELECT * FROM audio_files WHERE state='active' AND video_id NOT LIKE 'upload!_%' ESCAPE '!' AND video_id NOT IN (SELECT video_id FROM saved_songs) ORDER BY last_accessed_at_ms ASC")
       .all() as AudioRow[]).filter((row) => !protectedFilenames.has(row.filename));
     const claimed: AudioRow[] = [];
     let bytes = 0;

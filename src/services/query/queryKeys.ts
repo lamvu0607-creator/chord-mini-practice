@@ -2,8 +2,8 @@ export const queryKeys = {
   modelInfo: ['model-info'] as const,
   recentVideos: {
     all: ['recent-videos'] as const,
-    list: (selectedKey: string, pageSize: number) => (
-      [...queryKeys.recentVideos.all, { selectedKey, pageSize }] as const
+    list: (selectedKey: string, pageSize: number, filters?: { includeUploads?: boolean; search?: string }) => (
+      [...queryKeys.recentVideos.all, { selectedKey, pageSize, ...filters }] as const
     ),
   },
   sheetSage: {

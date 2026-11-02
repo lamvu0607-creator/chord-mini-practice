@@ -70,7 +70,7 @@ export default function AnalyzeResultsPane(props: AnalyzeResultsPaneProps) {
   return (
     <div className="space-y-2">
       <AnalysisHeader
-        videoTitle={props.videoTitle}
+        videoTitle={props.headerTitle}
         isEditMode={props.isEditMode}
         editedTitle={props.editedTitle}
         onTitleChange={props.onTitleChange}

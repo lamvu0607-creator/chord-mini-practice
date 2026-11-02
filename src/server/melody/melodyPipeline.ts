@@ -1,5 +1,6 @@
 import 'server-only';
 import { getMuscriptorApiUrl, getSheetSageApiUrl } from '@/config/serverBackend';
+import { findAudioMetadataByVideoId } from '@/server/persistence/audioRepository';
 import { setDocument } from '@/server/persistence/documentService';
 import { createStemJob, findActiveStemJob, getStemJob } from '@/server/stems/stemJobService';
 import { getStemSet, touchStemSet, upsertPendingStemSet } from '@/server/stems/stemSetRepository';
@@ -69,7 +70,15 @@ function ensureStems(job: MelodyJobRecord): boolean {
   let active = findActiveStemJob(job.sourceId);
   if (!active) {
     if (!stemSet) {
-      upsertPendingStemSet({ sourceId: job.sourceId, sourceType: 'youtube', videoId: job.videoId, inputPath: job.inputPath });
+      // Evicted since the job was queued. Upload sets must stay private to their owner.
+      const isUpload = job.sourceId.startsWith('up_');
+      upsertPendingStemSet({
+        sourceId: job.sourceId,
+        sourceType: isUpload ? 'upload' : 'youtube',
+        videoId: job.videoId,
+        ownerUserId: isUpload ? (findAudioMetadataByVideoId(job.videoId)?.ownerUserId ?? job.requestedBy ?? undefined) : undefined,
+        inputPath: job.inputPath,
+      });
     }
     active = createStemJob({ sourceId: job.sourceId, inputPath: stemSet?.inputPath ?? job.inputPath, requestedBy: job.requestedBy });
   }

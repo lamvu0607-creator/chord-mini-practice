@@ -106,10 +106,11 @@ export function getStemStorageUsageBytes(): number {
   return row.bytes;
 }
 
-/** Least recently used ready sets with no queued/processing job, oldest first. */
+/** Least recently used ready sets with no queued/processing stem or melody job, oldest first. */
 export function listEvictableStemSets(): StemSetRecord[] {
   const rows = getDatabase().sqlite.prepare(`SELECT * FROM stem_sets s WHERE s.status='ready'
       AND NOT EXISTS (SELECT 1 FROM stem_jobs j WHERE j.source_id=s.source_id AND j.status IN ('queued','processing'))
+      AND NOT EXISTS (SELECT 1 FROM melody_jobs m WHERE m.source_id=s.source_id AND m.status IN ('queued','processing'))
     ORDER BY s.last_accessed_at_ms ASC`).all() as StemSetRow[];
   return rows.map(mapRow);
 }

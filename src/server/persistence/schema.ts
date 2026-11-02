@@ -103,8 +103,19 @@ export const audioFiles = sqliteTable('audio_files', {
   createdAtMs: integer('created_at_ms').notNull(),
   lastAccessedAtMs: integer('last_accessed_at_ms').notNull(),
   state: text('state').notNull().default('active'),
+  ownerUserId: text('owner_user_id'),
 }, (table) => ({
   lruIdx: index('audio_files_lru_idx').on(table.state, table.lastAccessedAtMs),
+}));
+
+export const savedSongs = sqliteTable('saved_songs', {
+  videoId: text('video_id').primaryKey(),
+  name: text('name').notNull(),
+  savedByUserId: text('saved_by_user_id').notNull(),
+  createdAtMs: integer('created_at_ms').notNull(),
+  updatedAtMs: integer('updated_at_ms').notNull(),
+}, (table) => ({
+  updatedIdx: index('saved_songs_updated_idx').on(table.updatedAtMs),
 }));
 
 export const stemSets = sqliteTable('stem_sets', {

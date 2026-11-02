@@ -13,17 +13,23 @@ export function useRecentVideosQuery({
   selectedKey,
   enabled,
   pageSize = RECENT_VIDEOS_PAGE_SIZE,
+  includeUploads,
+  search,
 }: {
   selectedKey: string;
   enabled: boolean;
   pageSize?: number;
+  includeUploads?: boolean;
+  search?: string;
 }) {
   return useInfiniteQuery<RecentVideosPage, Error, InfiniteData<RecentVideosPage>, ReturnType<typeof queryKeys.recentVideos.list>, RecentVideosPageParam>({
-    queryKey: queryKeys.recentVideos.list(selectedKey, pageSize),
+    queryKey: queryKeys.recentVideos.list(selectedKey, pageSize, { includeUploads, search }),
     queryFn: ({ pageParam }) => fetchRecentVideosPage({
       selectedKey,
       pageParam,
       pageSize,
+      includeUploads,
+      search,
     }),
     initialPageParam: createInitialRecentVideosPageParam(),
     enabled,

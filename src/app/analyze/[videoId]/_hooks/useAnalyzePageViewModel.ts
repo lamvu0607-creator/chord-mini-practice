@@ -51,6 +51,7 @@ import { getCachedSheetSageMelody } from '@/services/sheetsage/sheetSageCacheCli
 import { usePersistenceReadiness } from '@/hooks/persistence/usePersistenceReadiness';
 import { useYouTubeSetup } from '@/hooks/youtube/useYouTubeSetup';
 import { isUploadSourceId } from '@/utils/uploadSourceId';
+import { useSongName } from '@/hooks/songs/useSongName';
 import { useTabsAndEditing } from '@/hooks/ui/useTabsAndEditing';
 import { useLyricsState } from '@/hooks/lyrics/useLyricsState';
 import { useAnalysisStore } from '@/stores/analysisStore';
@@ -670,12 +671,31 @@ export function useAnalyzePageViewModel({
     return 'calc(100vh - 180px - var(--mobile-video-dock-height, 0px))';
   }, [isChatbotOpen, isCompactViewport]);
 
+  const { songName, isAuthenticated: canSaveSongName, save: saveSongName, clear: clearSongName } = useSongName(videoId);
+
+  // The custom name is display-only: lyrics and metadata lookups keep using the real song title.
   const handleTitleSave = useCallback(() => {
-    if (editedTitle.trim()) {
-      setVideoTitle(editedTitle.trim());
+    const name = editedTitle.trim();
+    if (!canSaveSongName) {
+      if (name) setVideoTitle(name);
+    } else if (songName && !songName.canEdit) {
+      addToast({ title: 'Name not changed', description: 'Only the person who named this song can rename it.', color: 'warning' });
+    } else {
+      const backToOriginal = !name || name === videoTitle;
+      const change = backToOriginal
+        ? (songName ? clearSongName() : null)
+        : (name !== songName?.name ? saveSongName(name) : null);
+      void change?.catch((error: unknown) => {
+        addToast({ title: 'Could not rename song', description: error instanceof Error ? error.message : String(error), color: 'danger' });
+      });
     }
     handleTitleSaveFromHook();
-  }, [editedTitle, setVideoTitle, handleTitleSaveFromHook]);
+  }, [canSaveSongName, clearSongName, editedTitle, handleTitleSaveFromHook, saveSongName, setVideoTitle, songName, videoTitle]);
+
+  const handleEditToggle = useCallback(() => {
+    handleEditModeToggle();
+    if (!isEditMode && songName) handleTitleChange(songName.name);
+  }, [handleEditModeToggle, handleTitleChange, isEditMode, songName]);
 
   const handleChordEditWrapper = useCallback((index: number, newChord: string) => {
     const originalChord = `chord_${index}`;
@@ -729,9 +749,9 @@ export function useAnalyzePageViewModel({
     const analysisActions = useAnalysisStore.getState();
     const cachedResult = cachedSheetSageMelodyQuery.data;
 
-    // Pre-v2 (mix-based) melodies of YouTube songs are not auto-loaded: the next request recomputes them
-    // with the vocals stem + MuScriptor, and only falls back to the old result if that fails.
-    if (cachedResult && (isUploadSource || cachedResult.pipelineVersion === MELODY_PIPELINE_VERSION)) {
+    // Pre-v2 (mix-based) melodies are not auto-loaded: the next request recomputes them with the
+    // vocals stem + MuScriptor, and only falls back to the old result if that fails.
+    if (cachedResult?.pipelineVersion === MELODY_PIPELINE_VERSION) {
       analysisActions.setSheetSageResult(cachedResult);
       analysisActions.setSheetSageError(null);
     }
@@ -739,7 +759,6 @@ export function useAnalyzePageViewModel({
     audioProcessingState.audioUrl,
     audioProcessingState.isExtracted,
     cachedSheetSageMelodyQuery.data,
-    isUploadSource,
     showSheetSage,
     videoId,
   ]);
@@ -1028,7 +1047,7 @@ export function useAnalyzePageViewModel({
           gcTime: queryGcTimes.cachedMelody,
         });
         let result: SheetSageResult | null = cachedResult?.pipelineVersion === MELODY_PIPELINE_VERSION ? cachedResult : null;
-        if (!result && !isUploadSource) {
+        if (!result) {
           // Melody v2: SCNet vocals stem → Basic Pitch + MuScriptor instruments, as a background job.
           const pageVideoId = videoId;
           try {
@@ -1078,7 +1097,6 @@ export function useAnalyzePageViewModel({
     hasSheetSageAudioSource,
     hasSheetSageNotes,
     isComputingSheetSage,
-    isUploadSource,
     isMelodicTranscriptionPlaybackEnabled,
     queryClient,
     setActiveTab,
@@ -1364,10 +1382,11 @@ export function useAnalyzePageViewModel({
     estimatedWaitSeconds: audioProcessingState.estimatedWaitSeconds,
     statusMessage,
     videoTitle,
+    headerTitle: songName?.name ?? videoTitle,
     isEditMode,
     editedTitle,
     onTitleChange: handleTitleChange,
-    onEditToggle: handleEditModeToggle,
+    onEditToggle: handleEditToggle,
     onTitleSave: handleTitleSave,
     onTitleCancel: handleTitleCancel,
     showCorrectedChords,

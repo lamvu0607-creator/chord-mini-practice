@@ -7,6 +7,8 @@ import {
 } from '@/services/storage/localAudioStorageService';
 import { requireAdmin } from '@/server/auth/sessionGuard';
 import { parseRange, readFileSlice } from '@/server/http/fileRange';
+import { deleteSongName } from '@/server/persistence/savedSongRepository';
+import { isUploadSourceId } from '@/utils/uploadSourceId';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -157,6 +159,12 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
         { success: false, error: { code: 'DELETE_FAILED', message: 'Could not delete the audio file' } },
         { status: 500 },
       );
+    }
+
+    // An upload cannot come back once its file is gone, so its name goes too.
+    // A YouTube song can be extracted again and keeps its name.
+    if (isUploadSourceId(videoId)) {
+      deleteSongName(videoId);
     }
 
     return NextResponse.json({
