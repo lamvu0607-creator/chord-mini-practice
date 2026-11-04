@@ -302,3 +302,7 @@ stems/ckpts/
 # MuScriptor weights (gated; download with muscriptor/download_weights.py)
 muscriptor/ckpts/
 SongFormer/ckpts/*.safetensors
+
+# Local evaluation sandboxes (datasets, model weights, results; several GB)
+eval_sandbox/
+experiments/
