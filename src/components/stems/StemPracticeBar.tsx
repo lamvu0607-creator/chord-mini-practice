@@ -14,7 +14,8 @@ interface StemPracticeBarProps {
   onSetLoopPoint: (point: 'a' | 'b') => void;
 }
 
-const smallButton = 'h-7 min-w-0 px-2 text-xs';
+const smallButton = 'h-11 min-w-11 px-3 text-sm md:h-7 md:min-w-0 md:px-2 md:text-xs';
+const resetButton = 'flex h-11 w-11 items-center justify-center text-gray-500 hover:text-blue-600 md:h-auto md:w-auto';
 /** Practice range; the engine itself also accepts 0.25x..2x to follow YouTube rates. */
 const PRACTICE_MIN_RATE = 0.5;
 const PRACTICE_MAX_RATE = 1.5;
@@ -32,7 +33,7 @@ const StemPracticeBar: React.FC<StemPracticeBarProps> = ({ engine, practice, pen
             <span className="font-mono tabular-nums text-gray-800 dark:text-gray-100">{Math.round(rate * 100)}%</span>
             {rate !== 1 && (
               <Tooltip content="Reset tempo" delay={400}>
-                <button type="button" aria-label="Reset tempo" className="text-gray-500 hover:text-blue-600" onClick={() => engine.setRate(1)}>
+                <button type="button" aria-label="Reset tempo" className={resetButton} onClick={() => engine.setRate(1)}>
                   <HiArrowPath className="h-3.5 w-3.5" />
                 </button>
               </Tooltip>
@@ -59,7 +60,7 @@ const StemPracticeBar: React.FC<StemPracticeBarProps> = ({ engine, practice, pen
             <Button size="sm" variant="flat" className={smallButton} aria-label="Pitch up a semitone" onPress={() => engine.setSemitones(semitones + 1)}>+</Button>
             {semitones !== 0 && (
               <Tooltip content="Reset pitch" delay={400}>
-                <button type="button" aria-label="Reset pitch" className="text-gray-500 hover:text-blue-600" onClick={() => engine.setSemitones(0)}>
+                <button type="button" aria-label="Reset pitch" className={resetButton} onClick={() => engine.setSemitones(0)}>
                   <HiArrowPath className="h-3.5 w-3.5" />
                 </button>
               </Tooltip>
@@ -83,7 +84,7 @@ const StemPracticeBar: React.FC<StemPracticeBarProps> = ({ engine, practice, pen
           <span className="font-mono tabular-nums text-gray-800 dark:text-gray-100">
             {loop
               ? `${formatTime(loop.start)} – ${formatTime(loop.end)}`
-              : pendingLoopStart !== null ? `${formatTime(pendingLoopStart)} – …` : 'Drag on a waveform'}
+              : pendingLoopStart !== null ? `${formatTime(pendingLoopStart)} – …` : 'Drag across a waveform'}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">

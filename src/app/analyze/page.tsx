@@ -65,10 +65,10 @@ export default function AnalyzeSourcePage() {
     <div className="relative flex min-h-screen flex-col transition-colors duration-300">
       <PageBackdrop />
       <Navigation overlay />
-      <main className="relative z-10 container mx-auto max-w-3xl flex-grow px-6 pt-24 pb-12">
-        <header className="mb-6 px-1">
-          <h1 className="text-3xl md:text-4xl font-extrabold font-outfit text-black dark:text-white dark:drop-shadow-[0_4px_12px_rgba(0,0,0,0.95)]">Analyze Audio</h1>
-          <p className="mt-3 text-base text-default-500 dark:text-slate-200 leading-relaxed font-outfit">
+      <main className="relative z-10 container mx-auto max-w-3xl flex-grow px-4 pt-20 pb-6 sm:px-6 md:pt-24 md:pb-12">
+        <header className="mb-4 px-1 md:mb-6">
+          <h1 className="text-2xl md:text-4xl font-extrabold font-outfit text-black dark:text-white dark:drop-shadow-[0_4px_12px_rgba(0,0,0,0.95)]">Analyze Audio</h1>
+          <p className="mt-2 text-sm md:mt-3 md:text-base text-default-500 dark:text-slate-200 leading-relaxed font-outfit">
             Detect chords, beats and melody from a YouTube video or your own audio file.
             On the results page, click ✂️ &quot;Trim a section&quot; to analyze only part of the song.
           </p>
@@ -117,7 +117,10 @@ export default function AnalyzeSourcePage() {
                 }`}
               >
                 <HiOutlineArrowUpTray className="h-6 w-6 text-gray-500" />
-                <span className="font-medium text-gray-700 dark:text-gray-200">Drag and drop an audio file here, or click to choose</span>
+                <span className="font-medium text-gray-700 dark:text-gray-200">
+                  <span className="md:hidden">Tap to choose an audio file</span>
+                  <span className="hidden md:inline">Drag and drop an audio file here, or click to choose</span>
+                </span>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
                   MP3, WAV, M4A, FLAC, OGG · up to {ANALYZE_UPLOAD_MAX_MB} MB · sign-in required · listed for signed-in users, and anyone with the link can open it
                 </span>

@@ -52,6 +52,9 @@ import { usePersistenceReadiness } from '@/hooks/persistence/usePersistenceReadi
 import { useYouTubeSetup } from '@/hooks/youtube/useYouTubeSetup';
 import { isUploadSourceId } from '@/utils/uploadSourceId';
 import { useSongName } from '@/hooks/songs/useSongName';
+import { useIsMobile } from '@/hooks/ui/useIsMobile';
+import { useSeekShortcuts } from '@/hooks/ui/useSeekShortcuts';
+import { MOBILE_SONG_BAR_HEIGHT, MOBILE_VIDEO_HEIGHT_VAR } from '@/components/analysis/mobileSongLayout';
 import { useTabsAndEditing } from '@/hooks/ui/useTabsAndEditing';
 import { useLyricsState } from '@/hooks/lyrics/useLyricsState';
 import { useAnalysisStore } from '@/stores/analysisStore';
@@ -94,7 +97,7 @@ export function useAnalyzePageViewModel({
   const channelFromSearch = routeParams.channel;
   const thumbnailFromSearch = routeParams.thumbnail;
   const autoStartRequested = Boolean(routeParams.autoStart);
-  const [isCompactViewport, setIsCompactViewport] = useState(false);
+  const isCompactViewport = useIsMobile();
   const durationLimitToastShownRef = useRef(false);
   // Lets a melody job poll stop when the page switches to another song or unmounts.
   const melodyPageVideoIdRef = useRef<string | null>(videoId);
@@ -113,17 +116,6 @@ export function useAnalyzePageViewModel({
     routeParams.chordModel
   ));
   const shouldSkipInitialCacheBootstrap = Boolean(initialAnalyzeHandoff?.audioProcessingState?.audioUrl);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const mediaQuery = window.matchMedia('(max-width: 767px)');
-    const updateViewportMode = () => setIsCompactViewport(mediaQuery.matches);
-    updateViewportMode();
-    mediaQuery.addEventListener('change', updateViewportMode);
-
-    return () => mediaQuery.removeEventListener('change', updateViewportMode);
-  }, []);
 
   const {
     stage,
@@ -659,17 +651,14 @@ export function useAnalyzePageViewModel({
         ? 'Wait for extracted audio before computing melodic transcription.'
         : undefined;
 
+  const hasAnalysisResults = Boolean(analysisResults);
   const splitLayoutHeight = useMemo(() => {
-    if (!isChatbotOpen) {
-      return 'calc(100vh - 180px)';
+    if (isCompactViewport && hasAnalysisResults) {
+      return `calc(100dvh - ${MOBILE_SONG_BAR_HEIGHT} - var(${MOBILE_VIDEO_HEIGHT_VAR}, 0px) - 0.75rem)`;
     }
 
-    if (isCompactViewport) {
-      return 'calc(100vh - 180px - var(--mobile-video-dock-height, 0px) - 5.5rem)';
-    }
-
-    return 'calc(100vh - 180px - var(--mobile-video-dock-height, 0px))';
-  }, [isChatbotOpen, isCompactViewport]);
+    return 'calc(100dvh - 180px)';
+  }, [hasAnalysisResults, isCompactViewport]);
 
   const { songName, isAuthenticated: canSaveSongName, save: saveSongName, clear: clearSongName } = useSongName(videoId);
 
@@ -1234,7 +1223,8 @@ export function useAnalyzePageViewModel({
     setCurrentBeatIndex,
     setCurrentDownbeatIndex,
     setCurrentTime,
-    isFollowModeEnabled,
+    // The Piano tab has its own moving view; jumping to its chord strip pulls the page around.
+    isFollowModeEnabled: isFollowModeEnabled && activeTab !== 'pianoVisualizer',
     chordGridData,
     globalSpeedAdjustment,
     setGlobalSpeedAdjustment,
@@ -1428,6 +1418,52 @@ export function useAnalyzePageViewModel({
     onToggleSnow: handleToggleSnow,
   };
 
+  // Shared by the scrubber, the ±5s buttons and the ←/→ shortcuts.
+  const handleUserSeek = (time: number) => {
+    // CLOCK AUTHORITY (post-unification): the YouTube scrubber is a
+    // user-initiated seek â€” route it through the master clock, which
+    // raises the store fence (R2), bumps the seek token (R3), and
+    // publishes the new position. The YouTube iframe is still the
+    // primary controller, so we also call `seekTo` so the iframe's own
+    // timeline lands at the requested position.
+    //
+    // CRITICAL: we MUST immediately seek the GrainPlayer here, mirroring
+    // the grid-click path in `usePlaybackState.handleBeatClick`. The
+    // slave re-anchor loop in `usePitchShiftAudio` CANNOT be relied upon
+    // to catch up on its own because `youtubeMasterClock.anchorTo`
+    // invokes the re-anchor listener which calls
+    // `grainPlayerPitchShiftService.syncAnchor`, and that method
+    // overwrites the service's reported `_currentTime` to match the
+    // new master position. The slave loop's drift check
+    // (`|serviceState.currentTime - masterPos|`) therefore reads â‰ˆ 0
+    // and NEVER fires `service.seek(masterPos)` â€” meaning the actual
+    // audio buffer position stays at the pre-scrub location while the
+    // beat grid and YouTube iframe both jump forward. Calling
+    // `service.seek` here is the only path that actually relocates
+    // the GrainPlayer buffer cursor to the new timestamp.
+    youtubeMasterClock.onUserSeek(time);
+    if (isPitchShiftEnabled && isPitchShiftReady) {
+      try {
+        getPitchShiftService()?.seek(time);
+      } catch {}
+    }
+    if (youtubePlayer && youtubePlayer.seekTo) {
+      youtubePlayer.seekTo(time, 'seconds');
+    }
+  };
+
+  useSeekShortcuts({
+    onSeek: handleUserSeek,
+    getCurrentTime: () => {
+      const playerTime = (youtubePlayer as { getCurrentTime?: () => number } | null)?.getCurrentTime?.();
+      return typeof playerTime === 'number' && Number.isFinite(playerTime)
+        ? playerTime
+        : usePlaybackStore.getState().currentTime;
+    },
+    getDuration: () => usePlaybackStore.getState().duration || duration,
+    enabled: Boolean(youtubePlayer),
+  });
+
   const sidePanelsProps = {
     isChatbotOpen,
     closeChatbot: () => setIsChatbotOpen(false),
@@ -1485,38 +1521,7 @@ export function useAnalyzePageViewModel({
         youtubeMasterClock.onPause();
       },
       onProgress: handleYouTubeProgress,
-      onSeek: (time: number) => {
-        // CLOCK AUTHORITY (post-unification): the YouTube scrubber is a
-        // user-initiated seek â€” route it through the master clock, which
-        // raises the store fence (R2), bumps the seek token (R3), and
-        // publishes the new position. The YouTube iframe is still the
-        // primary controller, so we also call `seekTo` so the iframe's own
-        // timeline lands at the requested position.
-        //
-        // CRITICAL: we MUST immediately seek the GrainPlayer here, mirroring
-        // the grid-click path in `usePlaybackState.handleBeatClick`. The
-        // slave re-anchor loop in `usePitchShiftAudio` CANNOT be relied upon
-        // to catch up on its own because `youtubeMasterClock.anchorTo`
-        // invokes the re-anchor listener which calls
-        // `grainPlayerPitchShiftService.syncAnchor`, and that method
-        // overwrites the service's reported `_currentTime` to match the
-        // new master position. The slave loop's drift check
-        // (`|serviceState.currentTime - masterPos|`) therefore reads â‰ˆ 0
-        // and NEVER fires `service.seek(masterPos)` â€” meaning the actual
-        // audio buffer position stays at the pre-scrub location while the
-        // beat grid and YouTube iframe both jump forward. Calling
-        // `service.seek` here is the only path that actually relocates
-        // the GrainPlayer buffer cursor to the new timestamp.
-        youtubeMasterClock.onUserSeek(time);
-        if (isPitchShiftEnabled && isPitchShiftReady) {
-          try {
-            getPitchShiftService()?.seek(time);
-          } catch {}
-        }
-        if (youtubePlayer && youtubePlayer.seekTo) {
-          youtubePlayer.seekTo(time, 'seconds');
-        }
-      },
+      onSeek: handleUserSeek,
       onEnded: () => {
         if (!isLoopEnabled) {
           setIsPlaying(false);

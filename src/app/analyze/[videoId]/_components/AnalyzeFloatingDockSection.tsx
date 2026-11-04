@@ -1,9 +1,10 @@
 'use client';
 
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import FloatingVideoDock from '@/components/analysis/FloatingVideoDock';
 import UtilityBar from '@/components/analysis/UtilityBar';
+import { useIsMobile } from '@/hooks/ui/useIsMobile';
 import { isUploadSourceId } from '@/utils/uploadSourceId';
 import type { AnalyzeFloatingDockSectionProps, AnalyzePageViewModel } from '../_types/analyzePageViewModel';
 
@@ -12,11 +13,15 @@ const ResponsiveVideoUtilityLayout = dynamic(() => import('@/components/layout/R
   ssr: false,
 });
 
+const MobileSongDock = dynamic(() => import('@/components/analysis/MobileSongDock'), { ssr: false });
+
 interface AnalyzeFloatingDockSectionComponentProps {
   floatingDockProps: AnalyzeFloatingDockSectionProps;
   utilityBarProps: AnalyzePageViewModel['utilityBarProps'];
   videoId: string;
   videoTitle?: string;
+  /** Song actions that have no room in the phone header. */
+  mobileActions?: ReactNode;
 }
 
 export default function AnalyzeFloatingDockSection({
@@ -24,9 +29,36 @@ export default function AnalyzeFloatingDockSection({
   utilityBarProps,
   videoId,
   videoTitle,
+  mobileActions,
 }: AnalyzeFloatingDockSectionComponentProps) {
+  const isMobile = useIsMobile();
+
   if (!floatingDockProps.analysisResults) {
     return null;
+  }
+
+  const utilityBar = (
+    <UtilityBar
+      {...utilityBarProps}
+      variant={isMobile ? 'sheet' : 'dock'}
+      stemsVideoId={isUploadSourceId(videoId) ? undefined : videoId}
+      clipVideoId={videoId}
+      stemsTitle={videoTitle}
+    />
+  );
+
+  if (isMobile) {
+    return (
+      <MobileSongDock
+        player={floatingDockProps.videoPlayerProps as unknown as ComponentProps<typeof MobileSongDock>['player']}
+        tools={(
+          <>
+            {utilityBar}
+            {mobileActions}
+          </>
+        )}
+      />
+    );
   }
 
   return (
@@ -39,15 +71,7 @@ export default function AnalyzeFloatingDockSection({
           {...(floatingDockProps.videoPlayerProps as unknown as ComponentProps<typeof FloatingVideoDock>)}
         />
       )}
-      utilityBar={(
-        <UtilityBar
-          className="hidden md:block"
-          {...utilityBarProps}
-          stemsVideoId={isUploadSourceId(videoId) ? undefined : videoId}
-          clipVideoId={videoId}
-          stemsTitle={videoTitle}
-        />
-      )}
+      utilityBar={utilityBar}
     />
   );
 }

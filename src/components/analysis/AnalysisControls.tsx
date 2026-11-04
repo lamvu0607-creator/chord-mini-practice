@@ -138,7 +138,7 @@ export const AnalysisControls: React.FC<AnalysisControlsProps> = ({
       shadow="sm"
       radius="lg"
     >
-      <CardHeader className="flex flex-col items-start gap-3 pb-3">
+      <CardHeader className="hidden flex-col items-start gap-3 pb-3 md:flex">
         <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h3 className="text-lg font-semibold text-foreground">Analysis setup</h3>
@@ -170,10 +170,11 @@ export const AnalysisControls: React.FC<AnalysisControlsProps> = ({
         </div>
       </CardHeader>
 
-      <Divider className="opacity-50" />
+      <Divider className="hidden opacity-50 md:block" />
 
-      <CardBody className="overflow-visible pt-4">
-        <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-start overflow-visible">
+      {/* Phones show the main action first and the model choice below it. */}
+      <CardBody className="flex flex-col gap-4 overflow-visible pt-4">
+        <div className="order-2 flex flex-col gap-4 overflow-visible md:order-1 md:flex-row md:items-start">
           <div className="w-full md:w-1/2 relative z-40">
             <HeroUIBeatModelSelector
               onChange={onBeatDetectorChange}
@@ -191,7 +192,7 @@ export const AnalysisControls: React.FC<AnalysisControlsProps> = ({
           </div>
         </div>
 
-        <div className={`flex flex-col gap-4 rounded-xl border p-4 md:flex-row md:items-center md:justify-between ${statusStyles}`}>
+        <div className={`order-1 flex flex-col gap-4 rounded-xl border p-4 md:order-2 md:flex-row md:items-center md:justify-between ${statusStyles}`}>
           <div className="flex items-start gap-3">
             <span className={`mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full ${statusDotStyles}`} />
             <div>

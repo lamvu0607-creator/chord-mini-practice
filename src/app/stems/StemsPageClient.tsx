@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { HiChevronLeft } from 'react-icons/hi2';
 import { Button, addToast } from '@heroui/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Navigation from '@/components/common/Navigation';
@@ -66,6 +67,12 @@ export default function StemsPageClient() {
     return () => { cancelled = true; };
   }, [requestedId, resume]);
 
+  const closeSet = useCallback(() => {
+    setActive(null);
+    handledId.current = null;
+    window.history.replaceState(null, '', '/stems');
+  }, []);
+
   const handleDelete = useCallback(async (stemSet: StemSet) => {
     if (!window.confirm(`Delete the stems for "${stemSet.title || stemSet.sourceId}"?`)) return;
     try {
@@ -84,16 +91,17 @@ export default function StemsPageClient() {
     <div className="relative flex min-h-screen flex-col transition-colors duration-300">
       <PageBackdrop />
       <Navigation overlay />
-      <main className="relative z-10 container mx-auto max-w-6xl flex-grow px-6 pt-24 pb-12">
-        <header className="mb-6 px-1">
-          <h1 className="text-3xl md:text-4xl font-extrabold font-outfit text-black dark:text-white dark:drop-shadow-[0_4px_12px_rgba(0,0,0,0.95)]">Split Stems</h1>
-          <p className="mt-3 text-base text-default-500 dark:text-slate-200 leading-relaxed font-outfit">
+      <main className="relative z-10 container mx-auto max-w-6xl flex-grow px-4 pt-20 pb-6 md:px-6 md:pt-24 md:pb-12">
+        {/* On phones an open song takes the page; the list comes back with the back button. */}
+        <header className={`mb-4 px-1 md:mb-6 ${active ? 'max-md:hidden' : ''}`}>
+          <h1 className="text-2xl md:text-4xl font-extrabold font-outfit text-black dark:text-white dark:drop-shadow-[0_4px_12px_rgba(0,0,0,0.95)]">Split Stems</h1>
+          <p className="mt-3 hidden text-base text-default-500 md:block dark:text-slate-200 leading-relaxed font-outfit">
             Separate a song into vocals, drums, bass and other with SCNet, then mix, solo and download each part.
           </p>
         </header>
 
         {!authLoading && !isAuthenticated && (
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+          <div className={`mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border ${active ? 'max-md:hidden' : ''} border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200`}>
             <span>Sign in to split new songs. Songs already separated from YouTube can be played by anyone.</span>
             <Button size="sm" color="warning" variant="flat" onPress={() => openLoginModal(false)}>Sign in</Button>
           </div>
@@ -101,11 +109,21 @@ export default function StemsPageClient() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <section className="flex min-w-0 flex-col gap-4">
-            <StemSourcePanel busy={busy} onStart={(request) => void separation.start(request)} />
+            <div className={active ? 'max-md:hidden' : ''}>
+              <StemSourcePanel busy={busy} onStart={(request) => void separation.start(request)} />
+            </div>
             <StemSeparationStatus state={separation.state} onDismiss={separation.reset} />
 
             {active && (
               <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={closeSet}
+                  className="-ml-2 flex min-h-11 items-center gap-1 self-start pr-3 text-sm font-medium text-blue-600 dark:text-blue-400 md:hidden"
+                >
+                  <HiChevronLeft className="h-5 w-5" aria-hidden />
+                  All stems
+                </button>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <h2 className="min-w-0 truncate text-xl font-semibold text-foreground">
                     {active.title || active.videoId || 'Uploaded song'}
@@ -114,7 +132,7 @@ export default function StemsPageClient() {
                     {active.duration ? <span>{formatTime(active.duration)}</span> : null}
                     {active.model ? <span>{active.model}</span> : null}
                     {active.videoId ? (
-                      <Link href={`/analyze/${active.videoId}`} className="text-blue-600 hover:underline dark:text-blue-400">
+                      <Link href={`/analyze/${active.videoId}`} className="inline-flex min-h-11 items-center text-blue-600 md:min-h-0 hover:underline dark:text-blue-400">
                         Open in analyzer →
                       </Link>
                     ) : null}
@@ -125,7 +143,8 @@ export default function StemsPageClient() {
             )}
           </section>
 
-          <aside>
+          {/* Phones: the separated songs come before the form for adding a new one. */}
+          <aside className={active ? 'max-md:hidden' : 'max-md:order-first'}>
             <StemLibrary
               stemSets={library.data?.stemSets ?? []}
               loading={library.isLoading}

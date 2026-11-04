@@ -44,7 +44,10 @@ export default function AnalyzePageChrome({
       )}
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-28 bg-gradient-to-b from-white/45 to-transparent dark:from-white/5" />
-      <Navigation />
+      {/* On phones a finished song uses the whole screen; its header has the back button. */}
+      <div className={showFooterTransition ? 'hidden md:contents' : 'contents'}>
+        <Navigation />
+      </div>
       <AnonymousTrialBanner />
       <ProcessingBanners {...processingBannersProps} />
       <MelodyTranscriptionStatusToast {...melodyToastProps} />

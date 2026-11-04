@@ -2,9 +2,10 @@
 
 import React, { useCallback, useState } from 'react';
 import { Button, Popover, PopoverContent, PopoverTrigger, Progress, Slider, addToast } from '@heroui/react';
-import { HiOutlineArrowDownTray, HiOutlineCommandLine, HiPause, HiPlay } from 'react-icons/hi2';
+import { HiChevronDown, HiOutlineArrowDownTray, HiOutlineCommandLine, HiPause, HiPlay } from 'react-icons/hi2';
 import { usePlaybackClock, useStemMixer } from '@/hooks/stems/useStemMixer';
 import { STEM_SHORTCUTS, useStemShortcuts } from '@/hooks/stems/useStemShortcuts';
+import { useMediaSession } from '@/hooks/ui/useMediaSession';
 import type { StemSet } from '@/types/stems';
 import StemPracticeBar from './StemPracticeBar';
 import StemTrackRow from './StemTrackRow';
@@ -37,6 +38,8 @@ const StemPlayer: React.FC<StemPlayerProps> = ({ stemSet }) => {
   const [rendering, setRendering] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [pendingLoopStart, setPendingLoopStart] = useState<number | null>(null);
+  // Phones keep tempo, pitch and loop folded so the four tracks fit on one screen.
+  const [showPractice, setShowPractice] = useState(false);
   const anySolo = tracks.some((track) => track.soloed);
   const position = duration > 0 ? currentTime / duration : 0;
 
@@ -70,6 +73,19 @@ const StemPlayer: React.FC<StemPlayerProps> = ({ stemSet }) => {
   }, [engine, pendingLoopStart]);
 
   useStemShortcuts({ engine, tracks, selectedIndex, onSelect: setSelectedIndex, onLoopPoint: setLoopPoint });
+
+  useMediaSession({
+    enabled: Boolean(engine),
+    title: stemSet.title || stemSet.videoId || 'Stems',
+    artist: 'ChordMini stems',
+    artworkUrl: stemSet.videoId ? `https://i.ytimg.com/vi/${stemSet.videoId}/hqdefault.jpg` : undefined,
+    isPlaying,
+    currentTime,
+    duration,
+    onPlay: () => { void Promise.resolve(engine?.play()).catch(() => undefined); },
+    onPause: () => engine?.pause(),
+    onSeek: (seconds) => engine?.seek(seconds),
+  });
 
   const loopFractions = practice.loop && duration > 0
     ? { start: practice.loop.start / duration, end: practice.loop.end / duration, enabled: practice.loopEnabled }
@@ -110,11 +126,13 @@ const StemPlayer: React.FC<StemPlayerProps> = ({ stemSet }) => {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-divider bg-content1/90 p-3 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/[0.06]">
+      {/* Phones: the transport sits after the tracks and sticks above the tab bar. */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-divider bg-content1/90 p-3 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/[0.06] max-md:sticky max-md:bottom-[calc(3.75rem+env(safe-area-inset-bottom,0px))] max-md:z-20 max-md:order-last max-md:bg-white max-md:dark:bg-slate-900">
         <Button
           isIconOnly
           color="primary"
           radius="full"
+          className="h-11 w-11 min-w-11"
           aria-label={isPlaying ? 'Pause' : 'Play'}
           onPress={() => {
             Promise.resolve(engine.toggle()).catch((error: unknown) => addToast({
@@ -137,9 +155,9 @@ const StemPlayer: React.FC<StemPlayerProps> = ({ stemSet }) => {
           step={0.1}
           value={currentTime}
           onChange={(value) => engine.seek(Array.isArray(value) ? value[0] : value)}
-          className="min-w-40 flex-1"
+          className="min-w-40 flex-1 max-md:order-last max-md:basis-full"
         />
-        <div className="flex w-36 items-center gap-2">
+        <div className="ml-auto flex w-36 items-center gap-2 md:ml-0">
           <span className="text-xs text-gray-500 dark:text-gray-400">Master</span>
           <Slider
             aria-label="Master volume"
@@ -157,12 +175,26 @@ const StemPlayer: React.FC<StemPlayerProps> = ({ stemSet }) => {
         </div>
       </div>
 
+      <button
+        type="button"
+        aria-expanded={showPractice}
+        onClick={() => setShowPractice((open) => !open)}
+        className="flex min-h-11 items-center justify-between rounded-xl border border-divider bg-content1/90 px-3 text-sm font-medium text-gray-700 dark:border-white/10 dark:bg-white/[0.06] dark:text-gray-200 md:hidden"
+      >
+        <span>
+          Tempo {Math.round(practice.rate * 100)}% · Pitch {practice.semitones > 0 ? `+${practice.semitones}` : practice.semitones} · Loop {practice.loop && practice.loopEnabled ? 'on' : 'off'}
+        </span>
+        <HiChevronDown className={`h-5 w-5 transition-transform ${showPractice ? 'rotate-180' : ''}`} aria-hidden />
+      </button>
+
+      <div className={showPractice ? '' : 'max-md:hidden'}>
       <StemPracticeBar
         engine={engine}
         practice={practice}
         pendingLoopStart={pendingLoopStart}
         onSetLoopPoint={setLoopPoint}
       />
+      </div>
 
       {tracks.map((track, index) => (
         <StemTrackRow
@@ -185,6 +217,7 @@ const StemPlayer: React.FC<StemPlayerProps> = ({ stemSet }) => {
         <Button
           size="sm"
           variant="flat"
+          className="max-md:h-11"
           startContent={<HiOutlineArrowDownTray className="h-4 w-4" />}
           isLoading={rendering === 'karaoke'}
           isDisabled={Boolean(rendering) || !tracks.some((track) => track.name === 'vocals')}
@@ -195,6 +228,7 @@ const StemPlayer: React.FC<StemPlayerProps> = ({ stemSet }) => {
         <Button
           size="sm"
           variant="flat"
+          className="max-md:h-11"
           startContent={<HiOutlineArrowDownTray className="h-4 w-4" />}
           isLoading={rendering === 'mix'}
           isDisabled={Boolean(rendering)}
@@ -202,12 +236,13 @@ const StemPlayer: React.FC<StemPlayerProps> = ({ stemSet }) => {
         >
           Current mix (WAV)
         </Button>
-        <span className="text-xs text-gray-500 dark:text-gray-400">
+        <span className="hidden text-xs text-gray-500 dark:text-gray-400 md:inline">
           Single stems download as FLAC from each track. Mixes are rendered in your browser at the original tempo and pitch.
         </span>
+        <div className="ml-auto hidden md:block">
         <Popover placement="top-end">
           <PopoverTrigger>
-            <Button size="sm" variant="light" className="ml-auto" startContent={<HiOutlineCommandLine className="h-4 w-4" />}>
+            <Button size="sm" variant="light" startContent={<HiOutlineCommandLine className="h-4 w-4" />}>
               Shortcuts
             </Button>
           </PopoverTrigger>
@@ -222,6 +257,7 @@ const StemPlayer: React.FC<StemPlayerProps> = ({ stemSet }) => {
             </dl>
           </PopoverContent>
         </Popover>
+        </div>
       </div>
     </div>
   );

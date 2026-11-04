@@ -92,7 +92,7 @@ export const LyricsControls: React.FC<LyricsControlsProps> = ({
               isDisabled={isTranslating || !processedLyricsLength}
               isLoading={isTranslating}
               startContent={!isTranslating ? <HiGlobeAlt className="h-4 w-4" /> : undefined}
-              className="font-medium"
+              className="font-medium max-md:h-11"
             >
               {isTranslating ? 'Translating…' : 'Translate'}
             </Button>

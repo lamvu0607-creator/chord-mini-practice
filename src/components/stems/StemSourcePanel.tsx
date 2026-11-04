@@ -56,9 +56,9 @@ const StemSourcePanel: React.FC<StemSourcePanelProps> = ({ busy, onStart }) => {
         onSelectionChange={(key) => setTab(String(key))}
         variant="underlined"
         color="primary"
-        classNames={{ tabList: 'gap-4 border-b border-divider w-full', panel: 'pt-4' }}
+        classNames={{ base: 'w-full max-w-full', tabList: 'gap-1 sm:gap-4 border-b border-divider w-full', tab: 'px-2 sm:px-3', panel: 'pt-4' }}
       >
-        <Tab key="youtube" title={<span className="flex items-center gap-1.5"><HiOutlineLink className="h-4 w-4" />YouTube link</span>}>
+        <Tab key="youtube" title={<span className="flex items-center gap-1.5"><HiOutlineLink className="h-4 w-4" />YouTube</span>}>
           <form onSubmit={submitLink} className="flex flex-col gap-2 sm:flex-row sm:items-start">
             <Input
               aria-label="YouTube link"
@@ -74,7 +74,7 @@ const StemSourcePanel: React.FC<StemSourcePanelProps> = ({ busy, onStart }) => {
           </form>
         </Tab>
 
-        <Tab key="upload" title={<span className="flex items-center gap-1.5"><HiOutlineArrowUpTray className="h-4 w-4" />Upload file</span>}>
+        <Tab key="upload" title={<span className="flex items-center gap-1.5"><HiOutlineArrowUpTray className="h-4 w-4" />Upload</span>}>
           <button
             type="button"
             disabled={busy}
@@ -109,7 +109,7 @@ const StemSourcePanel: React.FC<StemSourcePanelProps> = ({ busy, onStart }) => {
           {uploadError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{uploadError}</p>}
         </Tab>
 
-        <Tab key="recent" title={<span className="flex items-center gap-1.5"><HiOutlineMusicalNote className="h-4 w-4" />Analyzed songs</span>}>
+        <Tab key="recent" title={<span className="flex items-center gap-1.5"><HiOutlineMusicalNote className="h-4 w-4" />Analyzed</span>}>
           {recent.isLoading ? (
             <div className="flex justify-center py-6"><Spinner size="sm" /></div>
           ) : recentVideos.length === 0 ? (

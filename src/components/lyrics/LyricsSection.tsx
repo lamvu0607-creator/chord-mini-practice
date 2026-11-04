@@ -262,9 +262,9 @@ export const LyricsSection: React.FC<LyricsSectionProps> = ({
               <span className="text-sm">Go to Settings to add your Music.AI API key.</span>
             </>
           ) : hasCachedLyrics ? (
-            "Cached lyrics are loading automatically. Click \"AI Transcribe\" to refresh or re-transcribe."
+            "Cached lyrics are loading automatically. Use \"Re-transcribe\" at the top of the page (Tools on a phone) to transcribe them again."
           ) : (
-            "Click the \"AI Transcribe\" button above to analyze the audio for lyrics. Lyrics transcription is now manual to give you control over when to process vocals."
+            "Use \"Lyrics Transcribe\" at the top of the page (Tools → Transcribe lyrics on a phone) to transcribe the vocals. Transcription only runs when you ask for it."
           )}
         </p>
       </div>

@@ -21,7 +21,7 @@ interface StemTrackRowProps {
   onSelect?: () => void;
 }
 
-const toggleClass = (active: boolean, activeClass: string) => `h-8 w-8 rounded-md text-xs font-bold border transition-colors ${
+const toggleClass = (active: boolean, activeClass: string) => `h-11 w-11 flex-shrink-0 md:h-8 md:w-8 rounded-md text-xs font-bold border transition-colors ${
   active ? activeClass : 'border-gray-300 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
 }`;
 
@@ -34,13 +34,13 @@ const StemTrackRow: React.FC<StemTrackRowProps> = ({
   return (
     <div
       onPointerDownCapture={onSelect}
-      className={`flex flex-col gap-2 rounded-xl border bg-content1/90 p-3 backdrop-blur-md dark:bg-white/[0.06] sm:flex-row sm:items-center ${
+      className={`flex flex-col gap-2 rounded-xl border bg-content1/90 p-2 md:p-3 backdrop-blur-md dark:bg-white/[0.06] sm:flex-row sm:items-center ${
         selected ? 'border-blue-400 ring-1 ring-blue-400/60 dark:border-blue-500' : 'border-divider dark:border-white/10'
       }`}
     >
       <div className="flex w-full items-center gap-2 sm:w-80 sm:flex-shrink-0">
         <span className={`inline-flex min-w-16 justify-center rounded-full px-2 py-0.5 text-xs font-semibold ${color.chip}`}>
-          {shortcutIndex !== undefined && <span className="mr-1 opacity-60">{shortcutIndex}</span>}
+          {shortcutIndex !== undefined && <span className="mr-1 hidden opacity-60 md:inline">{shortcutIndex}</span>}
           {color.label}
         </span>
         <Tooltip content="Mute (M)" delay={400}>
@@ -67,13 +67,13 @@ const StemTrackRow: React.FC<StemTrackRowProps> = ({
           step={0.01}
           value={track.volume}
           onChange={(value) => engine.setVolume(track.name, Array.isArray(value) ? value[0] : value)}
-          className="min-w-24 flex-1"
+          className="min-w-20 flex-1"
         />
         {downloadUrl && (
           <Tooltip content={`Download ${color.label} (FLAC)`} delay={400}>
             <a
               href={downloadUrl}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-white"
+              className="inline-flex h-11 w-11 flex-shrink-0 md:h-8 md:w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-white"
               aria-label={`Download ${color.label}`}
             >
               <HiOutlineArrowDownTray className="h-4 w-4" />

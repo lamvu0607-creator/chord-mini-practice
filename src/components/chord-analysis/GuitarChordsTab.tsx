@@ -710,7 +710,7 @@ export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
                     <AppTooltip content="Show chord shape name (what you play)">
                       <button
                         onClick={() => setCapoLabelMode('shape')}
-                        className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${capoLabelMode === 'shape' ? activeSegmentClassName : inactiveSegmentClassName}`}
+                        className={`min-h-11 px-3 py-1 text-xs font-medium rounded-md transition-colors md:min-h-0 md:px-2 ${capoLabelMode === 'shape' ? activeSegmentClassName : inactiveSegmentClassName}`}
                       >
                         Shape
                       </button>
@@ -718,7 +718,7 @@ export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
                     <AppTooltip content="Show sounding chord name (what you hear)">
                       <button
                         onClick={() => setCapoLabelMode('sound')}
-                        className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${capoLabelMode === 'sound' ? activeSegmentClassName : inactiveSegmentClassName}`}
+                        className={`min-h-11 px-3 py-1 text-xs font-medium rounded-md transition-colors md:min-h-0 md:px-2 ${capoLabelMode === 'sound' ? activeSegmentClassName : inactiveSegmentClassName}`}
                       >
                         Sound
                       </button>
@@ -745,7 +745,7 @@ export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
                   <button
                     onClick={() => setCapoFret(prev => Math.max(0, prev - 1))}
                     disabled={capoFret === 0}
-                    className="flex h-8 w-7 items-center justify-center rounded-full text-sm font-bold text-gray-600 transition-colors hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-200 dark:hover:bg-white/10"
+                    className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold md:h-8 md:w-7 text-gray-600 transition-colors hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-200 dark:hover:bg-white/10"
                     aria-label="Decrease capo fret"
                   >
                     −
@@ -760,13 +760,13 @@ export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
                       const val = parseInt(e.target.value, 10);
                       if (!isNaN(val) && val >= 0 && val <= 12) setCapoFret(val);
                     }}
-                    className="w-8 h-8 text-center text-sm font-medium bg-transparent border-0 focus:outline-none focus:ring-0 text-gray-800 dark:text-gray-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-8 h-11 md:h-8 text-center text-sm font-medium bg-transparent border-0 focus:outline-none focus:ring-0 text-gray-800 dark:text-gray-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     aria-label="Capo fret position"
                   />
                   <button
                     onClick={() => setCapoFret(prev => Math.min(12, prev + 1))}
                     disabled={capoFret === 12}
-                    className="flex h-8 w-7 items-center justify-center rounded-full text-sm font-bold text-gray-600 transition-colors hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-200 dark:hover:bg-white/10"
+                    className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold md:h-8 md:w-7 text-gray-600 transition-colors hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-200 dark:hover:bg-white/10"
                     aria-label="Increase capo fret"
                   >
                     +
@@ -807,9 +807,9 @@ export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
             {/* View mode toggle */}
             <span className="text-xs font-medium text-gray-700 dark:text-gray-300 sm:text-sm">View:</span>
             <div className={segmentedControlClassName}>
-              <button onClick={() => setViewMode('animated')} className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors sm:px-3 sm:py-1.5 sm:text-sm ${viewMode === 'animated' ? activeSegmentClassName : inactiveSegmentClassName}`}>Animated</button>
-              <button onClick={() => setViewMode('summary')} className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors sm:px-3 sm:py-1.5 sm:text-sm ${viewMode === 'summary' ? activeSegmentClassName : inactiveSegmentClassName}`}>Summary</button>
-              <button onClick={() => setViewMode('tab')} className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors sm:px-3 sm:py-1.5 sm:text-sm ${viewMode === 'tab' ? activeSegmentClassName : inactiveSegmentClassName}`}>Tab</button>
+              <button onClick={() => setViewMode('animated')} className={`min-h-11 rounded-md px-2.5 py-1 text-xs font-medium transition-colors md:min-h-0 sm:px-3 sm:py-1.5 sm:text-sm ${viewMode === 'animated' ? activeSegmentClassName : inactiveSegmentClassName}`}>Animated</button>
+              <button onClick={() => setViewMode('summary')} className={`min-h-11 rounded-md px-2.5 py-1 text-xs font-medium transition-colors md:min-h-0 sm:px-3 sm:py-1.5 sm:text-sm ${viewMode === 'summary' ? activeSegmentClassName : inactiveSegmentClassName}`}>Summary</button>
+              <button onClick={() => setViewMode('tab')} className={`min-h-11 rounded-md px-2.5 py-1 text-xs font-medium transition-colors md:min-h-0 sm:px-3 sm:py-1.5 sm:text-sm ${viewMode === 'tab' ? activeSegmentClassName : inactiveSegmentClassName}`}>Tab</button>
             </div>
           </div>
         </div>

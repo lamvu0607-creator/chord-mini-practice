@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { DM_Sans, Roboto_Mono, Varela_Round } from 'next/font/google';
 import './globals.css';
 import '../styles/analysis-embedded.css';
@@ -7,7 +7,10 @@ import { Providers } from './providers';
 import ClientErrorBoundary from '@/components/common/ClientErrorBoundary';
 import AuthSessionProvider from '@/components/auth/AuthSessionProvider';
 import ServiceWorkerRegistration from '@/components/layout/ServiceWorkerRegistration';
-import Footer from '@/components/common/Footer';
+import { InstallPromptCapture } from '@/components/layout/InstallPrompt';
+import ServerStatusBanner from '@/components/layout/ServerStatusBanner';
+import AppFooter from '@/components/layout/AppFooter';
+import MobileTabBar from '@/components/layout/MobileTabBar';
 import PerformanceMonitor from '@/components/layout/PerformanceMonitor';
 import CriticalPerformanceOptimizer from '@/components/layout/CriticalPerformanceOptimizer';
 import DesktopPerformanceOptimizer from '@/components/layout/DesktopPerformanceOptimizer';
@@ -40,6 +43,16 @@ const varelaRound = Varela_Round({
 });
 
 
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#020617' },
+  ],
+};
 
 // Define metadata for the application
 export const metadata: Metadata = {
@@ -84,30 +97,25 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
+  // PNG icons: iOS and Android home screens do not reliably use WebP icons.
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
-      { url: '/chordMiniLogo.webp', sizes: '192x192', type: 'image/webp' },
-      { url: '/chordMiniLogo.webp', sizes: '512x512', type: 'image/webp' }
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
     shortcut: '/favicon.ico',
-    apple: [
-      { url: '/chordMiniLogo.webp', sizes: '180x180', type: 'image/webp' }
-    ],
-    other: [
-      {
-        rel: 'icon',
-        type: 'image/webp',
-        sizes: '32x32',
-        url: '/chordMiniLogo.webp',
-      },
-      {
-        rel: 'icon',
-        type: 'image/webp',
-        sizes: '16x16',
-        url: '/chordMiniLogo.webp',
-      }
-    ]
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
+  manifest: '/site.webmanifest',
+  applicationName: 'ChordMini',
+  // Opened from the home screen, iOS shows the app without Safari's bars.
+  appleWebApp: {
+    capable: true,
+    title: 'ChordMini',
+    statusBarStyle: 'default',
   },
   openGraph: {
     type: 'website',
@@ -199,12 +207,7 @@ export default function RootLayout({
 
         <meta name="description" content="Recognize chords from audio using AI" />
 
-        {/* Favicon configuration for better browser compatibility */}
-        <link rel="icon" href="/favicon.ico" sizes="32x32" />
-        <link rel="icon" href="/chordMiniLogo.webp" type="image/webp" sizes="32x32" />
-        <link rel="icon" href="/chordMiniLogo.webp" type="image/webp" sizes="16x16" />
-        <link rel="apple-touch-icon" href="/chordMiniLogo.webp" sizes="180x180" />
-        <link rel="manifest" href="/site.webmanifest" />
+        {/* Icons, the manifest and the iOS home screen tags come from `metadata` above. */}
 
         {/* Removed global image preloads: let Next/Image with priority handle above-the-fold assets on the pages that use them to avoid preload-not-used warnings. */}
 
@@ -223,13 +226,16 @@ export default function RootLayout({
               <CriticalPerformanceOptimizer />
               <DesktopPerformanceOptimizer />
               <ServiceWorkerRegistration />
+              <InstallPromptCapture />
+              <ServerStatusBanner />
               {process.env.NODE_ENV === 'development' ? <PerformanceMonitor /> : null}
               <CorsErrorSuppression />
               {process.env.NODE_ENV === 'development' ? <DevIndicatorHider /> : null}
               <main className="flex-1">
                 {children}
               </main>
-              <Footer />
+              <AppFooter />
+              <MobileTabBar />
             </ClientErrorBoundary>
           </AuthSessionProvider>
         </Providers>

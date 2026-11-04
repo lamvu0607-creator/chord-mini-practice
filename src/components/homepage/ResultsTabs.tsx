@@ -18,7 +18,7 @@ interface ResultsTabsProps {
 const BetaTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <span className="flex items-center space-x-1">
     <span>{children}</span>
-    <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 px-1.5 py-0.5 rounded-full font-medium">
+    <span className="hidden md:inline text-xs bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 px-1.5 py-0.5 rounded-full font-medium">
       beta
     </span>
   </span>
@@ -42,24 +42,24 @@ const ResultsTabs: React.FC<ResultsTabsProps> = ({
         selectedKey={activeTab}
         onSelectionChange={handleSelectionChange}
         size="md"
-        className="px-2 sm:px-0"
-        
         classNames={{
+          base: "w-full md:w-auto",
+
           // Tab list container background
-          tabList: "dark:bg-gray-800/50",
+          tabList: "w-full md:w-auto dark:bg-gray-800/50",
 
           // Selected pill cursor color
           cursor: "dark:bg-gray-900",
 
           // Improve contrast for non-selected vs selected in dark mode
           // Apply colors to both the tab wrapper and its inner content to cover custom titles
-          tab: "text-gray-700 data-[selected=true]:text-gray-900 dark:text-gray-300 dark:data-[selected=true]:text-white",
+          tab: "h-11 flex-1 px-1 md:h-9 md:w-auto md:flex-none md:px-3text-gray-700 data-[selected=true]:text-gray-900 dark:text-gray-300 dark:data-[selected=true]:text-white",
           tabContent: "text-gray-700 data-[selected=true]:text-gray-900 dark:text-gray-300 dark:data-[selected=true]:text-white",
         }}
       >
         <Tab
           key="beatChordMap"
-          title="Beat & Chord Map"
+          title={<><span className="md:hidden">Chords</span><span className="hidden md:inline">Beat & Chord Map</span></>}
         />
         <Tab
           key="guitarChords"
@@ -71,7 +71,7 @@ const ResultsTabs: React.FC<ResultsTabsProps> = ({
         />
         <Tab
           key="lyricsChords"
-          title={<BetaTitle>Lyrics & Chords</BetaTitle>}
+          title={<BetaTitle><span className="md:hidden">Lyrics</span><span className="hidden md:inline">Lyrics & Chords</span></BetaTitle>}
           isDisabled={!showLyrics && !hasCachedLyrics}
         />
       </Tabs>

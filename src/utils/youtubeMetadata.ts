@@ -5,6 +5,25 @@ export type YouTubeThumbnailQuality =
   | 'sddefault'
   | 'maxresdefault';
 
+/** ChordMini logo, used wherever a song has no real thumbnail (uploads, trimmed clips). */
+export const CHORDMINI_FALLBACK_THUMBNAIL = '/chordMiniLogo.webp';
+export const CHORDMINI_FALLBACK_THUMBNAIL_DARK = '/chordMiniLogo-dark.webp';
+
+// Older rows may still store this path, but the file was never shipped.
+const LEGACY_PLACEHOLDER_THUMBNAIL = '/hero-image-placeholder.svg';
+
+/** True when `url` is a usable image, not empty and not one of our placeholders. */
+export function isRealThumbnailUrl(url: string | null | undefined): url is string {
+  if (typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  return (
+    trimmed.length > 0 &&
+    trimmed !== LEGACY_PLACEHOLDER_THUMBNAIL &&
+    trimmed !== CHORDMINI_FALLBACK_THUMBNAIL &&
+    trimmed !== CHORDMINI_FALLBACK_THUMBNAIL_DARK
+  );
+}
+
 function isValidVideoId(videoId: string | null | undefined): videoId is string {
   return typeof videoId === 'string' && /^[a-zA-Z0-9_-]{11}$/.test(videoId);
 }
@@ -18,7 +37,7 @@ export function buildYouTubeThumbnailUrl(
   quality: YouTubeThumbnailQuality = 'mqdefault'
 ): string {
   if (!isValidVideoId(videoId)) {
-    return '/hero-image-placeholder.svg';
+    return CHORDMINI_FALLBACK_THUMBNAIL;
   }
 
   return `https://i.ytimg.com/vi/${videoId}/${quality}.jpg`;

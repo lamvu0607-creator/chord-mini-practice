@@ -98,7 +98,8 @@ const StemWaveform: React.FC<StemWaveformProps> = ({ engine, stemName, color, di
   return (
     <div
       ref={containerRef}
-      className={`relative h-14 w-full cursor-pointer select-none overflow-hidden rounded-md bg-gray-100 dark:bg-gray-900/60 transition-opacity ${dimmed ? 'opacity-30' : ''}`}
+      // touch-pan-y: a vertical swipe still scrolls the page, a sideways drag picks a loop.
+      className={`relative h-10 w-full cursor-pointer touch-pan-y select-none md:h-14 overflow-hidden rounded-md bg-gray-100 dark:bg-gray-900/60 transition-opacity ${dimmed ? 'opacity-30' : ''}`}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

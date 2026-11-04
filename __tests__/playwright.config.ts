@@ -10,8 +10,17 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   reporter: 'list',
-  use: { baseURL: 'http://127.0.0.1:3310' },
-  webServer: {
+  use: { baseURL: process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3310' },
+  projects: [
+    { name: 'desktop', testIgnore: /mobile-.*\.spec\.ts/ },
+    {
+      name: 'mobile',
+      testMatch: /mobile-.*\.spec\.ts/,
+      use: { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true },
+    },
+  ],
+  // E2E_BASE_URL points at an app that is already running, such as the Docker stack.
+  webServer: process.env.E2E_BASE_URL ? undefined : {
     // E2E targets the production bundle so it can run alongside a developer's
     // existing `next dev` process without fighting over Next's dev lock.
     command: 'node .next/standalone/server.js',

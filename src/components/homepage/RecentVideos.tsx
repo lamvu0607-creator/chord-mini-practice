@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardBody, Button, Chip, Select, SelectItem, Skeleton } from '@heroui/react';
 import { useIsVisible } from '@/hooks/scroll/useIntersectionObserver';
@@ -8,6 +8,8 @@ import { useRecentVideosQuery } from '@/hooks/query/useRecentVideosQuery';
 import { buildAnalyzePageUrl } from '@/utils/analyzeRouteUtils';
 import { useAuthStore } from '@/stores/authStore';
 import RecentVideoDeleteButton from './RecentVideoDeleteButton';
+import RecentVideoThumbnail from './RecentVideoThumbnail';
+import { isRealThumbnailUrl } from '@/utils/youtubeMetadata';
 import {
   ALL_KEYS_VALUE,
   RECENT_VIDEOS_PAGE_SIZE,
@@ -41,8 +43,12 @@ const KEY_OPTIONS = [
   { value: 'B minor', label: 'B Minor' },
 ];
 
-export default function RecentVideos() {
+export default function RecentVideos({ fullPage = false }: {
+  /** The list is the whole page: it grows with the page and loads more on scroll. */
+  fullPage?: boolean;
+}) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
   const [selectedKey, setSelectedKey] = useState(ALL_KEYS_VALUE);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -53,6 +59,7 @@ export default function RecentVideos() {
   }, [searchInput]);
 
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const openLoginModal = useAuthStore((state) => state.openLoginModal);
 
   // PERFORMANCE FIX #5: Lazy load using Intersection Observer
   const [containerRef, isVisible] = useIsVisible<HTMLDivElement>({
@@ -76,6 +83,18 @@ export default function RecentVideos() {
     search: search || undefined,
   });
   const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!fullPage || !target || !hasNextPage) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !isFetchingNextPage) void fetchNextPage();
+    }, { rootMargin: '200px' });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [fetchNextPage, fullPage, hasNextPage, isFetchingNextPage]);
+
+  const secondaryDetailClass = fullPage ? 'hidden md:inline' : '';
 
   const videos = useMemo(
     () => data?.pages.flatMap((page) => page.videos) ?? [],
@@ -227,8 +246,17 @@ export default function RecentVideos() {
         </Chip>
       )}
 
+      {!isAuthenticated && (
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-divider bg-content1 px-3 py-2 text-sm text-gray-700 dark:border-white/10 dark:text-gray-200">
+          <span>Sign in to see your uploads and trimmed clips.</span>
+          <Button size="sm" color="primary" className="min-h-11 flex-shrink-0" onPress={() => openLoginModal()}>
+            Sign in
+          </Button>
+        </div>
+      )}
+
       {/* Song cards grid - no outer container box */}
-      <div className={`${isExpanded ? 'max-h-[672px]' : 'max-h-96'} overflow-y-auto scrollbar-thin transition-all duration-300 ease-in-out`}>
+      <div className={fullPage ? '' : `${isExpanded ? 'max-h-[672px]' : 'max-h-96'} overflow-y-auto scrollbar-thin transition-all duration-300 ease-in-out`}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {videos.map((video) => (
             <div key={video.videoId} className="group/recent relative">
@@ -237,7 +265,7 @@ export default function RecentVideos() {
               href={buildAnalyzePageUrl(video.videoId, {
                 title: video.title && video.title !== `Video ${video.videoId}` ? video.title : null,
                 channel: video.channelTitle || null,
-                thumbnail: video.thumbnailUrl || null,
+                thumbnail: isRealThumbnailUrl(video.thumbnailUrl) ? video.thumbnailUrl : null,
                 beatModel: (video.beatModel as 'madmom' | 'beat-transformer' | null) || null,
                 chordModel: (video.chordModel as 'chord-cnn-lstm' | 'btc-sl' | 'btc-pl' | null) || null,
               })}
@@ -247,19 +275,7 @@ export default function RecentVideos() {
               <CardBody className="p-3">
                 <div className="flex gap-3">
                   <div className="relative w-20 h-12 bg-gray-100 dark:bg-gray-600 rounded-md overflow-hidden flex-shrink-0 shadow-sm transition-all duration-300 border border-gray-200 dark:border-gray-500">
-                    {/* Intentionally use direct YouTube thumbnails to avoid Vercel image-optimization quota usage. */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={video.thumbnailUrl || '/hero-image-placeholder.svg'}
-                      alt={video.title || 'Video thumbnail'}
-                      width={80}
-                      height={48}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                      decoding="async"
-                      referrerPolicy="no-referrer"
-                      onError={(e) => { e.currentTarget.src = '/hero-image-placeholder.svg'; }}
-                    />
+                    <RecentVideoThumbnail thumbnailUrl={video.thumbnailUrl} alt={video.title || 'Video thumbnail'} />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-200"></div>
                     {video.duration && <div className="absolute bottom-0.5 right-0.5 bg-black bg-opacity-75 text-white text-xs px-1 py-0.5 rounded">{formatDuration(video.duration)}</div>}
                   </div>
@@ -273,8 +289,8 @@ export default function RecentVideos() {
                     <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
                       <div className="flex items-center justify-between"><span>{formatDate(video.processedAt)}</span>{video.bpm && (<span className="text-blue-600 dark:text-blue-400 font-medium">{formatBPM(video.bpm)}</span>)}</div>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-amber-600 dark:text-amber-400 font-medium">{formatUsageCount(video.usageCount)}</span>
-                        {video.timeSignature && (<span className="text-green-600 dark:text-green-400">{formatTimeSignature(video.timeSignature)}</span>)}
+                        <span className={`text-amber-600 dark:text-amber-400 font-medium ${secondaryDetailClass}`}>{formatUsageCount(video.usageCount)}</span>
+                        {video.timeSignature && (<span className={`text-green-600 dark:text-green-400 ${secondaryDetailClass}`}>{formatTimeSignature(video.timeSignature)}</span>)}
                         {video.keySignature && (<span className="text-purple-600 dark:text-purple-400 font-medium truncate">{video.keySignature}</span>)}
                       </div>
                     </div>
@@ -288,7 +304,7 @@ export default function RecentVideos() {
         </div>
 
         {/* "Load More" button and loading indicator */}
-        <div className="flex justify-center mt-6">
+        <div ref={loadMoreRef} className="flex justify-center mt-6">
           {hasNextPage && !isFetchingNextPage && (
             <Button onPress={() => void fetchNextPage()} color="primary" variant="flat">Load More</Button>
           )}
@@ -303,11 +319,13 @@ export default function RecentVideos() {
       </div>
 
       {/* Show More / Show Less Button */}
-      <div className="mt-4">
-        <Button onPress={isExpanded ? handleShowLess : handleShowMore} color="default" variant="bordered" size="md" className="w-full">
-          {isExpanded ? "Show Less" : "Show More"}
-        </Button>
-      </div>
+      {!fullPage && (
+        <div className="mt-4">
+          <Button onPress={isExpanded ? handleShowLess : handleShowMore} color="default" variant="bordered" size="md" className="w-full">
+            {isExpanded ? "Show Less" : "Show More"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

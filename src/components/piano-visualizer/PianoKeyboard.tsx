@@ -18,6 +18,8 @@ interface PianoKeyboardProps {
   whiteKeyWidth?: number;
   /** Height of the keyboard in pixels */
   height?: number;
+  /** The parent shows the keyboard turned and mirrored; keep the C labels upright. */
+  uprightLabelsWhenTurned?: boolean;
   /** Callback when a key is clicked */
   onKeyClick?: (midi: number) => void;
 }
@@ -48,6 +50,7 @@ export const PianoKeyboard: React.FC<PianoKeyboardProps> = React.memo(({
   noteColors,
   whiteKeyWidth = DEFAULT_WHITE_KEY_WIDTH,
   height = WHITE_KEY_HEIGHT,
+  uprightLabelsWhenTurned = false,
   onKeyClick,
 }) => {
   // Build key layout
@@ -127,7 +130,9 @@ export const PianoKeyboard: React.FC<PianoKeyboardProps> = React.memo(({
           >
             {/* Show note label for C notes */}
             {isC && (
-              <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-medium text-gray-400 dark:text-gray-500 pointer-events-none">
+              <span
+                style={uprightLabelsWhenTurned ? { transform: 'translateX(-50%) matrix(0, -1, -1, 0, 0, 0)' } : undefined}
+                className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-medium text-gray-400 dark:text-gray-500 pointer-events-none">
                 C{key.octave}
               </span>
             )}

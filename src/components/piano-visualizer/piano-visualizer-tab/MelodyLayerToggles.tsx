@@ -25,7 +25,7 @@ const FocusButton: React.FC<{ layer: MelodyLayer; label: string }> = ({ layer, l
       aria-pressed={isFocused}
       title={isFocused ? 'Clear focus' : `Focus ${label} and dim the other layers`}
       onClick={() => toggleFocus(layer)}
-      className={`flex h-6 w-6 items-center justify-center rounded-r-full transition-colors ${
+      className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-r-full border-l border-gray-600 transition-colors md:h-6 md:w-6 ${
         isFocused ? 'bg-gray-100 text-gray-900' : 'text-gray-400 hover:bg-gray-700 hover:text-gray-100'
       }`}
     >
@@ -52,10 +52,11 @@ const MelodyLayerToggles: React.FC<MelodyLayerTogglesProps> = ({ instrumentNotes
   if (groups.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg bg-gray-900/60 px-3 py-1.5">
-      <span className="text-xs font-medium uppercase tracking-[0.12em] text-gray-500">Instrument layers:</span>
-      <div className="flex items-center rounded-full border border-gray-500 bg-gray-800">
-        <span className="flex items-center gap-1.5 pl-2.5 pr-1.5 text-xs font-medium text-gray-100">
+    // Phones: one row that scrolls sideways, so the roll stays near the top.
+    <div className="hide-scrollbar flex items-center gap-2 overflow-x-auto rounded-lg bg-gray-900/60 px-3 py-1.5 md:flex-wrap md:overflow-visible">
+      <span className="hidden flex-shrink-0 text-xs font-medium uppercase md:inline tracking-[0.12em] text-gray-500">Instrument layers:</span>
+      <div className="flex flex-shrink-0 items-center rounded-full border border-gray-500 bg-gray-800">
+        <span className="flex min-h-11 items-center gap-1.5 pl-3 pr-2 text-xs md:min-h-0 md:pl-2.5 md:pr-1.5 font-medium text-gray-100">
           <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: MELODIC_TRANSCRIPTION_COLOR }} />
           Vocal
         </span>
@@ -67,7 +68,7 @@ const MelodyLayerToggles: React.FC<MelodyLayerTogglesProps> = ({ instrumentNotes
         return (
           <div
             key={group}
-            className={`flex items-center rounded-full border transition-colors ${
+            className={`flex flex-shrink-0 items-center rounded-full border transition-colors ${
               isOn ? 'border-gray-500 bg-gray-800' : 'border-gray-700 bg-transparent'
             }`}
           >
@@ -76,7 +77,7 @@ const MelodyLayerToggles: React.FC<MelodyLayerTogglesProps> = ({ instrumentNotes
               aria-pressed={isOn}
               onClick={() => toggleInstrumentGroup(group)}
               title={`${counts.get(group)} notes (MuScriptor)`}
-              className={`flex items-center gap-1.5 pl-2.5 pr-1.5 text-xs font-medium transition-colors ${
+              className={`flex min-h-11 items-center gap-1.5 pl-3 pr-2 text-xs font-medium transition-colors md:min-h-0 md:pl-2.5 md:pr-1.5 ${
                 isOn ? 'text-gray-100' : 'text-gray-500 hover:text-gray-300'
               }`}
             >

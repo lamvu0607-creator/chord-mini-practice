@@ -69,6 +69,11 @@ interface FallingNotesCanvasProps {
   beatLines?: BeatLine[];
   /** Layer kept at full strength in readability mode; other layers are dimmed */
   focusedLayer?: MelodyLayer | null;
+  /**
+   * The canvas is shown turned and mirrored by the parent (keyboard on the left, high notes at the
+   * top, notes moving left). Text is drawn with the same flip so it reads upright on screen.
+   */
+  uprightTextWhenTurned?: boolean;
   /** Callback: set of active MIDI notes at current time */
   onActiveNotesChange?: (notes: Set<number>, colors: Map<number, string>) => void;
 }
@@ -211,6 +216,7 @@ export const FallingNotesCanvas: React.FC<FallingNotesCanvasProps> = React.memo(
   beatLines = NO_BEAT_LINES,
   focusedLayer = null,
   onActiveNotesChange,
+  uprightTextWhenTurned = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
@@ -397,6 +403,26 @@ export const FallingNotesCanvas: React.FC<FallingNotesCanvasProps> = React.memo(
     ctx.save();
     ctx.scale(dpr, dpr);
 
+    // Text anchored at (x, y). The second alignment is the one used on screen when turned.
+    const drawText = (
+      text: string,
+      x: number,
+      y: number,
+      align: CanvasTextAlign,
+      baseline: CanvasTextBaseline,
+      turned: { align: CanvasTextAlign; baseline: CanvasTextBaseline } = { align, baseline },
+      stroke = false,
+    ) => {
+      ctx.save();
+      ctx.translate(x, y);
+      if (uprightTextWhenTurned) ctx.transform(0, -1, -1, 0, 0, 0);
+      ctx.textAlign = uprightTextWhenTurned ? turned.align : align;
+      ctx.textBaseline = uprightTextWhenTurned ? turned.baseline : baseline;
+      if (stroke) ctx.strokeText(text, 0, 0);
+      ctx.fillText(text, 0, 0);
+      ctx.restore();
+    };
+
     // Hit line position
     const hitLineY = h * HIT_LINE_Y_RATIO;
 
@@ -422,16 +448,13 @@ export const FallingNotesCanvas: React.FC<FallingNotesCanvasProps> = React.memo(
       }
 
       ctx.font = '10px system-ui, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
       for (const mark of keyGuides.octaveMarks) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
         ctx.fillRect(mark.x, 0, 1, h);
         ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
-        ctx.fillText(mark.label, mark.x + 3, 3);
+        drawText(mark.label, mark.x + 3, 3, 'left', 'top', { align: 'right', baseline: 'bottom' });
       }
 
-      ctx.textBaseline = 'bottom';
       for (const line of getVisibleTimeRangeItems(beatLines, windowStart, windowEnd, 0)) {
         const y = hitLineY - (line.startTime - time) * pixelsPerSecond;
         const isMeasureStart = line.measureNumber !== undefined;
@@ -439,7 +462,7 @@ export const FallingNotesCanvas: React.FC<FallingNotesCanvasProps> = React.memo(
         ctx.fillRect(0, y, w, 1);
         if (isMeasureStart) {
           ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
-          ctx.fillText(String(line.measureNumber), 3, y - 1);
+          drawText(String(line.measureNumber), 3, y - 1, 'left', 'bottom');
         }
       }
     }
@@ -510,22 +533,17 @@ export const FallingNotesCanvas: React.FC<FallingNotesCanvasProps> = React.memo(
       if (analysisStyle) {
         if (labelText && drawHeight > 14 && noteW > 11) {
           ctx.font = 'bold 9px system-ui, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
           ctx.lineWidth = 2.5;
           ctx.lineJoin = 'round';
           ctx.strokeStyle = NOTE_OUTLINE_COLOR;
-          ctx.strokeText(labelText, noteX + noteW / 2, drawTop + drawHeight / 2);
           ctx.fillStyle = '#ffffff';
-          ctx.fillText(labelText, noteX + noteW / 2, drawTop + drawHeight / 2);
+          drawText(labelText, noteX + noteW / 2, drawTop + drawHeight / 2, 'center', 'middle', undefined, true);
         }
       } else if (labelText && isActive && drawHeight > 14 && noteW > 16) {
         ctx.globalAlpha = 0.9;
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 9px system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(labelText.substring(0, 4), noteX + noteW / 2, drawTop + drawHeight / 2);
+        drawText(labelText.substring(0, 4), noteX + noteW / 2, drawTop + drawHeight / 2, 'center', 'middle');
       }
 
       ctx.globalAlpha = 1.0;
@@ -698,6 +716,7 @@ export const FallingNotesCanvas: React.FC<FallingNotesCanvasProps> = React.memo(
     keyGuides,
     midiKeyPositions,
     readabilityMode,
+    uprightTextWhenTurned,
     maxExtraVisualNoteDuration,
     sortedExtraVisualNotes,
     staticInstrumentVisualEventRanges,

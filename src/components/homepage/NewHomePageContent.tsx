@@ -108,7 +108,7 @@ function NewHomePageContentInner() {
         style={{
           opacity: heroOpacity,
           // scale: heroScale,
-          minHeight: 'calc(100vh - 20px)',
+          minHeight: 'calc(100dvh - 20px)',
         }}
         className="relative z-10 flex items-center justify-center overflow-hidden bg-transparent"
       >

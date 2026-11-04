@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { addToast, closeToast } from '@heroui/react';
+import { useIsMobile } from '@/hooks/ui/useIsMobile';
 import { mergeToastClassNames } from '@/utils/toastStyles';
 
 /** Delay (ms) before showing the "press play" prompt. */
@@ -34,6 +35,7 @@ const PlaybackPromptToast: React.FC<PlaybackPromptToastProps> = ({
   isAnalyzed,
   isPlaying,
 }) => {
+  const isMobile = useIsMobile();
   const toastKeyRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasConsumedPromptRef = useRef(consumedPlaybackPromptIds.has(promptId));
@@ -44,7 +46,8 @@ const PlaybackPromptToast: React.FC<PlaybackPromptToastProps> = ({
 
   // Start/cancel the 5-second delay when analysis loads
   useEffect(() => {
-    if (!isAnalyzed || isPlaying || hasConsumedPromptRef.current) {
+    // Phones always show a large play button, and this toast would cover the view tabs.
+    if (isMobile || !isAnalyzed || isPlaying || hasConsumedPromptRef.current) {
       return;
     }
 
@@ -76,7 +79,7 @@ const PlaybackPromptToast: React.FC<PlaybackPromptToastProps> = ({
         timerRef.current = null;
       }
     };
-  }, [isAnalyzed, isPlaying, promptId]);
+  }, [isAnalyzed, isMobile, isPlaying, promptId]);
 
   // Auto-dismiss the toast when the user starts playback
   useEffect(() => {

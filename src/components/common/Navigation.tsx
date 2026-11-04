@@ -160,7 +160,8 @@ const Navigation: React.FC<NavigationProps> = ({ className = '', showStickySearc
         height="4rem"
       >
         <NavbarContent>
-          <NavbarMenuToggle className={showSearchInBar ? '2xl:hidden' : 'xl:hidden'} />
+          {/* Phones navigate with MobileTabBar. */}
+          <NavbarMenuToggle className={`hidden md:flex ${showSearchInBar ? '2xl:hidden' : 'xl:hidden'}`} />
           <NavbarBrand>
             <Link href="/" className="flex items-center group">
               {/* Light theme logo - hidden in dark mode */}

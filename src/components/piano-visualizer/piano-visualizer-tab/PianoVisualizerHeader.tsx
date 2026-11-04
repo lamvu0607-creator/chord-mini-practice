@@ -43,7 +43,7 @@ export const PianoVisualizerHeader: React.FC<PianoVisualizerHeaderProps> = ({
             <AppTooltip content="Download the visible transcription layers as MIDI">
               <button
                 onClick={onMidiDownload}
-                className="flex items-center gap-1.5 rounded-md border border-gray-300 bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                className="flex min-h-11 items-center gap-1.5 rounded-md border border-gray-300 bg-gray-100 px-3 py-1 text-xs md:min-h-0 md:px-2.5 font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -63,7 +63,7 @@ export const PianoVisualizerHeader: React.FC<PianoVisualizerHeaderProps> = ({
             classNames={{
               tabList: segmentedControlClassName,
               cursor: activeSegmentClassName,
-              tab: 'h-7 px-3',
+              tab: 'h-11 px-3 md:h-7',
               tabContent: 'text-xs font-medium text-gray-700 group-data-[selected=true]:text-white dark:text-gray-200 dark:group-data-[selected=true]:text-white',
             }}
           >
@@ -90,7 +90,7 @@ export const PianoVisualizerHeader: React.FC<PianoVisualizerHeaderProps> = ({
                     <button
                       onClick={() => onSpeedChange(idx)}
                       disabled={effectiveDisplayMode === 'sheet-music'}
-                      className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                      className={`min-h-11 rounded-md px-3 py-1 text-xs font-medium transition-colors md:min-h-0 md:px-2 ${
                         speedIndex === idx
                           ? activeSegmentClassName
                           : inactiveSegmentClassName

@@ -41,6 +41,8 @@ interface UsePianoVisualizerTimelineModelParams {
   showMelodicOverlay: boolean;
   pitchShiftSemitones: number;
   containerWidth: number;
+  /** Phone layout: keyboard on the left, notes moving left. */
+  turnedRoll?: boolean;
   showRomanNumerals?: boolean;
   romanNumeralData?: RomanNumeralDataShape;
 }
@@ -57,6 +59,7 @@ export function usePianoVisualizerTimelineModel({
   showMelodicOverlay,
   pitchShiftSemitones,
   containerWidth,
+  turnedRoll = false,
   showRomanNumerals,
   romanNumeralData,
 }: UsePianoVisualizerTimelineModelParams) {
@@ -208,7 +211,10 @@ export function usePianoVisualizerTimelineModel({
     [melodyOverlayNotes, pianoRollRangeMode],
   );
   const whiteKeyCount = useMemo(() => countWhiteKeys(pianoRange), [pianoRange]);
-  const whiteKeyWidth = computeWhiteKeyWidth(containerWidth, whiteKeyCount);
+  // Turned roll on phones: the keyboard runs down the screen, so key size does not depend on its width.
+  const whiteKeyWidth = turnedRoll
+    ? (pianoRollRangeMode === 'full' ? 16 : 22)
+    : computeWhiteKeyWidth(containerWidth, whiteKeyCount);
   const keyboardWidth = whiteKeyCount * whiteKeyWidth;
 
   const beatLines = useMemo(

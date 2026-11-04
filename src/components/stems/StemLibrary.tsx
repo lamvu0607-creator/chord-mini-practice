@@ -29,7 +29,7 @@ const StemLibrary: React.FC<StemLibraryProps> = ({ stemSets, loading, activeSour
             <button
               type="button"
               onClick={() => onOpen(stemSet)}
-              className={`flex min-w-0 flex-1 items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-gray-100 dark:hover:bg-gray-700/60 ${
+              className={`flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-gray-100 dark:hover:bg-gray-700/60 ${
                 activeSourceId === stemSet.sourceId ? 'bg-blue-50 ring-1 ring-blue-300 dark:bg-blue-500/10 dark:ring-blue-500/40' : ''
               }`}
             >
@@ -58,7 +58,7 @@ const StemLibrary: React.FC<StemLibraryProps> = ({ stemSets, loading, activeSour
             </button>
             {stemSet.canDelete && (
               <Tooltip content="Delete stems" delay={400}>
-                <Button isIconOnly size="sm" variant="light" aria-label="Delete stems" onPress={() => onDelete(stemSet)}>
+                <Button isIconOnly size="sm" variant="light" className="max-md:h-11 max-md:w-11" aria-label="Delete stems" onPress={() => onDelete(stemSet)}>
                   <HiOutlineTrash className="h-4 w-4" />
                 </Button>
               </Tooltip>

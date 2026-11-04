@@ -28,6 +28,7 @@ import {
 import { HARMONY_TRANSCRIPTION_COLOR, MELODIC_TRANSCRIPTION_COLOR } from './constants';
 import MelodyLayerToggles from './MelodyLayerToggles';
 import { PianoRollPanel } from './PianoRollPanel';
+import { useIsMobile } from '@/hooks/ui/useIsMobile';
 import { PianoVisualizerHeader } from './PianoVisualizerHeader';
 import { usePianoVisualizerTimelineModel } from './usePianoVisualizerTimelineModel';
 import { useSheetMusicModel } from './useSheetMusicModel';
@@ -71,6 +72,7 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
   const activeNotesSignatureRef = useRef('');
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const isMobile = useIsMobile();
 
   const measureContainerWidth = useCallback((container: HTMLDivElement | null) => {
     if (!container) {
@@ -130,6 +132,7 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
     showMelodicOverlay,
     pitchShiftSemitones,
     containerWidth,
+    turnedRoll: isMobile,
     showRomanNumerals,
     romanNumeralData,
   });
@@ -271,6 +274,8 @@ export const PianoVisualizerTab: React.FC<PianoVisualizerTabProps> = ({
           legendInstruments={legendInstruments}
           setMeasuredContainerRef={setMeasuredContainerRef}
           keyboardWidth={timelineModel.keyboardWidth}
+          containerWidth={containerWidth}
+          turned={isMobile}
           currentTime={currentTime}
           isPlaying={isPlaying}
           melodyOverlayNotes={timelineModel.melodyOverlayNotes}

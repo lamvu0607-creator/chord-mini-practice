@@ -9,7 +9,6 @@ import { createChatMessage, sendChatMessageWithLyricsRetrieval, truncateConversa
 import { useApiKeys } from '@/hooks/settings/useApiKeys';
 import MarkdownRenderer from '@/components/common/MarkdownRenderer';
 import AppTooltip from '@/components/common/AppTooltip';
-import { useEmbeddedPanelHeight } from '@/hooks/ui/useEmbeddedPanelHeight';
 
 interface ChatbotInterfaceProps {
   isOpen: boolean;
@@ -36,9 +35,7 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
   const { getApiKey } = useApiKeys();
-  const embeddedHeight = useEmbeddedPanelHeight(embedded, panelRef);
 
   const clearConversation = () => {
     setMessages([createChatMessage('assistant', WELCOME_MESSAGE)]);
@@ -115,9 +112,7 @@ const ChatbotInterface: React.FC<ChatbotInterfaceProps> = ({
             />
           )}
           <motion.div
-            ref={panelRef}
             className={`${embedded ? 'relative' : 'fixed bottom-16 right-4 max-sm:bottom-0 max-sm:right-0 max-sm:left-0'} ${embedded ? '' : 'z-[9998]'} flex flex-col rounded-xl border border-white/45 bg-white/72 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.72)] backdrop-blur-xl dark:border-white/12 dark:bg-slate-900/42 ${embedded ? 'w-full h-full max-h-none min-h-[400px]' : FLOATING_PANEL_CLASSES} ${className}`}
-            style={embeddedHeight ? { height: `${embeddedHeight}px`, maxHeight: `${embeddedHeight}px`, minHeight: 0 } : undefined}
             initial={embedded ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: 20 }}
             animate={embedded ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
             exit={embedded ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: 20 }}

@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { FaExpand, FaCompress, FaMusic } from 'react-icons/fa';
+import { FaMusic } from 'react-icons/fa';
 import { Slider } from '@heroui/react';
 import { getAppSliderClassNames } from '@/components/ui/appSliderStyles';
+import SeekStepButton from './SeekStepButton';
 
 // Import ReactPlayer type for TypeScript
 import ReactPlayer from 'react-player';
@@ -45,6 +46,8 @@ interface CollapsibleVideoPlayerProps {
   onPlaybackRateChange?: (rate: number) => void;
   /** No YouTube video (uploaded audio): always use the <audio> player. */
   audioOnly?: boolean;
+  /** Only the video surface, filling its parent. The caller supplies the controls. */
+  bare?: boolean;
 }
 
 export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
@@ -65,13 +68,9 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
   onEnded,
   muted = false,
   onPlaybackRateChange,
-  audioOnly = false
+  audioOnly = false,
+  bare = false
 }) => {
-  const getInitialIsMobile = () => (
-    typeof window !== 'undefined' ? window.innerWidth < 768 : false
-  );
-  const [isMobile, setIsMobile] = useState(getInitialIsMobile);
-  const [isCollapsed, setIsCollapsed] = useState(() => getInitialIsMobile());
   const [readyVideoId, setReadyVideoId] = useState<string | null>(null);
   const [hasVideoError, setHasVideoError] = useState(false);
   const playerRef = useRef<ReactPlayer>(null);
@@ -256,22 +255,6 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
     }
   }, [muted, isPlayerReady]);
 
-  // Detect mobile screen size
-  useEffect(() => {
-    const checkMobile = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      // Auto-collapse on mobile by default
-      if (mobile) {
-        setIsCollapsed(true);
-      }
-    };
-
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
   // Handle ReactPlayer ready event and expose internal YouTube player
   const handleReady = (player: ReactPlayer) => {
     playerRef.current = player;
@@ -394,142 +377,15 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
     />
   ) : null;
 
-  // Collapsed mobile view - enhanced bar with video frame
-  if (isMobile && isCollapsed) {
-    return (
-      <>
-      {audioElement}
-      <div className="rounded-[22px] border border-white/15 bg-slate-950/90 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.88)] backdrop-blur-md">
-        <div className="flex items-center gap-2.5 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
-          {/* Left side - Video frame and controls */}
-          <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
-            {/* Mini video frame */}
-            <div className="relative h-10 w-16 flex-shrink-0 overflow-hidden rounded-md bg-slate-900 sm:h-12 sm:w-20">
-              <div
-                aria-hidden
-                className={`absolute inset-0 bg-cover bg-center transition-opacity duration-300 ${(isPlayerReady && !isAudioMode) ? 'opacity-0' : 'opacity-100'}`}
-                style={thumbnailStyle}
-              />
-              <div
-                aria-hidden
-                className={`absolute inset-0 bg-gradient-to-br from-slate-900/30 via-slate-900/55 to-slate-950/85 transition-opacity duration-300 ${(isPlayerReady && !isAudioMode) ? 'opacity-0' : 'opacity-100'}`}
-              />
-              {isAudioMode ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 backdrop-blur-[1px]">
-                  <FaMusic className={`w-4 h-4 text-sky-400 ${isPlaying ? 'animate-pulse' : ''}`} />
-                </div>
-              ) : (
-                <DynamicReactPlayer
-                  ref={playerRef}
-                  url={`https://www.youtube.com/watch?v=${videoId}`}
-                  width="100%"
-                  height="100%"
-                  controls={false}
-                  playing={isPlaying}
-                  playbackRate={playbackRate}
-                  onReady={handleReady}
-                  onPlay={onPlay}
-                  onPause={onPause}
-                  onEnded={onEnded}
-                  onError={() => setHasVideoError(true)}
-                  onProgress={onProgress}
-                  onSeek={onSeek}
-                  progressInterval={250}
-                  muted={muted}
-                  config={{
-                    playerVars: {
-                      showinfo: 0,
-                      controls: 0,
-                      modestbranding: 1,
-                      rel: 0,
-                      origin: typeof window !== 'undefined' ? window.location.origin : undefined
-                    }
-                  }}
-                />
-              )}
-            </div>
-
-            {/* Play/pause button - larger and more accessible for mobile */}
-            <button
-              onClick={isPlaying ? onPause : onPlay}
-              disabled={!isPlayerReady}
-              className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-white text-slate-900 shadow-lg transition-all duration-300 ${
-                !isPlayerReady
-                  ? 'opacity-50 cursor-not-allowed'
-                  : 'hover:bg-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white'
-              }`}
-              aria-label={isPlaying ? 'Pause' : 'Play'}
-            >
-              {!isPlayerReady ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-900 border-t-transparent" />
-              ) : isPlaying ? (
-                <svg className="h-7 w-7" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-                </svg>
-              ) : (
-                <svg className="h-7 w-7" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
-              )}
-            </button>
-
-            {/* Video progress slider */}
-            <div className="flex min-w-0 flex-1 items-center">
-              <Slider
-                color="foreground"
-                size="sm"
-                step={0.1}
-                minValue={0}
-                maxValue={duration || 100}
-                value={currentTime}
-                onChange={(value) => onSeek && onSeek(Array.isArray(value) ? value[0] : value)}
-                className="w-full"
-                classNames={{
-                  base: "max-w-none",
-                  ...getAppSliderClassNames('primary'),
-                }}
-                formatOptions={{style: "unit", unit: "second"}}
-                aria-label="Video progress"
-              />
-            </div>
-          </div>
-
-          {/* Right side - Expand button */}
-          <div className="flex flex-shrink-0 items-center gap-2">
-            <button
-              onClick={() => setIsCollapsed(false)}
-              className="rounded-full p-2 text-white/90 transition-colors hover:bg-white/10 hover:text-blue-300"
-              aria-label="Expand video player"
-            >
-              <FaExpand className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </div>
-      </>
-    );
-  }
 
   // Full video player view
   return (
     <>
     {audioElement}
-    <div className="relative">
-      {/* Mobile collapse button */}
-      {isMobile && (
-        <div className="absolute top-2 right-2 z-10">
-          <button
-            onClick={() => setIsCollapsed(true)}
-            className="bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
-            aria-label="Minimize video player"
-          >
-            <FaCompress className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+    <div className={bare ? 'relative h-full w-full' : 'relative'}>
 
       {/* Full video player / Fallback Audio player */}
-      <div className="relative aspect-video rounded-lg overflow-hidden shadow-lg bg-slate-900">
+      <div className={bare ? 'relative h-full w-full overflow-hidden bg-slate-900' : 'relative aspect-video rounded-lg overflow-hidden shadow-lg bg-slate-900'}>
         <style>{`
           @keyframes soundwave {
             0%, 100% {
@@ -545,7 +401,11 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
           }
         `}</style>
 
-        {isAudioMode ? (
+        {bare && isAudioMode ? (
+          <div className="flex h-full w-full items-center justify-center bg-cover bg-center" style={thumbnailStyle}>
+            <FaMusic className={`h-4 w-4 text-sky-400 ${isPlaying ? 'animate-pulse' : ''}`} aria-hidden />
+          </div>
+        ) : isAudioMode ? (
           <div className="relative w-full h-full flex flex-col justify-end p-4 bg-gradient-to-br from-slate-955 via-slate-900 to-indigo-950 text-white overflow-hidden select-none">
             {/* Background unblurred thumbnail */}
             <div
@@ -599,6 +459,16 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
                   {formatTime(currentTime)}
                 </span>
                 
+                <div className="flex items-center gap-2 sm:gap-3">
+                <SeekStepButton
+                  direction="back"
+                  currentTime={currentTime}
+                  duration={duration}
+                  onSeek={onSeek}
+                  disabled={!isPlayerReady}
+                  className="h-8 w-8 sm:h-9 sm:w-9 text-white/80 hover:bg-white/10 hover:text-white"
+                />
+
                 {/* Play/Pause round button */}
                 <button
                   onClick={isPlaying ? onPause : onPlay}
@@ -622,6 +492,16 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
                     </svg>
                   )}
                 </button>
+
+                <SeekStepButton
+                  direction="forward"
+                  currentTime={currentTime}
+                  duration={duration}
+                  onSeek={onSeek}
+                  disabled={!isPlayerReady}
+                  className="h-8 w-8 sm:h-9 sm:w-9 text-white/80 hover:bg-white/10 hover:text-white"
+                />
+                </div>
 
                 <span className="text-[10px] sm:text-xs text-white/60">
                   {formatTime(duration)}

@@ -1,8 +1,10 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useApiKeys } from '@/hooks/settings/useApiKeys';
+import InstallAppCard from '@/components/settings/InstallAppCard';
 import ApiKeySettings from '@/components/settings/ApiKeySettings';
 import Navigation from '@/components/common/Navigation';
 import { Card, CardBody, Switch, Tabs, Tab, Spinner, Divider } from '@heroui/react';
@@ -66,6 +68,8 @@ export default function SettingsPage() {
             Manage your preferences and API configurations
           </p>
         </div>
+
+        <InstallAppCard />
 
         <div className="max-w-4xl mx-auto">
           <Tabs
@@ -183,6 +187,15 @@ export default function SettingsPage() {
               </div>
             </Tab>
           </Tabs>
+
+          {/* The phone tab bar has no room for these. */}
+          <div className="mt-6 flex flex-col divide-y divide-divider rounded-xl border border-gray-200 dark:border-gray-700 md:hidden">
+            {[{ href: '/games', label: 'Games' }, { href: '/docs', label: 'API Docs' }, { href: '/', label: 'About ChordMini' }].map((link) => (
+              <Link key={link.href} href={link.href} className="flex min-h-11 items-center px-4 text-sm font-medium text-foreground">
+                {link.label}
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
     </div>

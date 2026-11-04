@@ -110,7 +110,7 @@ const IntegratedSearchContainer: React.FC<IntegratedSearchContainerProps> = ({
       {/* Clean Search Form - No Containers */}
       <form onSubmit={handleSearch}>
         {/* Search Input Row */}
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <div className="flex-1 relative">
             <input
               id="youtube-search"
@@ -152,7 +152,7 @@ const IntegratedSearchContainer: React.FC<IntegratedSearchContainerProps> = ({
             >
               <Link
               href="/analyze"
-              className="font-medium py-3 px-4 rounded-lg transition-all duration-200 whitespace-nowrap flex items-center gap-2 bg-default-100 dark:bg-gray-800/40 border border-default-300 dark:border-gray-700 text-foreground hover:bg-default-200 dark:hover:bg-gray-700/50"
+              className="font-medium py-3 px-4 rounded-lg transition-all duration-200 whitespace-nowrap flex items-center justify-center gap-2 bg-default-100 dark:bg-gray-800/40 border border-default-300 dark:border-gray-700 text-foreground hover:bg-default-200 dark:hover:bg-gray-700/50"
               aria-label="Upload audio file"
               >
                 <HiUpload className="w-4 h-4" />
