@@ -29,6 +29,8 @@ interface IntegratedSearchContainerProps {
   searchResults: YouTubeSearchResult[];
   handleVideoSelect: (videoId: string, title?: string, metadata?: YouTubeSearchResult) => void;
   containerRef?: React.RefObject<HTMLDivElement | null>;
+  /** Show the "Upload Song" link to /analyze (hidden on /analyze itself). */
+  showUploadButton?: boolean;
 }
 
 const IntegratedSearchContainer: React.FC<IntegratedSearchContainerProps> = ({
@@ -42,7 +44,8 @@ const IntegratedSearchContainer: React.FC<IntegratedSearchContainerProps> = ({
   setSearchError,
   searchResults,
   handleVideoSelect,
-  containerRef
+  containerRef,
+  showUploadButton = true,
 }) => {
   const [visibleResults, setVisibleResults] = useState(5);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -142,6 +145,7 @@ const IntegratedSearchContainer: React.FC<IntegratedSearchContainerProps> = ({
           </div>
 
           {/* Upload Song Button - Matching Navigation Bar Style */}
+          {showUploadButton && (
           <div className="relative group">
             <Tooltip
               content={
@@ -160,6 +164,7 @@ const IntegratedSearchContainer: React.FC<IntegratedSearchContainerProps> = ({
               </Link>
             </Tooltip>
           </div>
+          )}
         </div>
       </form>
 

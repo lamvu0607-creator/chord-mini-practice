@@ -2,43 +2,43 @@
 
 import React, { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Input, Progress, Tab, Tabs } from '@heroui/react';
-import { HiOutlineArrowUpTray, HiOutlineLink } from 'react-icons/hi2';
+import { Progress, Tab, Tabs } from '@heroui/react';
+import { HiOutlineArrowUpTray, HiOutlineMagnifyingGlass } from 'react-icons/hi2';
 import Navigation from '@/components/common/Navigation';
 import PageBackdrop from '@/components/ui/PageBackdrop';
-import { parseYouTubeVideoId } from '@/services/stems/stemsApi';
 import { ANALYZE_UPLOAD_ACCEPT, ANALYZE_UPLOAD_MAX_MB, uploadAnalyzeAudio } from '@/services/audio/analyzeUploadApi';
 import { useAuthStore } from '@/stores/authStore';
 import { buildAnalyzePageUrl } from '@/utils/analyzeRouteUtils';
+import IntegratedSearchContainer from '@/components/homepage/IntegratedSearchContainer';
+import { useSharedSearchState } from '@/hooks/search/useSharedSearchState';
 
 /**
- * Source picker for the single analyze page: a YouTube link opens /analyze/<videoId>,
+ * Source picker for the single analyze page: YouTube search (or a pasted link) opens /analyze/<videoId>,
  * an uploaded file is stored and opens /analyze/upload_<id>. Cutting a section happens
- * on that page (✂️ "Cắt một đoạn").
+ * on that page (✂️ "Trim a section").
  */
 export default function AnalyzeSourcePage() {
   const router = useRouter();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const openLoginModal = useAuthStore((state) => state.openLoginModal);
   const [tab, setTab] = useState<string>('youtube');
-  const [link, setLink] = useState('');
-  const [linkError, setLinkError] = useState<string | null>(null);
+  const [searchInputError, setSearchInputError] = useState('');
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [dragging, setDragging] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const isUploading = uploadProgress !== null;
 
-  const submitLink = (event: React.FormEvent) => {
-    event.preventDefault();
-    const videoId = parseYouTubeVideoId(link);
-    if (!videoId) {
-      setLinkError('Paste a YouTube link (watch, youtu.be, shorts) or an 11-character video ID.');
-      return;
-    }
-    setLinkError(null);
-    router.push(buildAnalyzePageUrl(videoId));
-  };
+  const {
+    searchQuery,
+    searchResults,
+    isSearching,
+    searchError,
+    updateSearchQuery,
+    handleSearch,
+    handleVideoSelect,
+    setSearchError,
+  } = useSharedSearchState();
 
   const pickFile = async (file: File | undefined) => {
     if (!file) return;
@@ -83,19 +83,20 @@ export default function AnalyzeSourcePage() {
             color="primary"
             classNames={{ tabList: 'gap-4 border-b border-divider w-full', panel: 'pt-4' }}
           >
-            <Tab key="youtube" title={<span className="flex items-center gap-1.5"><HiOutlineLink className="h-4 w-4" />Link YouTube</span>}>
-              <form onSubmit={submitLink} className="flex flex-col gap-2 sm:flex-row sm:items-start">
-                <Input
-                  aria-label="YouTube link"
-                  placeholder="https://www.youtube.com/watch?v=…"
-                  value={link}
-                  onValueChange={setLink}
-                  isInvalid={Boolean(linkError)}
-                  errorMessage={linkError ?? undefined}
-                  className="flex-1"
-                />
-                <Button type="submit" color="primary" isDisabled={!link.trim()}>Analyze</Button>
-              </form>
+            <Tab key="youtube" title={<span className="flex items-center gap-1.5"><HiOutlineMagnifyingGlass className="h-4 w-4" />YouTube</span>}>
+              <IntegratedSearchContainer
+                searchQuery={searchQuery}
+                setSearchQuery={updateSearchQuery}
+                handleSearch={handleSearch}
+                isSearching={isSearching}
+                searchError={searchError}
+                error={searchInputError}
+                setError={setSearchInputError}
+                setSearchError={setSearchError}
+                searchResults={searchResults}
+                handleVideoSelect={handleVideoSelect}
+                showUploadButton={false}
+              />
             </Tab>
 
             <Tab key="upload" title={<span className="flex items-center gap-1.5"><HiOutlineArrowUpTray className="h-4 w-4" />Upload file</span>}>
