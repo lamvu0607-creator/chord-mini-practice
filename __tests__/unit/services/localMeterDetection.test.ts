@@ -153,5 +153,30 @@ describe('local meter detection', () => {
     expect(segments[1]).toEqual(expect.objectContaining({ startIndex: 48, endIndex: 75 }));
     expect(segments[2]).toEqual(expect.objectContaining({ startIndex: 75, endIndex: chords.length }));
   });
-});
+  it('keeps a 6/8 song on one 6-beat meter even when chord onsets jitter by a beat', () => {
+    const chords: string[] = [];
+    // Bars of 6 short beats; some changes land one beat late (onset jitter),
+    // which used to be read as 5- and 7-beat bars.
+    appendChordRuns(chords, [
+      ['A', 6], ['D', 7], ['G', 5], ['Bm', 6], ['F#', 7], ['B', 5],
+      ['A', 6], ['D', 6], ['G', 7], ['Bm', 5], ['F#', 6], ['B', 6],
+    ]);
 
+    const segments = detectLocalMeterSegments(chords, 6);
+    const meters = new Set(segments.map((segment) => segment.beatsPerMeasure));
+
+    expect([...meters].every((meter) => meter === 3 || meter === 6)).toBe(true);
+  });
+
+  it('does not offer a 6-beat meter to songs the beat model reports as 4/4 or 3/4', () => {
+    const chords: string[] = [];
+    ['C', 'G', 'Am', 'F', 'Dm', 'G', 'C', 'F'].forEach((chord) => {
+      appendHeldChord(chords, chord, 6);
+    });
+
+    for (const global of [3, 4]) {
+      const meters = detectLocalMeterSegments(chords, global).map((segment) => segment.beatsPerMeasure);
+      expect(meters).not.toContain(6);
+    }
+  });
+});

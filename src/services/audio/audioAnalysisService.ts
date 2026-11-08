@@ -319,13 +319,13 @@ export async function analyzeAudioWithRateLimit(
   try {
     const worker = getChordAnalysisWorker();
     if (worker) {
-      synchronizedChords = await worker.synchronizeChords(chordResults, beats);
+      synchronizedChords = await worker.synchronizeChords(chordResults, beats, beatResults.downbeats);
     } else {
-      synchronizedChords = synchronizeChords(chordResults, beats) as { chord: string; beatIndex: number }[];
+      synchronizedChords = synchronizeChords(chordResults, beats, beatResults.downbeats) as { chord: string; beatIndex: number }[];
     }
   } catch (e) {
     console.warn('Worker sync failed, using main thread fallback:', e);
-    synchronizedChords = synchronizeChords(chordResults, beats) as { chord: string; beatIndex: number }[];
+    synchronizedChords = synchronizeChords(chordResults, beats, beatResults.downbeats) as { chord: string; beatIndex: number }[];
   }
   synchronizedChords = synchronizedChords.filter((sc) => sc && typeof sc.beatIndex === 'number' && !isNaN(sc.beatIndex) && sc.beatIndex >= 0 && sc.beatIndex < beats.length && typeof (sc as { chord?: string }).chord === 'string');
 
@@ -493,13 +493,13 @@ export async function analyzeAudio(
   try {
     const worker = getChordAnalysisWorker();
     if (worker) {
-      synchronizedChords = await worker.synchronizeChords(chordResults, beats);
+      synchronizedChords = await worker.synchronizeChords(chordResults, beats, beatResults.downbeats);
     } else {
-      synchronizedChords = synchronizeChords(chordResults, beats) as { chord: string; beatIndex: number }[];
+      synchronizedChords = synchronizeChords(chordResults, beats, beatResults.downbeats) as { chord: string; beatIndex: number }[];
     }
   } catch (e) {
     console.warn('Worker sync failed, using main thread fallback:', e);
-    synchronizedChords = synchronizeChords(chordResults, beats) as { chord: string; beatIndex: number }[];
+    synchronizedChords = synchronizeChords(chordResults, beats, beatResults.downbeats) as { chord: string; beatIndex: number }[];
   }
 
   const reportedBeatModel = (beatResults as unknown as { model?: string }).model;

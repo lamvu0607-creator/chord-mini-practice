@@ -69,9 +69,10 @@ function toBeatInfoFromTimes(beatTimes: number[]): BeatInfo[] {
 const api = {
   synchronizeChords(
     chords: ChordDetectionResult[],
-    beats: BeatInfo[]
+    beats: BeatInfo[],
+    downbeats?: number[]
   ): { chord: string; beatIndex: number }[] {
-    return synchronizeChords(chords, beats);
+    return synchronizeChords(chords, beats, downbeats);
   },
 
   scoreDownbeatAlignment(

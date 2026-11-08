@@ -97,4 +97,55 @@ describe('chordSynchronization', () => {
       { chord: 'N/C', beatIndex: 1 },
     ]);
   });
+
+  describe('downbeat snap for short beats', () => {
+    // 6/8-style eighth-note beats, 1/3 s apart; downbeats every 6 beats.
+    const beats = Array.from({ length: 12 }, (_, i) => ({ time: i / 3 })) as any;
+    const downbeats = [0, 2];
+
+    it('moves an onset that is up to 0.25 s late back onto the downbeat', () => {
+      const chords = [
+        { start: 0, end: 2.2, chord: 'C' },
+        { start: 2.2, end: 4, chord: 'G' }, // 0.2 s after the downbeat at 2.0
+      ] as any;
+      expect(synchronizeChords(chords, beats)[6].chord).toBe('C');
+      const snapped = synchronizeChords(chords, beats, downbeats);
+      expect(snapped[6].chord).toBe('G');
+      expect(snapped[5].chord).toBe('C');
+    });
+
+    it('leaves onsets alone when they are later than 0.25 s or not right after a downbeat', () => {
+      const late = [
+        { start: 0, end: 2.3, chord: 'C' },
+        { start: 2.3, end: 4, chord: 'G' }, // 0.3 s late
+      ] as any;
+      expect(synchronizeChords(late, beats, downbeats)[6].chord).toBe('C');
+      const midBar = [
+        { start: 0, end: 1.2, chord: 'C' },
+        { start: 1.2, end: 4, chord: 'G' }, // 0.2 s after beat 3, not a downbeat
+      ] as any;
+      expect(synchronizeChords(midBar, beats, downbeats)[3].chord).toBe('C');
+    });
+
+    it('does not overwrite a chord already on the downbeat', () => {
+      const chords = [
+        { start: 0, end: 2.0, chord: 'C' },
+        { start: 2.0, end: 2.2, chord: 'F' },
+        { start: 2.2, end: 4, chord: 'G' },
+      ] as any;
+      const result = synchronizeChords(chords, beats, downbeats);
+      expect(result[6].chord).toBe('F');
+      expect(result[7].chord).toBe('G');
+    });
+
+    it('does not snap when beats are 0.4 s or longer', () => {
+      const slowBeats = Array.from({ length: 10 }, (_, i) => ({ time: i * 0.45 })) as any;
+      const chords = [
+        { start: 0, end: 2.04, chord: 'C' },
+        { start: 2.04, end: 4, chord: 'G' }, // 0.24 s after downbeat 1.8, past the half-beat point
+      ] as any;
+      const withSnap = synchronizeChords(chords, slowBeats, [0, 1.8]);
+      expect(withSnap).toEqual(synchronizeChords(chords, slowBeats));
+    });
+  });
 });

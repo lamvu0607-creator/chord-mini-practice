@@ -2,7 +2,10 @@ import { GRID_ALIGNMENT_CONFIG } from './gridConfig';
 import { isSilentChord } from './gridShared';
 import { MetricSegment } from './gridTypes';
 
-type CandidateMeter = 3 | 4 | 5 | 7;
+// 6 is only a candidate when the beat model reports a 6-beat (6/8) meter; see
+// getCandidateMeters. Adding it globally would let 3/4 songs whose chords change
+// every two bars be re-labelled as 6.
+type CandidateMeter = 3 | 4 | 5 | 6 | 7;
 
 type MeterMeasure = {
   startIndex: number;
@@ -20,7 +23,17 @@ type SolverState = {
 };
 
 function isCandidateMeter(value: number): value is CandidateMeter {
-  return value === 3 || value === 4 || value === 5 || value === 7;
+  return value === 3 || value === 4 || value === 5 || value === 6 || value === 7;
+}
+
+function getCandidateMeters(globalTimeSignature: number): CandidateMeter[] {
+  if (globalTimeSignature === 6) {
+    // Compound meter from the beat model: a bar is 6 beats, or 3 when the
+    // harmony moves every half bar. 4/5/7 would only come from chord onsets
+    // jittering by one (short) beat, not from a real meter change.
+    return [3, 6];
+  }
+  return GRID_ALIGNMENT_CONFIG.localMeterDetection.candidateMeters.filter(isCandidateMeter);
 }
 
 function getChordStartIndices(chords: string[]): number[] {
@@ -77,7 +90,11 @@ function scoreMeasure(params: {
 
     if (positionInMeasure === 0) {
       score += config.downbeatReward + longRunBonus;
-    } else if (beatsPerMeasure === 4 && positionInMeasure === 2) {
+    } else if (
+      (beatsPerMeasure === 4 && positionInMeasure === 2) ||
+      (beatsPerMeasure === 6 && positionInMeasure === 3)
+    ) {
+      // Mid-bar strong beat: beat 3 of 4/4, second dotted-quarter of 6/8.
       score += config.secondaryStrongBeatReward;
     } else {
       score -= config.offDownbeatPenalty;
@@ -416,7 +433,7 @@ export function detectLocalMeterSegments(
     return [];
   }
 
-  const candidateMeters = config.candidateMeters.filter(isCandidateMeter);
+  const candidateMeters = getCandidateMeters(globalTimeSignature);
   if (candidateMeters.length < 2) {
     return [];
   }
