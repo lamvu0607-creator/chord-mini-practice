@@ -124,6 +124,10 @@ services:
       - USE_CHORD_CNN_LSTM=false
       - USE_BTC_SL=true
       - USE_BTC_PL=true
+      # BTC smoothing: Viterbi chord-change penalty, min chord length (s), 50%-overlap windows
+      - BTC_SWITCH_PENALTY=${BTC_SWITCH_PENALTY:-8}
+      - BTC_MIN_CHORD_DURATION=${BTC_MIN_CHORD_DURATION:-0.3}
+      - BTC_OVERLAP=${BTC_OVERLAP:-true}
       # All traffic arrives from the frontend container, so per-IP limits here would be
       # global; nginx enforces the real per-client limit.
       - RATE_LIMIT_HEAVY_PROCESSING=${RATE_LIMIT_HEAVY_PROCESSING:-30 per minute}
