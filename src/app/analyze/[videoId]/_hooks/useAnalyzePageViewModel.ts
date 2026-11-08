@@ -1419,7 +1419,7 @@ export function useAnalyzePageViewModel({
   };
 
   // Shared by the scrubber, the ±5s buttons and the ←/→ shortcuts.
-  const handleUserSeek = (time: number) => {
+  const seekWithLatestState = (time: number) => {
     // CLOCK AUTHORITY (post-unification): the YouTube scrubber is a
     // user-initiated seek â€” route it through the master clock, which
     // raises the store fence (R2), bumps the seek token (R3), and
@@ -1451,6 +1451,13 @@ export function useAnalyzePageViewModel({
       youtubePlayer.seekTo(time, 'seconds');
     }
   };
+  // Stable identity that always runs the latest closure. CollapsibleVideoPlayer
+  // is memoised on time/play state only, so while paused it keeps the onSeek it
+  // got on an earlier render - one from before the player existed, which made
+  // the ±5s buttons and the scrubber do nothing.
+  const seekWithLatestStateRef = useRef(seekWithLatestState);
+  seekWithLatestStateRef.current = seekWithLatestState;
+  const handleUserSeek = useCallback((time: number) => seekWithLatestStateRef.current(time), []);
 
   useSeekShortcuts({
     onSeek: handleUserSeek,

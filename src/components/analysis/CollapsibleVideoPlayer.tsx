@@ -75,6 +75,7 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
   const [hasVideoError, setHasVideoError] = useState(false);
   const playerRef = useRef<ReactPlayer>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const readAudioTime = useCallback(() => audioElRef.current?.currentTime, []);
   
   const thumbnailUrl = propThumbnailUrl || (audioOnly ? '' : `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`);
   const thumbnailStyle = thumbnailUrl ? { backgroundImage: `url("${thumbnailUrl}")` } : undefined;
@@ -463,6 +464,7 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
                 <SeekStepButton
                   direction="back"
                   currentTime={currentTime}
+                  getCurrentTime={readAudioTime}
                   duration={duration}
                   onSeek={onSeek}
                   disabled={!isPlayerReady}
@@ -496,6 +498,7 @@ export const CollapsibleVideoPlayer = React.memo<CollapsibleVideoPlayerProps>(({
                 <SeekStepButton
                   direction="forward"
                   currentTime={currentTime}
+                  getCurrentTime={readAudioTime}
                   duration={duration}
                   onSeek={onSeek}
                   disabled={!isPlayerReady}

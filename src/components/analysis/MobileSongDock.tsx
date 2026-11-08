@@ -86,6 +86,7 @@ export default function MobileSongDock({ player, tools }: MobileSongDockProps) {
 
   if (!hasPlayableSource) return null;
 
+  const readPlayerTime = () => (youtubePlayer as { getCurrentTime?: () => number } | undefined)?.getCurrentTime?.();
   const shownTime = dragTime ?? currentTime;
 
   return (
@@ -178,6 +179,7 @@ export default function MobileSongDock({ player, tools }: MobileSongDockProps) {
         <SeekStepButton
           direction="back"
           currentTime={currentTime}
+          getCurrentTime={readPlayerTime}
           duration={duration}
           onSeek={onSeek}
           disabled={!isReady}
@@ -205,6 +207,7 @@ export default function MobileSongDock({ player, tools }: MobileSongDockProps) {
         <SeekStepButton
           direction="forward"
           currentTime={currentTime}
+          getCurrentTime={readPlayerTime}
           duration={duration}
           onSeek={onSeek}
           disabled={!isReady}
