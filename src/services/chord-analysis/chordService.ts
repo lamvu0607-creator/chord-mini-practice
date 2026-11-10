@@ -106,41 +106,49 @@ export async function recognizeChordsDetailed(
       throw new Error('Invalid chord recognition response: missing or invalid chords array');
     }
 
-    // Convert to ChordDetectionResult with validation
-    const chords: ChordDetectionResult[] = [];
-    for (let i = 0; i < data.chords.length; i++) {
-      const chord = data.chords[i];
-      if (!chord || typeof chord !== 'object') {
-        console.warn(`Skipping invalid chord at index ${i}: not an object`);
-        continue;
-      }
-      if (typeof chord.start !== 'number' || typeof chord.end !== 'number') {
-        console.warn(`Skipping chord at index ${i}: invalid start/end times`);
-        continue;
-      }
-      if (isNaN(chord.start) || isNaN(chord.end)) {
-        console.warn(`Skipping chord at index ${i}: NaN start/end times`);
-        continue;
-      }
-      if (chord.start < 0 || chord.end < 0 || chord.start >= chord.end) {
-        console.warn(`Skipping chord at index ${i}: invalid time range (${chord.start}-${chord.end})`);
-        continue;
-      }
-      if (!chord.chord || typeof chord.chord !== 'string') {
-        console.warn(`Skipping chord at index ${i}: invalid chord name`);
-        continue;
-      }
-      chords.push({ start: chord.start, end: chord.end, time: chord.start, chord: chord.chord, confidence: chord.confidence || 0.8 });
-    }
-    return {
-      chords,
-      key: typeof data.key === 'string' && data.key ? data.key : null,
-      keyConfidence: typeof data.key_confidence === 'number' ? data.key_confidence : null,
-      decoding: data.decoding === 'beat-sync' || data.decoding === 'frame' ? data.decoding : null,
-    };
+    return parseChordRecognitionPayload(data);
   } catch (error) {
     console.error('Error in chord recognition with rate limiting:', error);
     throw error;
   }
 }
 
+/**
+ * Backend recognize-chords payload (also nested under `chords` in /api/analyze):
+ * valid chord segments plus the estimated key and decoding mode.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function parseChordRecognitionPayload(data: any): DetailedChordRecognition {
+  // Convert to ChordDetectionResult with validation
+  const chords: ChordDetectionResult[] = [];
+  for (let i = 0; i < data.chords.length; i++) {
+    const chord = data.chords[i];
+    if (!chord || typeof chord !== 'object') {
+      console.warn(`Skipping invalid chord at index ${i}: not an object`);
+      continue;
+    }
+    if (typeof chord.start !== 'number' || typeof chord.end !== 'number') {
+      console.warn(`Skipping chord at index ${i}: invalid start/end times`);
+      continue;
+    }
+    if (isNaN(chord.start) || isNaN(chord.end)) {
+      console.warn(`Skipping chord at index ${i}: NaN start/end times`);
+      continue;
+    }
+    if (chord.start < 0 || chord.end < 0 || chord.start >= chord.end) {
+      console.warn(`Skipping chord at index ${i}: invalid time range (${chord.start}-${chord.end})`);
+      continue;
+    }
+    if (!chord.chord || typeof chord.chord !== 'string') {
+      console.warn(`Skipping chord at index ${i}: invalid chord name`);
+      continue;
+    }
+    chords.push({ start: chord.start, end: chord.end, time: chord.start, chord: chord.chord, confidence: chord.confidence || 0.8 });
+  }
+  return {
+    chords,
+    key: typeof data.key === 'string' && data.key ? data.key : null,
+    keyConfidence: typeof data.key_confidence === 'number' ? data.key_confidence : null,
+    decoding: data.decoding === 'beat-sync' || data.decoding === 'frame' ? data.decoding : null,
+  };
+}

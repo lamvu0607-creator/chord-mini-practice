@@ -1,6 +1,7 @@
 import { analyzeAudioWithRateLimit, buildChordBeatGrid } from '@/services/audio/audioAnalysisService';
 import { detectBeatsWithRateLimit } from '@/services/audio/beatDetectionService';
 import { recognizeChordsDetailed } from '@/services/chord-analysis/chordService';
+import { analyzeBeatsAndChords } from '@/services/audio/combinedAnalysisService';
 import { getAudioDurationFromFile } from '@/utils/audioDurationUtils';
 
 jest.mock('@/utils/audioDurationUtils', () => ({
@@ -19,6 +20,11 @@ jest.mock('@/services/audio/beatDetectionService', () => ({
 jest.mock('@/services/chord-analysis/chordService', () => ({
   recognizeChordsWithRateLimit: jest.fn(),
   recognizeChordsDetailed: jest.fn(),
+}));
+
+// Combined /api/analyze request: unavailable (null) unless a test says otherwise
+jest.mock('@/services/audio/combinedAnalysisService', () => ({
+  analyzeBeatsAndChords: jest.fn(async () => null),
 }));
 
 jest.mock('@/workers/chordAnalysisClient', () => ({
@@ -191,5 +197,59 @@ describe('buildChordBeatGrid', () => {
 
   it('returns null without at least two beats', () => {
     expect(buildChordBeatGrid({ success: true, beats: [0.5] })).toBeNull();
+  });
+});
+
+describe('audioAnalysisService combined request', () => {
+  const makeFile = () => new File([new Uint8Array(1024)], 'combined.wav', { type: 'audio/wav' });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    (getAudioDurationFromFile as jest.Mock).mockResolvedValue(5);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    (analyzeBeatsAndChords as jest.Mock).mockImplementation(async () => null);
+  });
+
+  it('uses one combined request when the backend supports it', async () => {
+    (analyzeBeatsAndChords as jest.Mock).mockResolvedValue({
+      beatResults: {
+        success: true, beats: [0, 1, 2, 3, 4], downbeats: [0, 4], bpm: 60, time_signature: 4, model: 'beat-this',
+      },
+      chordRecognition: {
+        chords: [
+          { start: 0, end: 4, time: 0, chord: 'C', confidence: 0.9 },
+          { start: 4, end: 5, time: 4, chord: 'G', confidence: 0.9 },
+        ],
+        key: 'C:major', keyConfidence: 0.2, decoding: 'beat-sync',
+      },
+    });
+
+    const result = await analyzeAudioWithRateLimit(makeFile(), 'beat-this', 'btc-cl');
+
+    expect(analyzeBeatsAndChords).toHaveBeenCalledWith(expect.any(File), 'beat-this', 'btc-cl');
+    expect(detectBeatsWithRateLimit).not.toHaveBeenCalled();
+    expect(recognizeChordsDetailed).not.toHaveBeenCalled();
+    expect(result.audioKey).toBe('C major');
+    expect(result.chordDecoding).toBe('beat-sync');
+    expect(result.downbeats).toEqual([0, 4]);
+    expect(result.synchronizedChords.find((c) => c.chord === 'G')?.beatIndex).toBe(4);
+  });
+
+  it('falls back to separate requests when the combined one is unavailable', async () => {
+    (detectBeatsWithRateLimit as jest.Mock).mockResolvedValue({
+      success: true, beats: [0, 1, 2, 3], downbeats: [0], bpm: 60, time_signature: 4,
+    });
+    (recognizeChordsDetailed as jest.Mock).mockResolvedValue(chordsOnly([{ start: 0, end: 4, chord: 'C' }]));
+
+    const result = await analyzeAudioWithRateLimit(makeFile(), 'beat-this', 'btc-cl');
+
+    expect(analyzeBeatsAndChords).toHaveBeenCalled();
+    expect(detectBeatsWithRateLimit).toHaveBeenCalled();
+    expect(result.chords).toHaveLength(1);
   });
 });

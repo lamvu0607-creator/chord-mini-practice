@@ -10,6 +10,7 @@ import { getAnalysisDurationLimitReason } from '@/utils/analysisDurationLimit';
 import { buildAudioProxyUrl } from '@/utils/audioProxyUrl';
 
 import { detectBeatsFromFile, detectBeatsWithRateLimit } from '@/services/audio/beatDetectionService';
+import { analyzeBeatsAndChords } from '@/services/audio/combinedAnalysisService';
 import { synchronizeChords } from '@/utils/chordSynchronization';
 import {
   recognizeChordsDetailed,
@@ -77,6 +78,10 @@ async function recognizeChordsForAnalysis(
     console.error('Error in chord recognition:', e);
     throw mapChordRecognitionError(e);
   }
+  return withValidChords(result);
+}
+
+function withValidChords(result: DetailedChordRecognition): DetailedChordRecognition {
   const chords = result.chords.filter((c: ChordDetectionResult) => c && typeof c.start === 'number' && typeof c.end === 'number'
     && !isNaN(c.start) && !isNaN(c.end) && c.start >= 0 && c.end >= 0 && c.start < c.end && c.end <= 3600);
   return { ...result, chords };
@@ -289,30 +294,38 @@ export async function analyzeAudioWithRateLimit(
 
   // Beats first, then chords decoded on that beat grid (chord changes land on beats,
   // preferably downbeats, and the backend returns a key estimated from the audio).
+  // One combined request when the backend supports it, otherwise two.
   let beatResults: BeatDetectionBackendResponse;
-  try {
-    const results = await detectBeatsWithRateLimit(audioFile, beatDetector);
+  let chordRecognition: DetailedChordRecognition;
+  const combined = await analyzeBeatsAndChords(audioFile, beatDetector, chordDetector);
+  if (combined) {
+    beatResults = combined.beatResults;
+    chordRecognition = withValidChords(combined.chordRecognition);
+  } else {
+    try {
+      const results = await detectBeatsWithRateLimit(audioFile, beatDetector);
 
-    if (!results || !results.beats) throw new Error('Beat detection failed: missing beats data');
-    if (!Array.isArray(results.beats)) throw new Error('Invalid beat detection results: beats is not an array');
-    if (results.beats.length === 0) throw new Error('No beats detected in the audio. The audio may be too quiet, too short, or not contain rhythmic content.');
-    // filter invalid
-    results.beats = results.beats.filter((t: number) => typeof t === 'number' && !isNaN(t) && t >= 0 && t <= 3600);
-    if (results.beats.length === 0) throw new Error('All detected beats have invalid timestamps');
-    beatResults = results;
-  } catch (e) {
-    console.error('Error in beat detection with rate limiting:', e);
-    if (e instanceof Error) {
-      if (e.message.includes('Rate limited')) throw new Error(`Beat detection rate limited: ${e.message}`);
-      if (e.message.includes('too large')) throw new Error('Audio file is too large for beat detection. Try a shorter clip or the madmom detector.');
-      if (e.message.includes('413')) throw new Error('Audio file size exceeds server limits. Please use a smaller file or try the madmom detector.');
-      if (e.message.includes('timeout')) throw new Error('Beat detection timed out. Try a shorter clip or the madmom detector.');
-      throw new Error(`Beat detection failed: ${e.message}`);
+      if (!results || !results.beats) throw new Error('Beat detection failed: missing beats data');
+      if (!Array.isArray(results.beats)) throw new Error('Invalid beat detection results: beats is not an array');
+      if (results.beats.length === 0) throw new Error('No beats detected in the audio. The audio may be too quiet, too short, or not contain rhythmic content.');
+      // filter invalid
+      results.beats = results.beats.filter((t: number) => typeof t === 'number' && !isNaN(t) && t >= 0 && t <= 3600);
+      if (results.beats.length === 0) throw new Error('All detected beats have invalid timestamps');
+      beatResults = results;
+    } catch (e) {
+      console.error('Error in beat detection with rate limiting:', e);
+      if (e instanceof Error) {
+        if (e.message.includes('Rate limited')) throw new Error(`Beat detection rate limited: ${e.message}`);
+        if (e.message.includes('too large')) throw new Error('Audio file is too large for beat detection. Try a shorter clip or the madmom detector.');
+        if (e.message.includes('413')) throw new Error('Audio file size exceeds server limits. Please use a smaller file or try the madmom detector.');
+        if (e.message.includes('timeout')) throw new Error('Beat detection timed out. Try a shorter clip or the madmom detector.');
+        throw new Error(`Beat detection failed: ${e.message}`);
+      }
+      throw new Error(`Beat detection failed: ${String(e) || 'Unknown error'}`);
     }
-    throw new Error(`Beat detection failed: ${String(e) || 'Unknown error'}`);
-  }
 
-  const chordRecognition = await recognizeChordsForAnalysis(audioFile, chordDetector, buildChordBeatGrid(beatResults));
+    chordRecognition = await recognizeChordsForAnalysis(audioFile, chordDetector, buildChordBeatGrid(beatResults));
+  }
   const chordResults = chordRecognition.chords;
 
   // Auto-select downbeats (3/4 vs 4/4) if candidates provided (Madmom)
@@ -441,31 +454,35 @@ export async function analyzeAudio(
     throw new Error('Invalid audio input: must be either AudioBuffer or URL string');
   }
 
-  console.log(`Detecting beats using ${beatDetector} model...`);
   let beatResults: BeatDetectionBackendResponse;
-  try {
-    beatResults = await detectBeatsFromFile(audioFile, beatDetector);
-    if (!beatResults || !beatResults.success) throw new Error(`Beat detection failed: ${beatResults?.error || 'Unknown error from beat detection service'}`);
-    if (!beatResults.beats || !Array.isArray(beatResults.beats)) throw new Error('Invalid beat detection results: missing or invalid beats array');
-    if (beatResults.beats.length === 0) throw new Error('No beats detected in the audio. The audio may be too quiet, too short, or not contain rhythmic content.');
-    // filter invalid
-    beatResults.beats = beatResults.beats.filter((t: number) => typeof t === 'number' && !isNaN(t) && t >= 0 && t <= 3600);
-    if (beatResults.beats.length === 0) throw new Error('All detected beats have invalid timestamps');
-  } catch (e) {
-    console.error('Error in beat detection:', e);
-    if (e instanceof Error) {
-      if (e.message.includes('too large')) throw new Error('Audio file is too large for beat detection. Try a shorter clip or the madmom detector.');
-      if (e.message.includes('413')) throw new Error('Audio file size exceeds server limits. Please use a smaller file or try the madmom detector.');
-      if (e.message.includes('timeout')) throw new Error('Beat detection timed out. Try a shorter clip or the madmom detector.');
-      throw new Error(`Beat detection failed: ${e.message}`);
+  let chordRecognition: DetailedChordRecognition;
+  const combined = await analyzeBeatsAndChords(audioFile, beatDetector, chordDetector);
+  if (combined) {
+    beatResults = combined.beatResults;
+    chordRecognition = withValidChords(combined.chordRecognition);
+  } else {
+    console.log(`Detecting beats using ${beatDetector} model...`);
+    try {
+      beatResults = await detectBeatsFromFile(audioFile, beatDetector);
+      if (!beatResults || !beatResults.success) throw new Error(`Beat detection failed: ${beatResults?.error || 'Unknown error from beat detection service'}`);
+      if (!beatResults.beats || !Array.isArray(beatResults.beats)) throw new Error('Invalid beat detection results: missing or invalid beats array');
+      if (beatResults.beats.length === 0) throw new Error('No beats detected in the audio. The audio may be too quiet, too short, or not contain rhythmic content.');
+      // filter invalid
+      beatResults.beats = beatResults.beats.filter((t: number) => typeof t === 'number' && !isNaN(t) && t >= 0 && t <= 3600);
+      if (beatResults.beats.length === 0) throw new Error('All detected beats have invalid timestamps');
+    } catch (e) {
+      console.error('Error in beat detection:', e);
+      if (e instanceof Error) {
+        if (e.message.includes('too large')) throw new Error('Audio file is too large for beat detection. Try a shorter clip or the madmom detector.');
+        if (e.message.includes('413')) throw new Error('Audio file size exceeds server limits. Please use a smaller file or try the madmom detector.');
+        if (e.message.includes('timeout')) throw new Error('Beat detection timed out. Try a shorter clip or the madmom detector.');
+        throw new Error(`Beat detection failed: ${e.message}`);
+      }
+      throw new Error('Beat detection failed with unknown error');
     }
-    throw new Error('Beat detection failed with unknown error');
+    // Chords, decoded on the beat grid
+    chordRecognition = await recognizeChordsForAnalysis(audioFile, chordDetector, buildChordBeatGrid(beatResults));
   }
-// (beats will be computed after chordResults so we can evaluate candidates with chord context)
-
-
-  // Chords, decoded on the beat grid
-  const chordRecognition = await recognizeChordsForAnalysis(audioFile, chordDetector, buildChordBeatGrid(beatResults));
   const chordResults = chordRecognition.chords;
 
   // Auto-select downbeats (3/4 vs 4/4) if candidates provided (Madmom)

@@ -89,6 +89,30 @@ export interface BeatDetectionResult {
   beat_time_range_end?: number;   // End of the beat time range
 }
 
+/**
+ * Backend detect-beats payload (also nested under `beats` in /api/analyze) in the shape
+ * the analysis pipeline expects. Caller has checked that `data.beats` is an array.
+ */
+export function normalizeBeatDetectionPayload(
+  data: Record<string, unknown>,
+  detector: string
+): BeatDetectionResult & Partial<BeatDetectionBackendResponse> {
+  const backendData = data as Partial<BeatDetectionBackendResponse>;
+  return {
+    success: true,
+    beats: data.beats as number[],
+    downbeats: (data.downbeats as number[]) || [],
+    // Pass through optional dual-candidate downbeats when present (Madmom)
+    downbeat_candidates: backendData.downbeat_candidates,
+    downbeat_candidates_meta: backendData.downbeat_candidates_meta,
+    bpm: (data.BPM as number) || (data.bpm as number) || 120,
+    total_beats: (data.beats as number[]).length,
+    duration: (data.duration as number) || 0,
+    time_signature: parseTimeSignature(data.time_signature),
+    model: (data.model_used as string) || detector
+  };
+}
+
 // Interface for model info response
 export interface ModelInfoResult {
   success: boolean;
@@ -219,22 +243,7 @@ export async function detectBeatsWithRateLimit(
       throw new Error('Invalid response format from beat detection API');
     }
 
-    // Convert to expected format
-    const backendData = data as Partial<BeatDetectionBackendResponse>;
-    const normalized: BeatDetectionResult & Partial<BeatDetectionBackendResponse> = {
-      success: true,
-      beats: data.beats as number[],
-      downbeats: (data.downbeats as number[]) || [],
-      // Pass through optional dual-candidate downbeats when present (Madmom)
-      downbeat_candidates: backendData.downbeat_candidates,
-      downbeat_candidates_meta: backendData.downbeat_candidates_meta,
-      bpm: (data.BPM as number) || (data.bpm as number) || 120,
-      total_beats: (data.beats as number[]).length,
-      duration: (data.duration as number) || 0,
-      time_signature: parseTimeSignature(data.time_signature),
-      model: (data.model_used as string) || detector
-    };
-    return normalized;
+    return normalizeBeatDetectionPayload(data, detector);
 
   } catch (error) {
     console.error('Error in beat detection with rate limiting:', error);
