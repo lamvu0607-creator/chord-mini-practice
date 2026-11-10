@@ -47,10 +47,12 @@ def recognize_chords():
     Parameters:
     - file: The audio file to analyze (multipart/form-data)
     - audio_path: Alternative to file, path to an existing audio file on the server
-    - detector: Model to use ('chord-cnn-lstm', 'btc-sl', 'btc-pl', 'auto')
+    - detector: Model to use ('btc-cl', 'btc-sl', 'btc-pl', 'chord-cnn-lstm', 'auto')
     - chord_dict: Optional chord dictionary to use
     - force: Force use of detector even if file is large
     - use_spleeter: Use Spleeter for audio separation
+    - beats, downbeats: Optional JSON arrays of times (s). BTC models then decode one
+      chord per beat and add 'key', 'key_confidence' and 'decoding' to the response.
 
     Returns:
     - JSON with chord recognition results
@@ -115,7 +117,8 @@ def recognize_chords():
 
         log_info(f"Processing chord recognition request: detector={params['detector']}, "
                 f"chord_dict={params['chord_dict']}, force={params['force']}, "
-                f"use_spleeter={params['use_spleeter']}")
+                f"use_spleeter={params['use_spleeter']}, beats={len(params['beats'] or [])}, "
+                f"downbeats={len(params['downbeats'] or [])}")
 
         # Run chord recognition
         result = chord_service.recognize_chords(
@@ -123,7 +126,9 @@ def recognize_chords():
             detector=params['detector'],
             chord_dict=params['chord_dict'],
             force=params['force'],
-            use_spleeter=params['use_spleeter']
+            use_spleeter=params['use_spleeter'],
+            beats=params['beats'],
+            downbeats=params['downbeats'],
         )
 
         if result.get('success'):
@@ -153,6 +158,15 @@ def recognize_chords():
                 log_error(f"Failed to clean up temporary file {temp_file_path}: {cleanup_error}")
 
 
+def _default_chord_model(available):
+    """DEFAULT_CHORD_MODEL if available, else btc-cl, else the first available model."""
+    preferred = os.environ.get('DEFAULT_CHORD_MODEL', '').strip() or 'btc-cl'
+    for name in (preferred, 'btc-cl', 'btc-sl'):
+        if name in available:
+            return name
+    return available[0] if available else None
+
+
 @chords_bp.route('/api/chord-model-info', methods=['GET'])
 @limiter.limit(config.get_rate_limit('light_processing'))
 def chord_model_info():
@@ -179,7 +193,7 @@ def chord_model_info():
                 for name, info in detector_info["detectors"].items()
             },
             "spleeter_available": detector_info["spleeter_available"],
-            "default_chord_model": detector_info["available_detectors"][0] if detector_info["available_detectors"] else None
+            "default_chord_model": _default_chord_model(detector_info["available_detectors"])
         })
 
     except Exception as e:
@@ -230,10 +244,36 @@ def test_chord_cnn_lstm():
         }), 500
 
 
+@chords_bp.route('/api/test-btc-cl', methods=['GET'])
+@limiter.limit(config.get_rate_limit('test'))
+def test_btc_cl():
+    """Test BTC-CL (Continual Learning) model availability"""
+    try:
+        detector = current_app.extensions['services']['chord_recognition'].detectors['btc-cl']
+        if detector.is_available():
+            return jsonify({
+                "success": True,
+                "model": "BTC-CL",
+                "status": "available",
+                "message": "BTC-CL model is ready for use",
+                "model_info": detector.get_model_info()
+            })
+        return jsonify({
+            "success": False,
+            "model": "BTC-CL",
+            "status": "unavailable",
+            "error": "BTC-CL model is not available"
+        })
+    except Exception as e:
+        error_msg = f"Error testing BTC-CL: {str(e)}"
+        log_error(error_msg)
+        return jsonify({"success": False, "model": "BTC-CL", "status": "error", "error": error_msg}), 500
+
+
 @chords_bp.route('/api/test-btc-sl', methods=['GET'])
 @limiter.limit(config.get_rate_limit('test'))
 def test_btc_sl():
-    """Test BTC-SL (Self-Label) model availability"""
+    """Test the original BTC model availability"""
     try:
         # Get chord recognition service
         chord_service = current_app.extensions['services']['chord_recognition']
@@ -272,7 +312,7 @@ def test_btc_sl():
 @chords_bp.route('/api/test-btc-pl', methods=['GET'])
 @limiter.limit(config.get_rate_limit('test'))
 def test_btc_pl():
-    """Test BTC-PL (Pseudo-Label) model availability"""
+    """Test BTC-PL (legacy id of BTC-CL) availability"""
     try:
         # Get chord recognition service
         chord_service = current_app.extensions['services']['chord_recognition']
@@ -324,7 +364,7 @@ def test_all_chord_models():
         }
 
         # Test each detector
-        for detector_name in ['chord-cnn-lstm', 'btc-sl', 'btc-pl']:
+        for detector_name in chord_service.detectors:
             detector = chord_service.detectors[detector_name]
 
             test_result = {

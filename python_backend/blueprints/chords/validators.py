@@ -5,7 +5,9 @@ This module provides validation functions for chord recognition requests
 including file validation, parameter validation, and error handling.
 """
 
-from typing import Tuple, Optional, Dict, Any
+import json
+import math
+from typing import Tuple, Optional, Dict, Any, List
 from flask import request
 from werkzeug.datastructures import FileStorage
 from utils.chord_mappings import get_supported_chord_dicts, get_default_chord_dict
@@ -46,7 +48,7 @@ def validate_chord_recognition_request() -> Tuple[bool, Optional[str], Optional[
         detector = request.form.get('detector', 'auto').lower()
         chord_dict = request.form.get('chord_dict', None)
 
-    valid_detectors = ['chord-cnn-lstm', 'btc-sl', 'btc-pl', 'auto']
+    valid_detectors = ['btc-cl', 'btc-sl', 'btc-pl', 'chord-cnn-lstm', 'auto']
     if detector not in valid_detectors:
         return False, f"Invalid detector '{detector}'. Must be one of: {', '.join(valid_detectors)}", file, {}
 
@@ -64,6 +66,18 @@ def validate_chord_recognition_request() -> Tuple[bool, Optional[str], Optional[
         spleeter_param = request.form.get('use_spleeter', 'false').lower()
         use_spleeter = spleeter_param == 'true'
 
+    # Optional beat grid for beat-synchronous chord decoding
+    beats_raw = json_data.get('beats') if json_data else request.form.get('beats')
+    downbeats_raw = json_data.get('downbeats') if json_data else request.form.get('downbeats')
+    beats, error = parse_time_list(beats_raw, 'beats')
+    if error:
+        return False, error, file, {}
+    downbeats, error = parse_time_list(downbeats_raw, 'downbeats')
+    if error:
+        return False, error, file, {}
+    if downbeats and not beats:
+        downbeats = None
+
     # Validate file if provided
     if file and file.filename == '':
         return False, "No file selected", None, {}
@@ -74,10 +88,43 @@ def validate_chord_recognition_request() -> Tuple[bool, Optional[str], Optional[
         'force': force,
         'use_spleeter': use_spleeter,
         'audio_path': audio_path,
-        'json_data': json_data
+        'json_data': json_data,
+        'beats': beats,
+        'downbeats': downbeats,
     }
 
     return True, None, file, params
+
+
+MAX_BEAT_TIMES = 20000          # ~3 h at 120 BPM
+MAX_BEAT_TIME_SECONDS = 4 * 3600
+
+
+def parse_time_list(raw: Any, name: str) -> Tuple[Optional[List[float]], Optional[str]]:
+    """Parse an optional list of times in seconds (JSON array, or a JSON string of one).
+
+    Returns (sorted list or None, error message or None).
+    """
+    if raw is None or raw == '':
+        return None, None
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except ValueError:
+            return None, f"'{name}' must be a JSON array of numbers (seconds)"
+    if not isinstance(raw, list):
+        return None, f"'{name}' must be an array of numbers (seconds)"
+    if len(raw) > MAX_BEAT_TIMES:
+        return None, f"'{name}' has too many entries (max {MAX_BEAT_TIMES})"
+    values = []
+    for item in raw:
+        if isinstance(item, bool) or not isinstance(item, (int, float)):
+            return None, f"'{name}' must contain only numbers"
+        value = float(item)
+        if not math.isfinite(value) or value < 0 or value > MAX_BEAT_TIME_SECONDS:
+            return None, f"'{name}' contains an out-of-range time: {item}"
+        values.append(value)
+    return (sorted(values) if values else None), None
 
 
 def validate_chord_dict_for_detector(chord_dict: str, detector: str) -> Tuple[bool, Optional[str]]:
@@ -145,8 +192,9 @@ def validate_file_size(file: FileStorage, detector: str, force: bool) -> Tuple[b
     # Size limits based on detector
     size_limits = {
         'chord-cnn-lstm': 100,  # 100MB for Chord-CNN-LSTM
-        'btc-sl': 50,          # 50MB for BTC-SL
-        'btc-pl': 50,          # 50MB for BTC-PL
+        'btc-cl': 50,          # 50MB for BTC models
+        'btc-sl': 50,
+        'btc-pl': 50,
         'auto': 50             # Conservative limit for auto selection
     }
 
@@ -230,7 +278,7 @@ def validate_model_name(model_name: str) -> bool:
     Returns:
         bool: True if the model name is valid
     """
-    valid_models = ['chord-cnn-lstm', 'btc-sl', 'btc-pl']
+    valid_models = ['btc-cl', 'btc-sl', 'btc-pl', 'chord-cnn-lstm']
     return model_name in valid_models
 
 
@@ -246,8 +294,9 @@ def get_detector_display_name(detector: str) -> str:
     """
     display_names = {
         'chord-cnn-lstm': 'Chord-CNN-LSTM',
-        'btc-sl': 'BTC SL (Self-Label)',
-        'btc-pl': 'BTC PL (Pseudo-Label)',
+        'btc-cl': 'BTC CL (Continual Learning)',
+        'btc-sl': 'BTC (original)',
+        'btc-pl': 'BTC CL (legacy id btc-pl)',
         'auto': 'Auto Selection'
     }
     return display_names.get(detector, detector)

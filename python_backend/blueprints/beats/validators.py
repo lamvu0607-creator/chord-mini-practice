@@ -46,7 +46,7 @@ def validate_beat_detection_request() -> Tuple[bool, Optional[str], Optional[Fil
         force_param = request.args.get('force', request.form.get('force', '')).lower()
         force = force_param == 'true'
 
-    valid_detectors = ['beat-transformer', 'madmom', 'librosa', 'auto']
+    valid_detectors = ['beat-this', 'beat-transformer', 'madmom', 'librosa', 'auto']
     if detector not in valid_detectors:
         return False, f"Invalid detector '{detector}'. Must be one of: {', '.join(valid_detectors)}", file, {}
 
@@ -106,6 +106,7 @@ def validate_file_size(file: FileStorage, detector: str, force: bool) -> Tuple[b
 
     # Size limits based on detector
     size_limits = {
+        'beat-this': 100,        # 100MB for Beat This!
         'beat-transformer': 50,  # 50MB for uploads
         'madmom': 100,          # 100MB for madmom
         'librosa': 200          # 200MB for librosa
@@ -113,7 +114,9 @@ def validate_file_size(file: FileStorage, detector: str, force: bool) -> Tuple[b
 
     # Check size limits unless force is enabled
     if not force:
-        if detector == 'beat-transformer' and file_size_mb > size_limits['beat-transformer']:
+        if detector == 'beat-this' and file_size_mb > size_limits['beat-this']:
+            return False, f"File too large ({file_size_mb:.1f}MB > {size_limits['beat-this']}MB). Use detector='madmom' or 'librosa', or add 'force=true'."
+        elif detector == 'beat-transformer' and file_size_mb > size_limits['beat-transformer']:
             return False, f"File too large ({file_size_mb:.1f}MB > {size_limits['beat-transformer']}MB). Use detector='madmom' or 'librosa', or add 'force=true'."
         elif detector == 'madmom' and file_size_mb > size_limits['madmom']:
             return False, f"File too large ({file_size_mb:.1f}MB > {size_limits['madmom']}MB). Use detector='librosa' or add 'force=true'."

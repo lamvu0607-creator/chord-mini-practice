@@ -6,6 +6,7 @@ Combined functionality from test.py and test_btc.py for API usage
 
 import os
 import sys
+import threading
 import numpy as np
 import torch
 import warnings
@@ -286,168 +287,353 @@ def _merge_short_segments(segments, min_duration):
             merged.append(seg)
     return merged
 
-def btc_chord_recognition(audio_file, output_file, model_variant='sl'):
-    """
-    Main BTC chord recognition function for API usage.
-    
-    Args:
-        audio_file (str): Path to input audio file
-        output_file (str): Path to output .lab file
-        model_variant (str): 'sl' for supervised learning or 'pl' for pseudo-label
-    
-    Returns:
-        bool: True if successful, False otherwise
-    """
-    try:
-        # Set up logging
-        logger.logging_verbosity(1)
-        warnings.filterwarnings('ignore')
-        
-        # CPU by default; CUDA only when explicitly enabled (ENABLE_GPU=true)
-        use_cuda = (os.environ.get('ENABLE_GPU', '').strip().lower() in ('1', 'true', 'yes', 'on')
-                    and torch.cuda.is_available())
-        device = torch.device("cuda" if use_cuda else "cpu")
-        logger.info(f"BTC chord recognition using device: {device}")
-        
-        # Explicitly disable MPS
-        if hasattr(torch, 'backends') and hasattr(torch.backends, 'mps'):
-            torch.backends.mps.enabled = False
-        
-        # Load configuration
-        config_path = os.path.join(os.path.dirname(__file__), 'config', 'btc_config.yaml')
-        config = HParams.load(config_path)
-        
-        # BTC uses large vocabulary
-        n_classes = config.model.get('num_chords', 170)
-        idx_to_chord = idx2voca_chord()
+# --------------------------------------------------------------------------
+# Checkpoints and model loading
+# --------------------------------------------------------------------------
 
-        # Initialize BTC model
+# 'cl' is the BTC student from "Enhancing Automatic Chord Recognition via
+# Pseudo-Labeling and Knowledge Distillation" (arXiv 2602.19778): pseudo-label
+# pretraining followed by continual learning on ground truth. The file shipped
+# as checkpoints/btc/btc_combined_best.pth is byte-identical to that paper's
+# released "BTC CL (full)" checkpoint (ptnghia-j/ChordMini, checkpoints/
+# btc_model_best.pth), so 'pl' is kept only as an alias of 'cl' for old cache
+# entries. 'sl' is the original BTC (Park et al., ISMIR 2019), the paper's teacher.
+CHECKPOINTS = {
+    'sl': ('SL', 'btc_model_large_voca.pt'),
+    'cl': ('btc', 'btc_combined_best.pth'),
+    'pl': ('btc', 'btc_combined_best.pth'),
+}
+
+_MODEL_CACHE = {}
+_MODEL_LOCK = threading.Lock()
+_INFER_LOCK = threading.Lock()
+
+
+def checkpoint_path(model_variant):
+    if model_variant not in CHECKPOINTS:
+        raise ValueError(f"Unknown BTC variant: {model_variant}")
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'checkpoints', *CHECKPOINTS[model_variant])
+
+
+def _select_device():
+    # CPU by default; CUDA only when explicitly enabled (ENABLE_GPU=true)
+    use_cuda = (os.environ.get('ENABLE_GPU', '').strip().lower() in ('1', 'true', 'yes', 'on')
+                and torch.cuda.is_available())
+    return torch.device("cuda" if use_cuda else "cpu")
+
+
+def _load_btc(model_variant):
+    """(model, feature_mean, feature_std, config, device), cached per variant and device."""
+    device = _select_device()
+    key = (CHECKPOINTS[model_variant], str(device)) if model_variant in CHECKPOINTS else None
+    if key is None:
+        raise ValueError(f"Unknown BTC variant: {model_variant}")
+    with _MODEL_LOCK:
+        if key in _MODEL_CACHE:
+            return _MODEL_CACHE[key]
+
+        config = HParams.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config', 'btc_config.yaml'))
+        feature_size = config.model.get('feature_size', 144)
+        path = checkpoint_path(model_variant)
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Model checkpoint not found: {path}")
+
         model = BTC_model(config=config.model).to(device)
-        
-        # Load model checkpoint based on variant
-        if model_variant == 'sl':
-            checkpoint_path = os.path.join(os.path.dirname(__file__), 'checkpoints', 'SL', 'btc_model_large_voca.pt')
-        else:  # pl
-            checkpoint_path = os.path.join(os.path.dirname(__file__), 'checkpoints', 'btc', 'btc_combined_best.pth')
-        
-        if not os.path.exists(checkpoint_path):
-            logger.error(f"Model checkpoint not found: {checkpoint_path}")
-            return False
-        
-        # Load checkpoint with weights_only=False for compatibility
-        try:
-            checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
-        except TypeError:
-            # Fallback for older PyTorch versions that don't have weights_only parameter
-            checkpoint = torch.load(checkpoint_path, map_location=device)
-        # Extract model state dict and normalization stats based on checkpoint format
+        # The bundled checkpoints are trusted local files; the SL one stores numpy
+        # scalars, which weights_only=True refuses.
+        checkpoint = torch.load(path, map_location=device, weights_only=False)
+
         if 'model_state_dict' in checkpoint:
-            # PL format: {'model_state_dict': {...}, 'mean': tensor, 'std': tensor, ...}
+            # CL format: {'model_state_dict', 'normalization': {'mean', 'std'}, ...}
             state_dict = checkpoint['model_state_dict']
-
-            # Remove 'module.' prefix if present (from DataParallel training)
-            if any(key.startswith('module.') for key in state_dict.keys()):
-                state_dict = {key.replace('module.', ''): value for key, value in state_dict.items()}
-
+            if any(k.startswith('module.') for k in state_dict):
+                state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
             model.load_state_dict(state_dict)
-
-            # Extract normalization stats. The PL checkpoint stores them under
-            # 'normalization': {'mean', 'std'}; missing that key meant PL ran on
-            # unnormalised features (mean ~-1.8, std ~2 instead of ~0/1).
             stats = checkpoint.get('normalization') if isinstance(checkpoint.get('normalization'), dict) else checkpoint
             if 'mean' in stats and 'std' in stats:
                 mean_val = stats['mean'].item() if hasattr(stats['mean'], 'item') else stats['mean']
                 std_val = stats['std'].item() if hasattr(stats['std'], 'item') else stats['std']
-                ckpt_mean = np.full(config.model.get('feature_size', 144), mean_val)
-                ckpt_std = np.full(config.model.get('feature_size', 144), std_val)
-                logger.info(f"Using checkpoint normalization: mean={float(np.mean(mean_val)):.4f}, std={float(np.mean(std_val)):.4f}")
             else:
                 logger.warning("Checkpoint has no normalization stats; features will not be normalised")
-                ckpt_mean = checkpoint.get('feature_mean', np.zeros(config.model.get('feature_size', 144)))
-                ckpt_std = checkpoint.get('feature_std', np.ones(config.model.get('feature_size', 144)))
+                mean_val, std_val = 0.0, 1.0
         elif 'model' in checkpoint:
-            # SL format: {'model': {...}, 'mean': float, 'std': float}
+            # Original BTC format: {'model': {...}, 'mean': float, 'std': float}
             model.load_state_dict(checkpoint['model'])
-            # Extract normalization stats
-            mean_val = checkpoint.get('mean', 0.0)
-            std_val = checkpoint.get('std', 1.0)
-            ckpt_mean = np.full(config.model.get('feature_size', 144), mean_val)
-            ckpt_std = np.full(config.model.get('feature_size', 144), std_val)
+            mean_val, std_val = checkpoint.get('mean', 0.0), checkpoint.get('std', 1.0)
         else:
-            # Direct state dict format
             model.load_state_dict(checkpoint)
-            # Use default normalization if stats not available
-            ckpt_mean = np.zeros(config.model.get('feature_size', 144))
-            ckpt_std = np.ones(config.model.get('feature_size', 144))
-        
+            mean_val, std_val = 0.0, 1.0
+
         model.eval()
-        
-        # Process audio
-        feature, feature_per_second, song_length_second, frame_times = extract_features_with_times(audio_file, config)
+        logger.info(f"Loaded BTC '{model_variant}' on {device}: normalization mean={float(mean_val):.4f} std={float(std_val):.4f}")
+        entry = (model, np.full(feature_size, mean_val), np.full(feature_size, std_val), config, device)
+        _MODEL_CACHE[key] = entry
+        return entry
 
-        if feature is None:
-            logger.error("Feature extraction failed")
-            return False
-        
-        # Transpose and normalize using checkpoint stats
-        feature = feature.T  # Shape: [frames, features]
-        logger.info(f"Feature stats BEFORE norm: Min={np.min(feature):.4f}, Max={np.max(feature):.4f}, Mean={np.mean(feature):.4f}, Std={np.std(feature):.4f}")
-        epsilon = 1e-8
-        feature = (feature - ckpt_mean) / (ckpt_std + epsilon)
-        logger.info(f"Feature stats AFTER norm (using checkpoint stats): Min={np.min(feature):.4f}, Max={np.max(feature):.4f}, Mean={np.mean(feature):.4f}, Std={np.std(feature):.4f}")
-        
-        seq_len = config.model.get('seq_len', 108)
-        original_num_frames = feature.shape[0]
-        if original_num_frames == 0:
-            logger.warning("No predictions generated")
-            return False
 
-        # Smoothing knobs (env): 0 disables each step and restores raw argmax output.
-        switch_penalty = _env_float('BTC_SWITCH_PENALTY', 8.0)
-        min_chord_duration = _env_float('BTC_MIN_CHORD_DURATION', 0.3)
-        overlap = os.environ.get('BTC_OVERLAP', 'true').strip().lower() not in ('0', 'false', 'no', 'off')
+def btc_frame_probabilities(audio_file, model_variant='cl'):
+    """Run BTC on a file. Returns {probs [frames, 170], frame_times [frames], duration, labels}."""
+    model, mean, std, config, device = _load_btc(model_variant)
+    feature, feature_per_second, duration, frame_times = extract_features_with_times(audio_file, config)
+    if feature is None or feature.shape[1] == 0:
+        raise RuntimeError("Feature extraction produced no frames")
+    feature = (feature.T - mean) / (std + 1e-8)  # [frames, features]
+    overlap = os.environ.get('BTC_OVERLAP', 'true').strip().lower() not in ('0', 'false', 'no', 'off')
+    with _INFER_LOCK, torch.no_grad():
+        probs = _predict_frame_probabilities(model, feature, config.model.get('seq_len', 108), device, overlap=overlap)
+    num_frames = probs.shape[0]
+    frame_times = np.asarray(frame_times, dtype=float)[:num_frames]
+    if len(frame_times) < num_frames:  # defensive: fall back to constant hop
+        frame_times = np.arange(num_frames) * feature_per_second
+    return {
+        'probs': probs,
+        'frame_times': frame_times,
+        'hop': float(feature_per_second),
+        'duration': float(duration),
+        'labels': idx2voca_chord(),
+    }
 
-        with torch.no_grad():
-            probs = _predict_frame_probabilities(model, feature, seq_len, device, overlap=overlap)
-        all_predictions = _viterbi_smooth(probs, switch_penalty)
-        raw_changes = int(np.count_nonzero(np.diff(probs.argmax(axis=1))))
-        smoothed_changes = int(np.count_nonzero(np.diff(all_predictions)))
+
+# --------------------------------------------------------------------------
+# Key estimation and key prior
+# --------------------------------------------------------------------------
+
+KEY_ROOTS = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']
+# Krumhansl-Kessler key profiles.
+_MAJOR_PROFILE = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
+_MINOR_PROFILE = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
+# Scale tones used by the chord prior; minor includes the harmonic-minor leading tone.
+_MAJOR_SCALE = (0, 2, 4, 5, 7, 9, 11)
+_MINOR_SCALE = (0, 2, 3, 5, 7, 8, 10, 11)
+
+
+def chord_pitch_classes(labels):
+    """[n_classes, 12] 0/1 matrix of the absolute pitch classes in each chord label
+    (rows for 'N' / 'X' are zero), plus a [n_classes] array of root pitch classes (-1 for none)."""
+    import mir_eval
+    n = len(labels)
+    pcs = np.zeros((n, 12))
+    roots = np.full(n, -1, dtype=int)
+    for idx in range(n):
+        label = labels[idx]
+        if label in ('N', 'X', 'N/C'):
+            continue
+        root, bitmap, _ = mir_eval.chord.encode(label)
+        if root < 0:
+            continue
+        pcs[idx] = np.roll(bitmap, root)
+        roots[idx] = root
+    return pcs, roots
+
+
+def estimate_key(probs, pcs, roots):
+    """Global key from chord posteriors: average pitch-class profile (root counted
+    1.5x) correlated with the 24 Krumhansl-Kessler profiles.
+    Returns (tonic_pc, mode, label like 'A:minor', confidence = r_best - r_second)."""
+    weights = pcs.copy()
+    has_root = roots >= 0
+    weights[np.where(has_root)[0], roots[has_root]] += 0.5
+    chroma = (probs @ weights).mean(axis=0)
+    if not np.any(chroma > 0):
+        return None
+    scores = []
+    for mode, profile in (('major', _MAJOR_PROFILE), ('minor', _MINOR_PROFILE)):
+        for tonic in range(12):
+            scores.append((float(np.corrcoef(chroma, np.roll(profile, tonic))[0, 1]), tonic, mode))
+    scores.sort(reverse=True)
+    best, second = scores[0], scores[1]
+    return {
+        'tonic': best[1],
+        'mode': best[2],
+        'label': f"{KEY_ROOTS[best[1]]}:{best[2]}",
+        'confidence': round(best[0] - second[0], 4),
+    }
+
+
+def key_chord_prior(pcs, key, weight):
+    """Log-score bonus ``weight`` for chords whose notes all lie in the key's scale."""
+    bonus = np.zeros(pcs.shape[0])
+    if not key or weight <= 0:
+        return bonus
+    scale = np.zeros(12)
+    scale[[(key['tonic'] + s) % 12 for s in (_MAJOR_SCALE if key['mode'] == 'major' else _MINOR_SCALE)]] = 1
+    has_notes = pcs.sum(axis=1) > 0
+    diatonic = has_notes & np.all((pcs == 0) | (scale[None, :] == 1), axis=1)
+    bonus[diatonic] = weight
+    return bonus
+
+
+# --------------------------------------------------------------------------
+# Decoding
+# --------------------------------------------------------------------------
+
+def decode_frames(probs, frame_times, duration, switch_penalty=8.0, min_chord_duration=0.3):
+    """Frame-level path (no beat information): Viterbi with a constant switch
+    penalty, then merge segments shorter than ``min_chord_duration``.
+    Returns [[start, end, class_idx], ...]."""
+    path = _viterbi_smooth(probs, switch_penalty)
+    segments = _labels_to_segments(path, frame_times, duration)
+    segments = [s for s in segments if s[1] > s[0]]
+    return _merge_short_segments(segments, min_chord_duration)
+
+
+def _beat_boundaries(beats, duration):
+    inner = sorted(float(b) for b in beats if 0.0 < float(b) < duration)
+    bounds = [0.0]
+    for b in inner:
+        if b - bounds[-1] > 1e-3:
+            bounds.append(b)
+    if duration - bounds[-1] > 1e-3:
+        bounds.append(float(duration))
+    return np.asarray(bounds)
+
+
+def beat_sync_decode(probs, frame_times, hop, duration, beats, downbeats=None,
+                     penalty_beat=2.5, penalty_downbeat=1.0, prior=None, downbeat_tolerance=0.07):
+    """Chord path with one label per beat.
+
+    The audio is cut at the beat times (plus 0 and the end). Each span scores a
+    chord by the mean log-probability of the frames whose centre falls inside it
+    (the nearest frame for spans shorter than a frame) plus the optional key
+    ``prior``. A Viterbi pass then chooses one chord per span, where changing
+    chord on a downbeat costs ``penalty_downbeat`` and on any other beat
+    ``penalty_beat``. Chord boundaries therefore always sit on beats.
+    Returns [[start, end, class_idx], ...] with equal neighbours merged.
+    """
+    bounds = _beat_boundaries(beats, duration)
+    num_spans = len(bounds) - 1
+    if num_spans <= 0 or probs.shape[0] == 0:
+        return []
+    log_probs = np.log(probs + 1e-9)
+    centres = np.asarray(frame_times) + hop / 2.0
+    span_idx = np.searchsorted(bounds, centres, side='right') - 1
+    num_classes = probs.shape[1]
+    scores = np.zeros((num_spans, num_classes))
+    for s in range(num_spans):
+        mask = span_idx == s
+        if np.any(mask):
+            scores[s] = log_probs[mask].mean(axis=0)
+        else:
+            mid = (bounds[s] + bounds[s + 1]) / 2.0
+            scores[s] = log_probs[int(np.argmin(np.abs(centres - mid)))]
+    if prior is not None:
+        scores = scores + prior[None, :]
+
+    downbeats = np.asarray(sorted(downbeats or []), dtype=float)
+    penalties = np.full(num_spans, penalty_beat)
+    if len(downbeats):
+        for s in range(1, num_spans):
+            j = np.searchsorted(downbeats, bounds[s])
+            near = [abs(downbeats[k] - bounds[s]) for k in (j - 1, j) if 0 <= k < len(downbeats)]
+            if near and min(near) <= downbeat_tolerance:
+                penalties[s] = penalty_downbeat
+
+    classes = np.arange(num_classes)
+    score = scores[0].copy()
+    backptr = np.zeros((num_spans, num_classes), dtype=np.int32)
+    for s in range(1, num_spans):
+        best = int(score.argmax())
+        switch_score = score[best] - penalties[s]
+        stay = score >= switch_score
+        backptr[s] = np.where(stay, classes, best)
+        score = np.where(stay, score, switch_score) + scores[s]
+    path = np.empty(num_spans, dtype=np.int32)
+    path[-1] = int(score.argmax())
+    for s in range(num_spans - 1, 0, -1):
+        path[s - 1] = backptr[s, path[s]]
+
+    segments = []
+    for s in range(num_spans):
+        if segments and segments[-1][2] == int(path[s]):
+            segments[-1][1] = float(bounds[s + 1])
+        else:
+            segments.append([float(bounds[s]), float(bounds[s + 1]), int(path[s])])
+    return segments
+
+
+def decoding_settings():
+    """Decoder knobs from the environment (0 disables a step)."""
+    return {
+        'switch_penalty': _env_float('BTC_SWITCH_PENALTY', 8.0),
+        'min_chord_duration': _env_float('BTC_MIN_CHORD_DURATION', 0.3),
+        'penalty_beat': _env_float('BTC_SWITCH_PENALTY_BEAT', 2.5),
+        'penalty_downbeat': _env_float('BTC_SWITCH_PENALTY_DOWNBEAT', 1.0),
+        'key_prior': _env_float('BTC_KEY_PRIOR', 0.3),
+    }
+
+
+def decode_chords(frames, beats=None, downbeats=None, settings=None):
+    """Decode BTC frame probabilities into chords and a key.
+
+    With ``beats`` the beat-synchronous decoder is used (chord changes only on
+    beats, cheaper on downbeats, key prior applied); without, the frame decoder.
+    Returns {'segments': [[start, end, label]], 'key', 'key_confidence', 'decoding'}.
+    """
+    cfg = dict(decoding_settings(), **(settings or {}))
+    probs, labels = frames['probs'], frames['labels']
+    pcs, roots = chord_pitch_classes(labels)
+    key = estimate_key(probs, pcs, roots)
+
+    if beats is not None and len(beats) >= 2:
+        prior = key_chord_prior(pcs, key, cfg['key_prior'])
+        segments = beat_sync_decode(probs, frames['frame_times'], frames['hop'], frames['duration'],
+                                    beats, downbeats, cfg['penalty_beat'], cfg['penalty_downbeat'], prior)
+        decoding = 'beat-sync'
+    else:
+        segments = decode_frames(probs, frames['frame_times'], frames['duration'],
+                                 cfg['switch_penalty'], cfg['min_chord_duration'])
+        decoding = 'frame'
+
+    return {
+        'segments': [[s, e, 'N/C' if labels[i] == 'N' else labels[i]] for s, e, i in segments],
+        'key': key['label'] if key else None,
+        'key_confidence': key['confidence'] if key else None,
+        'decoding': decoding,
+    }
+
+
+def btc_chord_recognition(audio_file, output_file, model_variant='cl', beats=None, downbeats=None):
+    """
+    Main BTC chord recognition function for API usage.
+
+    Args:
+        audio_file (str): Path to input audio file
+        output_file (str): Path to output .lab file
+        model_variant (str): 'cl' (default), 'sl' (original BTC) or 'pl' (alias of 'cl')
+        beats, downbeats (list[float] | None): beat times in seconds; when given,
+            chords are decoded per beat (see ``beat_sync_decode``)
+
+    Returns:
+        dict | bool: {'key', 'key_confidence', 'decoding', 'chord_count'} on
+        success (truthy), False on failure.
+    """
+    try:
+        logger.logging_verbosity(1)
+        warnings.filterwarnings('ignore')
+        if hasattr(torch, 'backends') and hasattr(torch.backends, 'mps'):
+            torch.backends.mps.enabled = False
+
+        frames = btc_frame_probabilities(audio_file, model_variant)
+        result = decode_chords(frames, beats, downbeats)
+        raw_changes = int(np.count_nonzero(np.diff(frames['probs'].argmax(axis=1))))
         logger.info(
-            f"BTC smoothing: overlap={overlap} switch_penalty={switch_penalty} "
-            f"min_chord_duration={min_chord_duration}s; chord changes {raw_changes} -> {smoothed_changes}"
+            f"BTC '{model_variant}': decoding={result['decoding']} key={result['key']} "
+            f"(conf {result['key_confidence']}); frame-argmax changes {raw_changes} -> {len(result['segments'])} segments"
         )
 
-        # Function to standardize chord notation to match Chord-CNN-LSTM format
-        def standardize_chord_notation(chord_name):
-            # Convert 'N' to 'N/C' to match Chord-CNN-LSTM format
-            if chord_name == 'N':
-                return 'N/C'
-
-            # Other standardizations can be added here if needed
-            return chord_name
-
-        # Generate .lab format. Frame times restart at every CQT chunk, so the
-        # timestamps stay locked to the audio for the whole song (no drift).
-        frame_times = np.asarray(frame_times, dtype=float)[:original_num_frames]
-        if len(frame_times) < original_num_frames:  # defensive: fall back to constant hop
-            frame_times = np.arange(original_num_frames) * feature_per_second
-        segments = _labels_to_segments(all_predictions, frame_times, song_length_second)
-        segments = [s for s in segments if s[1] > s[0]]
-        segments = _merge_short_segments(segments, min_chord_duration)
-        lines = []
-        for start_time, end_time, chord_idx in segments:
-            chord_name = standardize_chord_notation(idx_to_chord[chord_idx])
-            lines.append(f"{start_time:.6f}\t{end_time:.6f}\t{chord_name}")
-
-        # Save output
-        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        os.makedirs(os.path.dirname(output_file) or '.', exist_ok=True)
         with open(output_file, 'w') as f:
-            for line in lines:
-                f.write(line + '\n')
-        
+            for start_time, end_time, chord_name in result['segments']:
+                f.write(f"{start_time:.6f}\t{end_time:.6f}\t{chord_name}\n")
+
         logger.info(f"BTC chord recognition complete. Saved to {output_file}")
-        return True
-        
+        return {
+            'key': result['key'],
+            'key_confidence': result['key_confidence'],
+            'decoding': result['decoding'],
+            'chord_count': len(result['segments']),
+        }
+
     except Exception as e:
         logger.error(f"BTC chord recognition failed: {e}")
         import traceback

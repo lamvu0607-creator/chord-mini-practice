@@ -21,7 +21,8 @@ services:
       args:
         - NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
         - NEXT_PUBLIC_ENABLE_EXPERIMENTAL_MODELS=${NEXT_PUBLIC_ENABLE_EXPERIMENTAL_MODELS:-true}
-        - NEXT_PUBLIC_DEFAULT_CHORD_MODEL=${NEXT_PUBLIC_DEFAULT_CHORD_MODEL:-btc-sl}
+        - NEXT_PUBLIC_DEFAULT_CHORD_MODEL=${NEXT_PUBLIC_DEFAULT_CHORD_MODEL:-btc-cl}
+        - NEXT_PUBLIC_DEFAULT_BEAT_MODEL=${NEXT_PUBLIC_DEFAULT_BEAT_MODEL:-beat-this}
         - NEXT_PUBLIC_UNDEPLOYED_CHORD_MODELS=${NEXT_PUBLIC_UNDEPLOYED_CHORD_MODELS:-chord-cnn-lstm}
     container_name: chordmini-frontend
     expose:
@@ -115,8 +116,8 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
       - PRODUCTION_MODE=true
-      - DEFAULT_BEAT_MODEL=beat-transformer
-      - DEFAULT_CHORD_MODEL=${NEXT_PUBLIC_DEFAULT_CHORD_MODEL:-btc-sl}
+      - DEFAULT_BEAT_MODEL=${NEXT_PUBLIC_DEFAULT_BEAT_MODEL:-beat-this}
+      - DEFAULT_CHORD_MODEL=${NEXT_PUBLIC_DEFAULT_CHORD_MODEL:-btc-cl}
       - MAX_CONTENT_LENGTH=104857600
       - UPLOAD_TIMEOUT=600
       - STORAGE_AUDIO_DIR=/app/storage/audio
@@ -128,6 +129,15 @@ services:
       - BTC_SWITCH_PENALTY=${BTC_SWITCH_PENALTY:-8}
       - BTC_MIN_CHORD_DURATION=${BTC_MIN_CHORD_DURATION:-0.3}
       - BTC_OVERLAP=${BTC_OVERLAP:-true}
+      # Beat-synchronous decoding (used when the frontend sends beats): chord-change penalty on
+      # ordinary beats / downbeats, and the log-score bonus for chords in the estimated key
+      - BTC_SWITCH_PENALTY_BEAT=${BTC_SWITCH_PENALTY_BEAT:-2.5}
+      - BTC_SWITCH_PENALTY_DOWNBEAT=${BTC_SWITCH_PENALTY_DOWNBEAT:-1.0}
+      - BTC_KEY_PRIOR=${BTC_KEY_PRIOR:-0.3}
+      # Beat This! beat tracker: checkpoint (final0 is baked into the image), DBN post-processing, fp16
+      - BEAT_THIS_CHECKPOINT=${BEAT_THIS_CHECKPOINT:-final0}
+      - BEAT_THIS_DBN=${BEAT_THIS_DBN:-false}
+      - BEAT_THIS_FP16=${BEAT_THIS_FP16:-false}
       # All traffic arrives from the frontend container, so per-IP limits here would be
       # global; nginx enforces the real per-client limit.
       - RATE_LIMIT_HEAVY_PROCESSING=${RATE_LIMIT_HEAVY_PROCESSING:-30 per minute}

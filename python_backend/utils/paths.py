@@ -70,7 +70,7 @@ def get_model_checkpoint_path(model_name: str) -> Path:
     Get the checkpoint path for a specific model.
 
     Args:
-        model_name: Name of the model ('beat-transformer', 'chord-cnn-lstm', 'btc-sl', 'btc-pl')
+        model_name: Name of the model ('beat-transformer', 'chord-cnn-lstm', 'btc-cl', 'btc-sl', 'btc-pl')
 
     Returns:
         Path: Path to the model checkpoint
@@ -81,7 +81,7 @@ def get_model_checkpoint_path(model_name: str) -> Path:
         return CHORD_CNN_LSTM_DIR  # Directory contains the model
     elif model_name == 'btc-sl':
         return BTC_SL_CHECKPOINT_PATH
-    elif model_name == 'btc-pl':
+    elif model_name in ('btc-cl', 'btc-pl'):  # btc-pl is a legacy id of the same checkpoint
         return BTC_PL_CHECKPOINT_PATH
     else:
         raise ValueError(f"Unknown model: {model_name}")
@@ -92,14 +92,14 @@ def get_model_config_path(model_name: str) -> Path:
     Get the config path for a specific model.
 
     Args:
-        model_name: Name of the model ('btc-sl', 'btc-pl')
+        model_name: Name of the model ('btc-cl', 'btc-sl', 'btc-pl')
 
     Returns:
         Path: Path to the model config file
     """
     if model_name == 'btc-sl':
         return BTC_SL_CONFIG_PATH
-    elif model_name == 'btc-pl':
+    elif model_name in ('btc-cl', 'btc-pl'):
         return BTC_PL_CONFIG_PATH
     else:
         raise ValueError(f"Model {model_name} does not have a config file")

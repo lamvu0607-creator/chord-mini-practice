@@ -63,10 +63,17 @@ def api_docs_json():
                             "models": {
                                 "beat": [
                                     {
+                                        "id": "beat-this",
+                                        "name": "Beat This!",
+                                        "description": "Transformer beat and downbeat tracker (ISMIR 2024), no source separation",
+                                        "default": True,
+                                        "available": True
+                                    },
+                                    {
                                         "id": "madmom",
                                         "name": "Madmom",
                                         "description": "Neural network with high accuracy and speed, best for common time signatures (3/4, 4/4)",
-                                        "default": True,
+                                        "default": False,
                                         "available": True
                                     },
                                     {
@@ -79,25 +86,25 @@ def api_docs_json():
                                 ],
                                 "chord": [
                                     {
-                                        "id": "chord-cnn-lstm",
-                                        "name": "Chord-CNN-LSTM",
-                                        "description": "Deep learning model for chord recognition",
+                                        "id": "btc-cl",
+                                        "name": "BTC CL (Continual Learning)",
+                                        "description": "BTC trained with pseudo-labels then continual learning (arXiv 2602.19778)",
                                         "default": True,
                                         "available": True
                                     },
                                     {
                                         "id": "btc-sl",
-                                        "name": "BTC SL (Supervised Learning)",
-                                        "description": "Transformer-based model with supervised learning",
+                                        "name": "BTC (original)",
+                                        "description": "Original BTC transformer (ISMIR 2019)",
                                         "default": False,
                                         "available": True
                                     },
                                     {
-                                        "id": "btc-pl",
-                                        "name": "BTC PL (Pseudo-Label)",
-                                        "description": "Transformer-based model with pseudo-labeling",
+                                        "id": "chord-cnn-lstm",
+                                        "name": "Chord-CNN-LSTM",
+                                        "description": "Deep learning model for chord recognition",
                                         "default": False,
-                                        "available": True
+                                        "available": False
                                     }
                                 ]
                             }
@@ -248,8 +255,8 @@ def api_docs_json():
                     "endpoints": [
                         "/api/detect-beats",
                         "/api/recognize-chords",
+                        "/api/recognize-chords-btc-cl",
                         "/api/recognize-chords-btc-sl",
-                        "/api/recognize-chords-btc-pl",
                         "/api/detect-beats",
                         "/api/recognize-chords"
                     ],

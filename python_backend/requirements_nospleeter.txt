@@ -44,7 +44,13 @@ protobuf==3.20.3
 # PyTorch CPU-only for production deployment (Updated version)
 # or torch==2.2.2
 torch==2.6.0
-torchaudio
+# Pinned to torch: an unpinned torchaudio pulls a newer torch
+torchaudio==2.6.0
+
+# Beat This! beat/downbeat tracker (CPJKU, MIT). Weights are baked into the image (Dockerfile).
+beat-this==1.1.0
+rotary-embedding-torch==0.9.2
+einops==0.8.1
 
 # ============================================================================
 # Spleeter - Real 5-stems Audio Separation (GPU Accelerated)

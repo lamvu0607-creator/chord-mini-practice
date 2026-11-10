@@ -163,20 +163,19 @@ def model_info():
         # Format response to match existing API
         available_models = detector_info['available_detectors']
 
-        # Set default model: prefer Madmom by default, then Beat-Transformer, then Librosa
-        if 'madmom' in available_models:
-            default_model = 'madmom'
-        elif 'beat-transformer' in available_models:
-            default_model = 'beat-transformer'
-        elif 'librosa' in available_models:
-            default_model = 'librosa'
-        else:
-            default_model = 'none'
+        # Default model: DEFAULT_BEAT_MODEL if available, then Beat This!, madmom,
+        # Beat-Transformer, librosa
+        preferred = os.environ.get('DEFAULT_BEAT_MODEL', '').strip() or 'beat-this'
+        default_model = next(
+            (m for m in (preferred, 'beat-this', 'madmom', 'beat-transformer', 'librosa') if m in available_models),
+            'none'
+        )
 
         response = {
             "success": True,
             "default_beat_model": default_model,
             "available_beat_models": available_models,
+            "beat_this_available": 'beat-this' in available_models,
             "beat_transformer_available": 'beat-transformer' in available_models,
             "madmom_available": 'madmom' in available_models,
             "librosa_available": 'librosa' in available_models,
@@ -187,11 +186,17 @@ def model_info():
                 "force_parameter_available": True
             },
             "beat_model_info": {
+                "beat-this": {
+                    "name": "Beat This!",
+                    "description": "Transformer beat and downbeat tracker (ISMIR 2024), no source separation",
+                    "performance": "Highest accuracy, fast on GPU",
+                    "uses_spleeter": False
+                },
                 "beat-transformer": {
                     "name": "Beat-Transformer",
                     "description": "DL model with 5-channel audio separation, flexible in time signatures, slow processing speed",
                     "performance": "High accuracy, slower processing",
-                    "uses_spleeter": False
+                    "uses_spleeter": True
                 },
                 "madmom": {
                     "name": "Madmom",
@@ -217,6 +222,31 @@ def model_info():
             "success": False,
             "error": str(e)
         }), 500
+
+
+@beats_bp.route('/api/test-beat-this', methods=['GET'])
+@limiter.limit(config.get_rate_limit('test'))
+def test_beat_this():
+    """Test Beat This! availability"""
+    try:
+        detector = current_app.extensions['services']['beat_detection'].detectors['beat-this']
+        if detector.is_available():
+            return jsonify({
+                "success": True,
+                "model": "Beat This!",
+                "status": "available",
+                "device_info": detector.get_device_info(),
+                "message": "Beat This! is ready for use"
+            })
+        return jsonify({
+            "success": False,
+            "model": "Beat This!",
+            "status": "unavailable",
+            "error": "Beat This! is not available (beat_this package missing)"
+        })
+    except Exception as e:
+        log_error(f"Error testing Beat This!: {e}")
+        return jsonify({"success": False, "model": "Beat This!", "status": "error", "error": str(e)}), 500
 
 
 @beats_bp.route('/api/test-beat-transformer', methods=['GET'])
@@ -383,7 +413,7 @@ def test_all_models():
                     results["summary"]["available_count"] += 1
 
                     # Add version info if possible
-                    if name == 'beat-transformer':
+                    if name in ('beat-this', 'beat-transformer'):
                         try:
                             device_info = detector.get_device_info()
                             model_result["device_info"] = device_info

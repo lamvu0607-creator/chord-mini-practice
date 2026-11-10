@@ -99,6 +99,12 @@ RUN mkdir -p /home/app/.cache/spleeter/pretrained_models/5stems && \
     echo "🔍 Verifying checkpoint file exists:" && \
     test -f /home/app/.cache/spleeter/pretrained_models/5stems/checkpoint && echo "✅ checkpoint file found" || echo "❌ checkpoint file NOT found"
 
+# Pre-download the Beat This! checkpoint (~78 MB) into the torch hub cache of the app user,
+# so the first beat request does not depend on cloud.cp.jku.at being reachable.
+ENV TORCH_HOME=/home/app/.cache/torch
+RUN python -c "from beat_this.inference import load_model; load_model('final0', device='cpu'); print('Beat This! final0 cached')" \
+    && ls -la /home/app/.cache/torch/hub/checkpoints/
+
 # Expose port
 EXPOSE 8080
 

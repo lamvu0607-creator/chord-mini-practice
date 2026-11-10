@@ -13,6 +13,7 @@ from utils.logging import log_info, log_error, log_debug
 from services.detectors.beat_transformer_detector import BeatTransformerDetectorService
 from services.detectors.madmom_detector import MadmomDetectorService
 from services.detectors.librosa_detector import LibrosaDetectorService
+from services.detectors.beat_this_detector import BeatThisDetectorService
 from services.audio.audio_utils import validate_audio_file, get_audio_duration
 from utils.paths import BEAT_TRANSFORMER_CHECKPOINT
 
@@ -25,6 +26,7 @@ class BeatDetectionService:
     def __init__(self):
         """Initialize the beat detection service with available detectors."""
         self.detectors = {
+            'beat-this': BeatThisDetectorService(),
             'beat-transformer': BeatTransformerDetectorService(str(BEAT_TRANSFORMER_CHECKPOINT)),
             'madmom': MadmomDetectorService(),
             'librosa': LibrosaDetectorService()
@@ -32,6 +34,7 @@ class BeatDetectionService:
 
         # File size limits (in MB)
         self.size_limits = {
+            'beat-this': 200,         # 200MB limit for Beat This!
             'beat-transformer': 100,  # 100MB limit for Beat Transformer
             'madmom': 200,           # 200MB limit for madmom
             'librosa': 500           # 500MB limit for librosa
@@ -56,7 +59,7 @@ class BeatDetectionService:
         Select the best detector based on request, availability, and file size.
 
         Args:
-            requested_detector: Requested detector ('beat-transformer', 'madmom', 'librosa', 'auto')
+            requested_detector: Requested detector ('beat-this', 'beat-transformer', 'madmom', 'librosa', 'auto')
             file_size_mb: File size in megabytes
             force: Force use of requested detector even if file is large
 
@@ -75,7 +78,7 @@ class BeatDetectionService:
         log_debug(f"Requested: {requested_detector}, File size: {file_size_mb:.1f}MB, Force: {force}")
 
         # Handle specific detector requests
-        if requested_detector in ['beat-transformer', 'madmom', 'librosa']:
+        if requested_detector in self.detectors:
             if requested_detector not in available_detectors:
                 log_error(f"{requested_detector} requested but not available")
                 # Fall back to best available option
@@ -107,8 +110,11 @@ class BeatDetectionService:
         Returns:
             str: Selected detector name
         """
-        # Preference order: madmom > beat-transformer > librosa
+        # Preference order: beat-this > madmom > beat-transformer > librosa
         # But consider file size limits
+
+        if 'beat-this' in available_detectors and file_size_mb <= self.size_limits['beat-this']:
+            return 'beat-this'
 
         if file_size_mb <= 50:  # Small files - prefer Madmom
             if 'madmom' in available_detectors:
@@ -149,8 +155,10 @@ class BeatDetectionService:
         ]
 
         if suitable_detectors:
-            # Prefer madmom for large files, then librosa
-            if 'madmom' in suitable_detectors:
+            # Prefer Beat This!, then madmom, then librosa
+            if 'beat-this' in suitable_detectors:
+                return 'beat-this'
+            elif 'madmom' in suitable_detectors:
                 return 'madmom'
             elif 'librosa' in suitable_detectors:
                 return 'librosa'
@@ -167,7 +175,7 @@ class BeatDetectionService:
 
         Args:
             file_path: Path to the audio file
-            detector: Detector to use ('beat-transformer', 'madmom', 'librosa', 'auto')
+            detector: Detector to use ('beat-this', 'beat-transformer', 'madmom', 'librosa', 'auto')
             force: Force use of requested detector even if file is large
 
         Returns:
@@ -205,14 +213,18 @@ class BeatDetectionService:
             detector_service = self.detectors[selected_detector]
             result = detector_service.detect_beats(file_path)
 
-            # Fallback to librosa if primary detector failed
-            if not result.get('success') and selected_detector != 'librosa':
-                log_info(f"Detector {selected_detector} failed ({result.get('error')}), falling back to librosa")
-                if 'librosa' in self.detectors and self.detectors['librosa'].is_available():
-                    fallback_result = self.detectors['librosa'].detect_beats(file_path)
+            # Fallback chain if the primary detector failed: madmom, then librosa
+            for fallback in ('madmom', 'librosa'):
+                if result.get('success') or selected_detector == fallback:
+                    continue
+                if fallback == 'madmom' and selected_detector != 'beat-this':
+                    continue
+                if self.detectors[fallback].is_available():
+                    log_info(f"Detector {selected_detector} failed ({result.get('error')}), falling back to {fallback}")
+                    fallback_result = self.detectors[fallback].detect_beats(file_path)
                     if fallback_result.get('success'):
                         result = fallback_result
-                        selected_detector = 'librosa'
+                        selected_detector = fallback
 
             # Add metadata
             result['file_size_mb'] = file_size_mb
@@ -337,8 +349,8 @@ class BeatDetectionService:
                 "description": self._get_detector_description(name)
             }
 
-            # Add device info for Beat Transformer
-            if name == 'beat-transformer' and detector.is_available():
+            # Add device info for the GPU models
+            if name in ('beat-this', 'beat-transformer') and detector.is_available():
                 try:
                     device_info = detector.get_device_info()
                     info["detectors"][name]["device_info"] = device_info
@@ -350,6 +362,7 @@ class BeatDetectionService:
     def _get_detector_description(self, detector_name: str) -> str:
         """Get description for a detector."""
         descriptions = {
+            'beat-this': "Beat This! (ISMIR 2024): transformer beat and downbeat tracker, no source separation, GPU",
             'beat-transformer': "DL model with 5-channel audio separation, flexible in time signatures, slow processing speed",
             'madmom': "Neural network with high accuracy and speed, best for common time signatures (3/4, 4/4)",
             'librosa': "Classical signal processing approach, fast but less accurate"

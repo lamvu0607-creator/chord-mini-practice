@@ -225,6 +225,8 @@ python_backend/cloudbuild.yaml
 # Development and testing files
 test_*.html
 test_*.py
+# ...but keep the backend unit tests (pytest, run from python_backend/)
+!python_backend/tests/test_*.py
 **/test_output/
 **/test_results/
 task.md
