@@ -105,6 +105,7 @@ class BTCDetectorService:
                 'key': result['key'],
                 'key_confidence': result['key_confidence'],
                 'decoding': result['decoding'],
+                'tuning_cents': frames.get('tuning_cents'),
                 'processing_time': time.time() - start_time,
                 **base,
             }

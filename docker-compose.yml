@@ -134,6 +134,7 @@ services:
       - BTC_SWITCH_PENALTY_BEAT=${BTC_SWITCH_PENALTY_BEAT:-2.5}
       - BTC_SWITCH_PENALTY_DOWNBEAT=${BTC_SWITCH_PENALTY_DOWNBEAT:-1.0}
       - BTC_KEY_PRIOR=${BTC_KEY_PRIOR:-0.3}
+      - BTC_TUNING=${BTC_TUNING:-auto}
       # Beat This! beat tracker: checkpoint (final0 is baked into the image), DBN post-processing, fp16
       - BEAT_THIS_CHECKPOINT=${BEAT_THIS_CHECKPOINT:-final0}
       - BEAT_THIS_DBN=${BEAT_THIS_DBN:-false}

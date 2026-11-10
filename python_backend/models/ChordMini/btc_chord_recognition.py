@@ -62,7 +62,33 @@ except ImportError as e:
 if hasattr(torch, 'backends') and hasattr(torch.backends, 'mps'):
     torch.backends.mps.enabled = False
 
-def _process_audio_with_librosa_cqt(audio_file, config, return_frame_times=False):
+TUNING_MAX_SECONDS = 120.0
+
+
+def tuning_mode():
+    """BTC_TUNING: 'auto' (default) estimates the recording's offset from A440 and
+    shifts the CQT bins to match; 'off' keeps the bins at A440."""
+    mode = os.environ.get('BTC_TUNING', 'auto').strip().lower()
+    return 'off' if mode in ('off', '0', 'false', 'no') else 'auto'
+
+
+def estimate_tuning_semitones(wav, sr):
+    """Offset of the recording from A440 in semitones, in [-0.5, 0.5).
+
+    Uses up to the first TUNING_MAX_SECONDS; tuning rarely drifts within a song and
+    pitch tracking a whole track costs a few seconds for no gain.
+    """
+    excerpt = wav[: int(sr * TUNING_MAX_SECONDS)]
+    if len(excerpt) < sr:  # under a second: nothing reliable to measure
+        return 0.0
+    try:
+        return float(librosa.estimate_tuning(y=excerpt, sr=sr, bins_per_octave=12))
+    except Exception as e:  # silence or a librosa edge case: keep A440
+        logger.warning(f"Tuning estimation failed: {e}")
+        return 0.0
+
+
+def _process_audio_with_librosa_cqt(audio_file, config, return_frame_times=False, info=None):
     """Process audio using librosa's CQT implementation.
 
     The audio is analysed in independent chunks of ``inst_len`` seconds. A
@@ -72,6 +98,10 @@ def _process_audio_with_librosa_cqt(audio_file, config, return_frame_times=False
     assuming a constant ``hop / sr`` per frame drifts ~31 ms per chunk (~1 s over
     a 5-minute song). With ``return_frame_times=True`` the exact per-frame start
     times are returned as a fourth value.
+
+    BTC's CQT bins are semitone-aligned at A440 (2 bins per semitone). A recording
+    tuned e.g. 30 cents sharp puts every note between bins; with BTC_TUNING=auto the
+    bins are shifted by the estimated offset. ``info['tuning_cents']`` reports it.
     """
     n_fft = config.feature.get('n_fft', 512)
     hop_length = config.feature.get('hop_length', 2048)
@@ -79,6 +109,13 @@ def _process_audio_with_librosa_cqt(audio_file, config, return_frame_times=False
 
     if len(original_wav) < n_fft:
         original_wav = np.pad(original_wav, (0, n_fft - len(original_wav)), mode="constant", constant_values=0)
+
+    bins_per_octave = config.feature.get('bins_per_octave', 24)
+    semitones = estimate_tuning_semitones(original_wav, sr) if tuning_mode() == 'auto' else 0.0
+    # librosa's ``tuning`` is in fractions of one CQT bin
+    tuning_bins = semitones * bins_per_octave / 12.0
+    if info is not None:
+        info['tuning_cents'] = round(semitones * 100.0, 1)
 
     chunk_samples = int(config.mp3.get('song_hz', 22050) * config.mp3.get('inst_len', 10.0))
     current_sec_hz = 0
@@ -88,7 +125,7 @@ def _process_audio_with_librosa_cqt(audio_file, config, return_frame_times=False
     def _add_chunk(wav_segment, chunk_start_sample):
         cqt = librosa.cqt(wav_segment, sr=sr, hop_length=hop_length,
                           n_bins=config.feature.get('n_bins', 144),
-                          bins_per_octave=config.feature.get('bins_per_octave', 24))
+                          bins_per_octave=bins_per_octave, tuning=tuning_bins)
         chunks.append(np.abs(cqt))
         frame_times.append((chunk_start_sample + np.arange(cqt.shape[1]) * hop_length) / sr)
 
@@ -164,10 +201,10 @@ def process_audio_with_padding(audio_file, config):
     return feature, feature_per_second, song_length_second
 
 
-def extract_features_with_times(audio_file, config):
+def extract_features_with_times(audio_file, config, info=None):
     """Like process_audio_with_padding, plus the start time (s) of every frame."""
     try:
-        return _process_audio_with_librosa_cqt(audio_file, config, return_frame_times=True)
+        return _process_audio_with_librosa_cqt(audio_file, config, return_frame_times=True, info=info)
     except Exception as e:
         logger.warning(f"CQT extraction failed: {e}. Trying alternative method.")
         try:
@@ -374,7 +411,8 @@ def _load_btc(model_variant):
 def btc_frame_probabilities(audio_file, model_variant='cl'):
     """Run BTC on a file. Returns {probs [frames, 170], frame_times [frames], duration, labels}."""
     model, mean, std, config, device = _load_btc(model_variant)
-    feature, feature_per_second, duration, frame_times = extract_features_with_times(audio_file, config)
+    info = {}
+    feature, feature_per_second, duration, frame_times = extract_features_with_times(audio_file, config, info)
     if feature is None or feature.shape[1] == 0:
         raise RuntimeError("Feature extraction produced no frames")
     feature = (feature.T - mean) / (std + 1e-8)  # [frames, features]
@@ -391,6 +429,7 @@ def btc_frame_probabilities(audio_file, model_variant='cl'):
         'hop': float(feature_per_second),
         'duration': float(duration),
         'labels': idx2voca_chord(),
+        'tuning_cents': info.get('tuning_cents'),
     }
 
 
