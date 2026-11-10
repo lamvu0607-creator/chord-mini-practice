@@ -39,6 +39,10 @@ export interface TranscriptionData {
   beatShift?: number;
   keySignature?: string | null;
   keyModulation?: string | null;
+  /** Key estimated from the audio by the chord model (see AnalysisResult.audioKey) */
+  audioKey?: string | null;
+  audioKeyConfidence?: number | null;
+  chordDecoding?: 'beat-sync' | 'frame' | null;
   chordCorrections?: Record<string, string> | null;
   sequenceCorrections?: SequenceCorrectionsData;
   correctedChords?: string[] | null;

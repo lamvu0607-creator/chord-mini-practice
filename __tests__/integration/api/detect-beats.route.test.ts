@@ -152,6 +152,44 @@ describe('POST /api/detect-beats', () => {
     await expect(response.json()).resolves.toEqual({ success: true, beats: [0, 1], detector: 'madmom' });
   });
 
+  it('defaults to beat-this when the request names no detector', async () => {
+    const formData = new FormData();
+    formData.append('file', makeFile());
+    fetchMock.mockResolvedValue(
+      makeResponse({ ok: true, status: 200, jsonData: { success: true, beats: [0, 0.5] } })
+    );
+
+    await POST(makeRequest(formData));
+    const forwardedBody = fetchMock.mock.calls[0][1].body as FormData;
+    expect(forwardedBody.get('detector')).toBe('beat-this');
+  });
+
+  it('retries with madmom when an older backend rejects beat-this', async () => {
+    const formData = new FormData();
+    formData.append('file', makeFile());
+    formData.append('detector', 'beat-this');
+
+    fetchMock
+      .mockResolvedValueOnce(
+        makeResponse({
+          ok: false,
+          status: 400,
+          statusText: 'Bad Request',
+          textData: "Invalid detector 'beat-this'",
+        })
+      )
+      .mockResolvedValueOnce(
+        makeResponse({ ok: true, status: 200, jsonData: { success: true, beats: [0, 1], model_used: 'madmom' } })
+      );
+
+    const response = await POST(makeRequest(formData));
+    const fallbackBody = fetchMock.mock.calls[1][1].body as FormData;
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fallbackBody.get('detector')).toBe('madmom');
+    expect(response.status).toBe(200);
+  });
+
   it('maps backend 413 responses to a payload-too-large error', async () => {
     const formData = new FormData();
     formData.append('file', makeFile(3_000_000, 'clip.wav', 'audio/wav'));

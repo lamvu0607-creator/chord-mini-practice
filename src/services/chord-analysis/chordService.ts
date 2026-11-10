@@ -8,6 +8,22 @@
 import { createSafeTimeoutSignal } from '@/utils/environmentUtils';
 import type { ChordDetectorType, ChordDetectionResult } from '@/types/audioAnalysis';
 
+/** Beat grid sent with a chord request so BTC decodes one chord per beat. */
+export interface ChordBeatGrid {
+  beats: number[];
+  /** Real downbeats only (omit for models whose downbeats are guesses, e.g. madmom) */
+  downbeats?: number[];
+}
+
+export interface DetailedChordRecognition {
+  chords: ChordDetectionResult[];
+  /** Key estimated from the audio, e.g. "A:minor" (BTC models only) */
+  key: string | null;
+  keyConfidence: number | null;
+  /** 'beat-sync' when the backend used the beat grid, 'frame' otherwise */
+  decoding: 'beat-sync' | 'frame' | null;
+}
+
 /**
  * Recognize chords from a File with rate limiting.
  * Local development uses this direct multipart path.
@@ -16,6 +32,18 @@ export async function recognizeChordsWithRateLimit(
   audioFile: File,
   model: ChordDetectorType = 'chord-cnn-lstm'
 ): Promise<ChordDetectionResult[]> {
+  return (await recognizeChordsDetailed(audioFile, model)).chords;
+}
+
+/**
+ * Like recognizeChordsWithRateLimit, plus the estimated key and decoding mode.
+ * With ``beatGrid`` the backend aligns chord changes to those beats (BTC models).
+ */
+export async function recognizeChordsDetailed(
+  audioFile: File,
+  model: ChordDetectorType = 'chord-cnn-lstm',
+  beatGrid?: ChordBeatGrid | null
+): Promise<DetailedChordRecognition> {
   try {
     // Validate input file
     if (!audioFile || audioFile.size === 0) {
@@ -39,6 +67,12 @@ export async function recognizeChordsWithRateLimit(
       formData.append('chord_dict', 'large_voca'); // BTC models use large_voca
     } else {
       formData.append('chord_dict', 'full'); // CNN-LSTM uses full
+    }
+    if (beatGrid && beatGrid.beats.length >= 2) {
+      formData.append('beats', JSON.stringify(beatGrid.beats));
+      if (beatGrid.downbeats && beatGrid.downbeats.length > 0) {
+        formData.append('downbeats', JSON.stringify(beatGrid.downbeats));
+      }
     }
 
     const endpoint = getChordRecognitionEndpoint(safeModel);
@@ -98,7 +132,12 @@ export async function recognizeChordsWithRateLimit(
       }
       chords.push({ start: chord.start, end: chord.end, time: chord.start, chord: chord.chord, confidence: chord.confidence || 0.8 });
     }
-    return chords;
+    return {
+      chords,
+      key: typeof data.key === 'string' && data.key ? data.key : null,
+      keyConfidence: typeof data.key_confidence === 'number' ? data.key_confidence : null,
+      decoding: data.decoding === 'beat-sync' || data.decoding === 'frame' ? data.decoding : null,
+    };
   } catch (error) {
     console.error('Error in chord recognition with rate limiting:', error);
     throw error;

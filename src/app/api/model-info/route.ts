@@ -49,10 +49,16 @@ export async function GET() {
       models: {
         beat: [
           {
+            id: 'beat-this',
+            name: 'Beat This!',
+            description: 'Transformer beat and downbeat tracker (ISMIR 2024), no source separation',
+            default: true
+          },
+          {
             id: 'madmom',
             name: 'Madmom',
             description: 'Neural network with high accuracy and speed, best for common time signatures (3/4, 4/4)',
-            default: true
+            default: false
           },
 
           {
@@ -64,21 +70,21 @@ export async function GET() {
         ],
         chord: [
           {
-            id: 'chord-cnn-lstm',
-            name: 'Chord-CNN-LSTM',
-            description: 'Deep learning model for chord recognition',
+            id: 'btc-cl',
+            name: 'BTC CL (Continual Learning)',
+            description: 'BTC trained with pseudo-labels then continual learning (arXiv 2602.19778)',
             default: true
           },
           {
             id: 'btc-sl',
-            name: 'BTC SL (Supervised Learning)',
-            description: 'Transformer-based model with supervised learning',
+            name: 'BTC (original)',
+            description: 'Original BTC transformer (ISMIR 2019)',
             default: false
           },
           {
-            id: 'btc-pl',
-            name: 'BTC PL (Pseudo-Label)',
-            description: 'Transformer-based model with pseudo-labeling',
+            id: 'chord-cnn-lstm',
+            name: 'Chord-CNN-LSTM',
+            description: 'Deep learning model for chord recognition',
             default: false
           }
         ]
@@ -101,29 +107,23 @@ export async function GET() {
         models: {
           beat: [
             {
-              id: 'beat-transformer-light',
-              name: 'Beat-Transformer (light)',
-              description: 'Lightweight version of Beat-Transformer without source separation',
+              id: 'beat-this',
+              name: 'Beat This!',
+              description: 'Transformer beat and downbeat tracker (ISMIR 2024), no source separation',
               default: true
             }
           ],
           chord: [
             {
-              id: 'chord-cnn-lstm',
-              name: 'Chord-CNN-LSTM',
-              description: 'Deep learning model for chord recognition',
+              id: 'btc-cl',
+              name: 'BTC CL (Continual Learning)',
+              description: 'BTC trained with pseudo-labels then continual learning (arXiv 2602.19778)',
               default: true
             },
             {
               id: 'btc-sl',
-              name: 'BTC SL (Supervised Learning)',
-              description: 'Transformer-based model with supervised learning',
-              default: false
-            },
-            {
-              id: 'btc-pl',
-              name: 'BTC PL (Pseudo-Label)',
-              description: 'Transformer-based model with pseudo-labeling',
+              name: 'BTC (original)',
+              description: 'Original BTC transformer (ISMIR 2019)',
               default: false
             }
           ]

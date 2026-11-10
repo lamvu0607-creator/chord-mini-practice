@@ -94,6 +94,7 @@ export interface ModelInfoResult {
   success: boolean;
   default_model: string;
   available_models: string[];
+  beat_this_available?: boolean;
   beat_transformer_available: boolean;
 
   madmom_available: boolean;
@@ -134,7 +135,7 @@ export async function getModelInfo(): Promise<ModelInfoResult> {
  */
 export async function detectBeatsWithRateLimit(
   audioFile: File,
-  detector: 'auto' | 'madmom' | 'beat-transformer' = 'beat-transformer'
+  detector: 'auto' | 'beat-this' | 'madmom' | 'beat-transformer' = 'beat-this'
 ): Promise<BeatDetectionResult> {
   try {
     // Enhanced input validation
@@ -192,6 +193,12 @@ export async function detectBeatsWithRateLimit(
         throw new Error(`Beat detection failed: Backend returned 403 Forbidden. Ensure Python backend is running and accessible.`);
       }
 
+      // Beat This! is new: an older backend rejects it (400) or it can fail to load; use madmom
+      if (detector === 'beat-this' && response.status !== 413) {
+        console.warn(`Beat This! request failed (${response.status}); retrying with madmom`);
+        return detectBeatsWithRateLimit(audioFile, 'madmom');
+      }
+
       throw new Error(errorData.error || `Beat detection failed: ${response.status}`);
     }
 
@@ -199,8 +206,8 @@ export async function detectBeatsWithRateLimit(
 
     // Validate response structure
     if (!data || !data.success) {
-      // If Beat-Transformer failed and we haven't tried madmom yet, try madmom as fallback
-      if (detector === 'beat-transformer' && data.error?.includes('500')) {
+      // If a GPU model failed and we haven't tried madmom yet, try madmom as fallback
+      if ((detector === 'beat-this' || (detector === 'beat-transformer' && data?.error?.includes('500')))) {
         return detectBeatsWithRateLimit(audioFile, 'madmom');
       }
 
@@ -245,7 +252,7 @@ export async function detectBeatsWithRateLimit(
  */
 export async function detectBeatsFromFile(
   audioFile: File,
-  detector: 'auto' | 'madmom' | 'beat-transformer' = 'beat-transformer',
+  detector: 'auto' | 'beat-this' | 'madmom' | 'beat-transformer' = 'beat-this',
   onProgress?: (percent: number) => void
 ): Promise<BeatDetectionResult> {
   try {
@@ -257,7 +264,7 @@ export async function detectBeatsFromFile(
       throw new Error('Audio file is too large for beat detection (>100MB)');
     }
 
-    const validDetectors = ['auto', 'madmom', 'beat-transformer'];
+    const validDetectors = ['auto', 'beat-this', 'madmom', 'beat-transformer'];
     if (!validDetectors.includes(detector)) {
       throw new Error(`Invalid detector: ${detector}. Must be one of: ${validDetectors.join(', ')}`);
     }
@@ -288,7 +295,7 @@ export async function detectBeatsFromFile(
  */
 export async function detectBeatsFromPath(
   audioPath: string,
-  detector: 'auto' | 'madmom' | 'beat-transformer' = 'madmom'
+  detector: 'auto' | 'beat-this' | 'madmom' | 'beat-transformer' = 'madmom'
 ): Promise<BeatDetectionResult> {
   try {
     const formData = new FormData();
@@ -323,8 +330,7 @@ export async function detectBeatsFromPath(
         // Provide more helpful error messages for common issues
         if (errorData.error?.includes('No beat detection model available')) {
           // If Beat-Transformer failed and we haven't tried madmom yet, try madmom as fallback
-          if (detector === 'beat-transformer') {
-
+          if (detector === 'beat-transformer' || detector === 'beat-this') {
             return detectBeatsFromPath(audioPath, 'madmom');
           }
           throw new Error('Beat detection service is temporarily unavailable. Please try again in a few moments or contact support.');
@@ -334,8 +340,7 @@ export async function detectBeatsFromPath(
         // If response isn't valid JSON
         if (response.status === 500) {
           // If Beat-Transformer failed and we haven't tried madmom yet, try madmom as fallback
-          if (detector === 'beat-transformer') {
-
+          if (detector === 'beat-transformer' || detector === 'beat-this') {
             return detectBeatsFromPath(audioPath, 'madmom');
           }
           throw new Error('Beat detection service encountered an internal error. Please try again or contact support.');

@@ -12,8 +12,8 @@ jest.mock('@/components/analysis/HeroUIBeatModelSelector', () => ({
 
 jest.mock('@/components/analysis/HeroUIChordModelSelector', () => ({
   __esModule: true,
-  default: ({ onModelChange, selectedModel }: { onModelChange: (value: 'chord-cnn-lstm' | 'btc-sl' | 'btc-pl') => void; selectedModel: string }) => (
-    <button type="button" onClick={() => onModelChange('btc-pl')}>
+  default: ({ onModelChange, selectedModel }: { onModelChange: (value: 'btc-cl' | 'btc-sl' | 'btc-pl' | 'chord-cnn-lstm') => void; selectedModel: string }) => (
+    <button type="button" onClick={() => onModelChange('btc-cl')}>
       Chord selector: {selectedModel}
     </button>
   ),
@@ -32,7 +32,7 @@ describe('AnalysisControls', () => {
     hasError?: boolean;
   }) {
     const [beatDetector, setBeatDetector] = React.useState<'madmom' | 'beat-transformer'>('madmom');
-    const [chordDetector, setChordDetector] = React.useState<'chord-cnn-lstm' | 'btc-sl' | 'btc-pl'>('chord-cnn-lstm');
+    const [chordDetector, setChordDetector] = React.useState<'btc-cl' | 'btc-sl' | 'btc-pl' | 'chord-cnn-lstm'>('chord-cnn-lstm');
 
     return (
       <AnalysisControls
@@ -63,7 +63,7 @@ describe('AnalysisControls', () => {
     fireEvent.click(screen.getByRole('button', { name: /Chord selector: chord-cnn-lstm/i }));
 
     expect(screen.getByText('Beat: Beat Transformer')).toBeInTheDocument();
-    expect(screen.getByText('Chords: BTC PL')).toBeInTheDocument();
+    expect(screen.getByText('Chords: BTC CL')).toBeInTheDocument();
   });
 
   it('shows the correct action state for preparation vs ready-to-run analysis', () => {

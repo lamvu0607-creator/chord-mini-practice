@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       // Get model from form data to determine chord_dict
       const model = formData.get('model') as string || 'chord-cnn-lstm';
 
-      if (model === 'btc-sl' || model === 'btc-pl') {
+      if (model.startsWith('btc-')) {
         formData.append('chord_dict', 'large_voca'); // BTC models use large_voca
       } else {
         formData.append('chord_dict', 'full'); // CNN-LSTM uses full

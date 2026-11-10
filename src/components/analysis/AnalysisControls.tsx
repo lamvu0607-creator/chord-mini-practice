@@ -8,23 +8,27 @@ import HeroUIChordModelSelector from '@/components/analysis/HeroUIChordModelSele
 import { isDevelopmentEnvironment } from '@/utils/modelFiltering';
 
 const BEAT_MODEL_LABELS: Record<BeatDetectorType, string> = {
+  'beat-this': 'Beat This!',
   madmom: 'Madmom',
   'beat-transformer': 'Beat Transformer',
 };
 
 const BEAT_MODEL_CHIP_COLORS: Record<BeatDetectorType, 'primary' | 'warning'> = {
+  'beat-this': 'primary',
   madmom: 'primary',
   'beat-transformer': 'warning',
 };
 
 const CHORD_MODEL_LABELS: Record<ChordDetectorType, string> = {
   'chord-cnn-lstm': 'Chord CNN-LSTM',
-  'btc-sl': 'BTC SL',
-  'btc-pl': 'BTC PL',
+  'btc-cl': 'BTC CL',
+  'btc-sl': 'BTC (original)',
+  'btc-pl': 'BTC CL',
 };
 
 const CHORD_MODEL_CHIP_COLORS: Record<ChordDetectorType, 'success' | 'secondary'> = {
   'chord-cnn-lstm': 'success',
+  'btc-cl': 'secondary',
   'btc-sl': 'secondary',
   'btc-pl': 'secondary',
 };

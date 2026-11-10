@@ -4,6 +4,7 @@ import React, { useEffect, useMemo } from 'react';
 import { Select, SelectItem, Chip } from '@heroui/react';
 import { useModelInfoQuery } from '@/hooks/query/useModelInfoQuery';
 import {
+  ALL_CHORD_MODELS,
   ChordDetectorType,
   getListedChordModels,
   filterChordModels,
@@ -73,18 +74,25 @@ const HeroUIChordModelSelector: React.FC<HeroUIChordModelSelectorProps> = ({
       performance: 'High accuracy, supporting 7th chords and inversion labels, medium processing speed',
       available: true
     },
+    'btc-cl': {
+      id: 'btc-cl',
+      name: 'BTC CL (Continual Learning)',
+      description: getModelDescription('btc-cl'),
+      performance: 'Highest accuracy; chords follow the beat grid and the detected key',
+      available: true
+    },
     'btc-sl': {
       id: 'btc-sl',
-      name: 'BTC SL (Supervised Learning)',
+      name: 'BTC (original)',
       description: getModelDescription('btc-sl'),
-      performance: 'High accuracy with transformer architecture',
+      performance: 'Original BTC transformer, kept for comparison',
       available: true
     },
     'btc-pl': {
       id: 'btc-pl',
-      name: 'BTC PL (Pseudo-Label)',
+      name: 'BTC CL (legacy name)',
       description: getModelDescription('btc-pl'),
-      performance: 'Moderate accuracy with pseudo-labeling training',
+      performance: 'Same model as BTC CL',
       available: true
     }
   };
@@ -99,8 +107,13 @@ const HeroUIChordModelSelector: React.FC<HeroUIChordModelSelectorProps> = ({
 
     const modelInfoMap: Record<string, ChordModelOption> = {};
     const modelIds: ChordDetectorType[] = [];
+    const listed = new Set<string>(getListedChordModels());
 
     Object.entries(data.chord_model_info).forEach(([key, value]) => {
+      // Skip ids the selector does not list (e.g. the legacy btc-pl alias of btc-cl)
+      if (!(ALL_CHORD_MODELS as string[]).includes(key) || (key.startsWith('btc-') && !listed.has(key))) {
+        return;
+      }
       const modelOption: ChordModelOption = {
         id: key as ChordDetectorType,
         name: (value as ModelInfoResponse).name || key,
@@ -138,6 +151,7 @@ const HeroUIChordModelSelector: React.FC<HeroUIChordModelSelectorProps> = ({
             <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
           </svg>
         );
+      case 'btc-cl':
       case 'btc-sl':
       case 'btc-pl':
         return (

@@ -37,7 +37,7 @@ interface ProcessingBannersProps {
   audioUrl?: string;
   fromPersistentCache?: boolean;
   videoId?: string; // Optional for cache-aware duration detection
-  beatDetector?: 'madmom' | 'beat-transformer' | 'auto'; // Beat detection model
+  beatDetector?: 'beat-this' | 'madmom' | 'beat-transformer' | 'auto'; // Beat detection model
 
   // Error display
   error: string | null;

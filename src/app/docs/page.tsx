@@ -460,7 +460,7 @@ export default function DocsPage() {
                         Analyzes audio file and returns beat timestamps, BPM, and time signature.
                       </p>
                       <ul className="text-sm space-y-2">
-                        <li><strong>Parameters:</strong> `file` (audio file), `model` (optional: `beat-transformer`, `madmom`, `auto`)</li>
+                        <li><strong>Parameters:</strong> `file` (audio file), `detector` (optional: `beat-this` (default), `madmom`, `beat-transformer`, `auto`)</li>
                       </ul>
                     </CardBody>
                   </Card>
@@ -474,7 +474,7 @@ export default function DocsPage() {
                         Analyzes audio file and returns chord progression with timestamps.
                       </p>
                       <ul className="text-sm space-y-2">
-                        <li><strong>Parameters:</strong> `file` (audio file), `model` (optional: `chord-cnn-lstm`)</li>
+                        <li><strong>Parameters:</strong> `file` (audio file), `detector` (optional: `btc-cl` (default), `btc-sl`, `chord-cnn-lstm`), `beats` / `downbeats` (optional JSON arrays of seconds: chords are then decoded per beat and a `key` is returned)</li>
                       </ul>
                     </CardBody>
                   </Card>
@@ -519,7 +519,7 @@ console.log(result);`}
                       language="bash"
                       code={`curl -X POST "${localEndpoint}/api/detect-beats" \\
   -F "file=@your-audio-file.mp3" \\
-  -F "model=beat-transformer"`}
+  -F "detector=beat-this"`}
                     />
                   </div>
                   <div>

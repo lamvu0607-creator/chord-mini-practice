@@ -15,8 +15,8 @@ export interface AnalyzeRouteParams {
   autoStart?: boolean | null;
 }
 
-const VALID_BEAT_MODELS: BeatDetectorType[] = ['madmom', 'beat-transformer'];
-const VALID_CHORD_MODELS: ChordDetectorType[] = ['chord-cnn-lstm', 'btc-sl', 'btc-pl'];
+const VALID_BEAT_MODELS: BeatDetectorType[] = ['beat-this', 'madmom', 'beat-transformer'];
+const VALID_CHORD_MODELS: ChordDetectorType[] = ['btc-cl', 'btc-sl', 'btc-pl', 'chord-cnn-lstm'];
 
 function safeDecode(value: string | null): string | null {
   if (!value) return null;

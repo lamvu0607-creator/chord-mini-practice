@@ -20,8 +20,9 @@ function parseRow(row: TranscriptionRow): TranscriptionData {
 }
 
 function variantScore(beatModel: string, chordModel: string): number {
-  const beatRank: Record<string, number> = { madmom: 0, 'beat-transformer': 1 };
-  const chordRank: Record<string, number> = { 'chord-cnn-lstm': 0, 'btc-sl': 1, 'btc-pl': 2 };
+  // Lower is preferred as the primary variant shown for a video
+  const beatRank: Record<string, number> = { 'beat-this': 0, madmom: 1, 'beat-transformer': 2 };
+  const chordRank: Record<string, number> = { 'btc-cl': 0, 'btc-pl': 1, 'btc-sl': 2, 'chord-cnn-lstm': 3 };
   return (beatRank[beatModel] ?? 99) * 100 + (chordRank[chordModel] ?? 99);
 }
 

@@ -9,7 +9,24 @@ export const maxDuration = 240; // 4 minutes for key detection processing
 
 // Define the model name to use
 const MODEL_NAME = GEMINI_MODEL_NAME;
-const KEY_DETECTION_PROMPT_VERSION = 'v5-enharmonic-modulation-consistency';
+const KEY_DETECTION_PROMPT_VERSION = 'v6-audio-key-anchor';
+
+/** Accept only plain key names such as "A minor" / "Db major" for the audio key hint. */
+function sanitizeAudioKey(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return /^[A-G](?:#|b)?\s+(?:major|minor)$/i.test(trimmed) ? trimmed : null;
+}
+
+function audioKeyInstruction(audioKey: string | null): string {
+  if (!audioKey) return '';
+  return `
+AUDIO KEY ESTIMATE: An audio analysis of the recording estimated the key as "${audioKey}".
+- Use it as "primaryKey" (an enharmonic respelling such as C# major <-> Db major is fine for spelling consistency).
+- Only choose a different primary key if the chord sequence clearly contradicts it for most of the song.
+- Report modulations relative to this key.
+`;
+}
 
 // Define types for chord data
 interface ChordData {
@@ -18,14 +35,14 @@ interface ChordData {
 }
 
 // Helper function to generate cache key for key detection
-function generateKeyDetectionCacheKey(chords: ChordData[], includeEnharmonicCorrection: boolean = false, includeRomanNumerals: boolean = false): string {
+function generateKeyDetectionCacheKey(chords: ChordData[], includeEnharmonicCorrection: boolean = false, includeRomanNumerals: boolean = false, audioKey: string | null = null): string {
   // Create a more precise and unique representation
   const chordString = chords
     .map(chord => `${chord.time?.toFixed(3) || 0}:${chord.chord || chord}`)
     .join('|');
 
   // Put flags at the beginning to ensure they're not truncated
-  const keyString = `prompt:${KEY_DETECTION_PROMPT_VERSION}_enharmonic:${includeEnharmonicCorrection}_roman:${includeRomanNumerals}_${chordString}`;
+  const keyString = `prompt:${KEY_DETECTION_PROMPT_VERSION}_enharmonic:${includeEnharmonicCorrection}_roman:${includeRomanNumerals}_audiokey:${audioKey ?? ''}_${chordString}`;
 
   // Use SHA-256 hash for better uniqueness and consistent length
   const hash = crypto.createHash('sha256').update(keyString).digest('hex');
@@ -131,12 +148,13 @@ function buildHeuristicKeyDetectionResult(params: {
   chordNames: string[];
   includeEnharmonicCorrection: boolean;
   rawResponse?: string;
+  audioKey?: string | null;
 }): KeyDetectionResult {
-  const { chordNames, includeEnharmonicCorrection, rawResponse } = params;
+  const { chordNames, includeEnharmonicCorrection, rawResponse, audioKey } = params;
   const estimatedKey = estimateKeySignatureFromChords(chordNames);
 
   return {
-    primaryKey: estimatedKey.keySignature,
+    primaryKey: audioKey || estimatedKey.keySignature,
     modulation: null,
     originalChords: includeEnharmonicCorrection ? chordNames : undefined,
     correctedChords: includeEnharmonicCorrection ? chordNames : undefined,
@@ -206,7 +224,8 @@ async function saveKeyDetectionToCache(cacheKey: string, keyResult: KeyDetection
 
 export async function POST(request: NextRequest) {
   try {
-    const { chords, includeEnharmonicCorrection = false, bypassCache = false, geminiApiKey, includeRomanNumerals = false } = await request.json();
+    const { chords, includeEnharmonicCorrection = false, bypassCache = false, geminiApiKey, includeRomanNumerals = false, audioKey: rawAudioKey } = await request.json();
+    const audioKey = sanitizeAudioKey(rawAudioKey);
 
     // API call tracking for optimization monitoring
     console.log('🔍 [API] Key detection request:', {
@@ -224,7 +243,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate cache key (include enharmonic and Roman numeral flags in cache key)
-    const cacheKey = generateKeyDetectionCacheKey(chords, includeEnharmonicCorrection, includeRomanNumerals);
+    const cacheKey = generateKeyDetectionCacheKey(chords, includeEnharmonicCorrection, includeRomanNumerals, audioKey);
     const chordNames = chords.map((chord: ChordData) => {
       if (typeof chord === 'string') {
         return chord;
@@ -277,6 +296,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(buildHeuristicKeyDetectionResult({
         chordNames,
         includeEnharmonicCorrection,
+        audioKey,
       }));
     }
 
@@ -305,7 +325,7 @@ export async function POST(request: NextRequest) {
 CHORD SEQUENCE (in order): [${chordSequence.join(', ')}]
 
 TIMING INFORMATION: ${chordProgression}
-
+${audioKeyInstruction(audioKey)}
 INPUT NOTATION:
 - Chords use Harte-style symbols such as "F#:maj", "Bb:min7", "C#:7", "F#:maj/3", and "C#:7/b7".
 - If the input uses slash-degree inversion notation (for example /3, /5, /b7, /2), preserve that suffix exactly in chord-symbol outputs.
@@ -442,7 +462,7 @@ Respond with ONLY the JSON object, no explanations.`;
       prompt = `Analyze the following chord progression and determine the musical key and any modulations.
 
 Chord progression: ${chordProgression}
-
+${audioKeyInstruction(audioKey)}
 Please analyze carefully the tonality and provide ONLY the mostly likely key and modulation information in this exact format:
 Primary Key: **[Key Name]**
 Possible Tonal Modulation: **[Key Name]** (around [timestamp]) OR **None**
@@ -552,6 +572,7 @@ Important: Do not include any explanations, analysis, or additional text. Just g
           chordNames,
           includeEnharmonicCorrection,
           rawResponse: text,
+          audioKey,
         }));
       }
 
@@ -562,6 +583,7 @@ Important: Do not include any explanations, analysis, or additional text. Just g
       return NextResponse.json(buildHeuristicKeyDetectionResult({
         chordNames,
         includeEnharmonicCorrection,
+        audioKey,
       }));
     }
 

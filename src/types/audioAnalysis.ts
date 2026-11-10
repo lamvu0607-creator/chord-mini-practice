@@ -42,7 +42,7 @@ export interface ChordRecognitionBackendResponse {
 }
 
 // Chord detector model type
-export type ChordDetectorType = 'chord-cnn-lstm' | 'btc-sl' | 'btc-pl';
+export type ChordDetectorType = 'btc-cl' | 'btc-sl' | 'btc-pl' | 'chord-cnn-lstm';
 
 // Unified analysis result consumed by UI
 export interface AnalysisResult {
@@ -55,6 +55,12 @@ export interface AnalysisResult {
   beatModel?: string;    // Which model was used for beat detection
   chordModel?: string;   // Which model was used for chord detection
   audioDuration?: number; // Audio duration in seconds
+  /** Key estimated by the chord model from the audio, e.g. "A minor" (BTC models only) */
+  audioKey?: string | null;
+  /** Margin between the best and second-best key profile correlation (higher = surer) */
+  audioKeyConfidence?: number | null;
+  /** How chords were decoded: one chord per beat ('beat-sync') or per audio frame ('frame') */
+  chordDecoding?: 'beat-sync' | 'frame' | null;
   beatDetectionResult?: {
     time_signature?: number; // Time signature (beats per measure)
     bpm?: number;           // Beats per minute

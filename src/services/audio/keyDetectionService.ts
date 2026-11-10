@@ -46,7 +46,13 @@ export interface ChordData {
 /**
  * Detect the musical key and modulations from a chord progression
  */
-export async function detectKey(chords: ChordData[], includeEnharmonicCorrection: boolean = false, bypassCache: boolean = false, includeRomanNumerals: boolean = false): Promise<KeyDetectionResult> {
+export async function detectKey(
+  chords: ChordData[],
+  includeEnharmonicCorrection: boolean = false,
+  bypassCache: boolean = false,
+  includeRomanNumerals: boolean = false,
+  audioKey: string | null = null,
+): Promise<KeyDetectionResult> {
   try {
     const response = await fetch('/api/detect-key', {
       method: 'POST',
@@ -57,7 +63,9 @@ export async function detectKey(chords: ChordData[], includeEnharmonicCorrection
         chords,
         includeEnharmonicCorrection,
         bypassCache,
-        includeRomanNumerals
+        includeRomanNumerals,
+        // Key estimated from the audio; the route treats it as the primary key
+        ...(audioKey ? { audioKey } : {}),
       }),
     });
 

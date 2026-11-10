@@ -9,8 +9,8 @@ interface ErrorWithSuggestion extends Error {
   suggestion?: string;
 }
 
-type BeatDetectorType = 'auto' | 'madmom' | 'beat-transformer';
-type ChordDetectorType = 'chord-cnn-lstm' | 'btc-sl' | 'btc-pl';
+type BeatDetectorType = 'auto' | 'beat-this' | 'madmom' | 'beat-transformer';
+type ChordDetectorType = 'btc-cl' | 'btc-sl' | 'btc-pl' | 'chord-cnn-lstm';
 
 interface AnalysisResult {
   chords: Array<{chord: string, time: number}>;
@@ -21,6 +21,9 @@ interface AnalysisResult {
   beatModel: string;
   chordModel: string;
   audioDuration: number;
+  audioKey?: string | null;
+  audioKeyConfidence?: number | null;
+  chordDecoding?: 'beat-sync' | 'frame' | null;
   beatDetectionResult: {
     time_signature?: number;
     bpm?: number;
@@ -176,6 +179,9 @@ export const handleAudioAnalysis = async (deps: AudioProcessingServiceDependenci
         beatModel: cachedData.beatModel || 'beat-transformer',
         chordModel: cachedData.chordModel || 'chord-cnn-lstm',
         audioDuration: cachedData.audioDuration || 0,
+        audioKey: cachedData.audioKey ?? null,
+        audioKeyConfidence: cachedData.audioKeyConfidence ?? null,
+        chordDecoding: cachedData.chordDecoding ?? null,
         beatDetectionResult: {
           time_signature: (() => {
             const ts = cachedData.timeSignature as unknown;

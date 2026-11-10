@@ -1,9 +1,50 @@
 import { useState, useEffect, useRef } from 'react';
-import { getDefaultChordModel, getSafeBeatModel, getSafeChordModel } from '@/utils/modelFiltering';
+import {
+  getDefaultBeatModel,
+  getDefaultChordModel,
+  getSafeBeatModel,
+  getSafeChordModel,
+  isBeatDetectorType,
+  isChordDetectorType,
+} from '@/utils/modelFiltering';
 
 // Define detector types
-export type BeatDetectorType = 'madmom' | 'beat-transformer';
-export type ChordDetectorType = 'chord-cnn-lstm' | 'btc-sl' | 'btc-pl';
+export type BeatDetectorType = 'beat-this' | 'madmom' | 'beat-transformer';
+export type ChordDetectorType = 'btc-cl' | 'btc-sl' | 'btc-pl' | 'chord-cnn-lstm';
+
+const BEAT_STORAGE_KEY = 'chordmini_beat_detector';
+const CHORD_STORAGE_KEY = 'chordmini_chord_detector';
+const DEFAULTS_VERSION_KEY = 'chordmini_model_defaults_version';
+const DEFAULTS_VERSION = '2';
+// Defaults before version 2. The selection is persisted on every visit, so these values
+// usually mean "never changed" rather than a deliberate choice.
+const PREVIOUS_DEFAULT_BEAT_MODELS = ['madmom', 'auto'];
+const PREVIOUS_DEFAULT_CHORD_MODELS = ['btc-sl', 'btc-pl', 'chord-cnn-lstm'];
+
+function readStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * One-time move to the version-2 defaults (Beat This! + BTC CL): drop saved selections
+ * that equal an old default, so the new defaults apply. Explicit non-default choices stay.
+ */
+function migrateSavedModelDefaults(): void {
+  try {
+    if (localStorage.getItem(DEFAULTS_VERSION_KEY) === DEFAULTS_VERSION) return;
+    const beat = localStorage.getItem(BEAT_STORAGE_KEY);
+    if (beat && PREVIOUS_DEFAULT_BEAT_MODELS.includes(beat)) localStorage.removeItem(BEAT_STORAGE_KEY);
+    const chord = localStorage.getItem(CHORD_STORAGE_KEY);
+    if (chord && PREVIOUS_DEFAULT_CHORD_MODELS.includes(chord)) localStorage.removeItem(CHORD_STORAGE_KEY);
+    localStorage.setItem(DEFAULTS_VERSION_KEY, DEFAULTS_VERSION);
+  } catch {
+    // Storage unavailable (private mode): the in-memory defaults apply
+  }
+}
 
 export interface ModelState {
   beatDetector: BeatDetectorType;
@@ -40,16 +81,13 @@ export const useModelState = (options: UseModelStateOptions = {}): ModelState =>
     }
 
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('chordmini_beat_detector');
-      if (saved && ['madmom', 'beat-transformer'].includes(saved)) {
-        return getSafeBeatModel(saved as BeatDetectorType);
-      }
-      // If saved value was 'auto', default to 'madmom'
-      if (saved === 'auto') {
-        localStorage.setItem('chordmini_beat_detector', 'madmom');
+      migrateSavedModelDefaults();
+      const saved = readStorage(BEAT_STORAGE_KEY);
+      if (isBeatDetectorType(saved)) {
+        return getSafeBeatModel(saved);
       }
     }
-    return 'madmom';
+    return getDefaultBeatModel();
   });
 
   const [chordDetector, setChordDetector] = useState<ChordDetectorType>(() => {
@@ -58,10 +96,11 @@ export const useModelState = (options: UseModelStateOptions = {}): ModelState =>
     }
 
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('chordmini_chord_detector');
-      if (saved && ['chord-cnn-lstm', 'btc-sl', 'btc-pl'].includes(saved)) {
+      migrateSavedModelDefaults();
+      const saved = readStorage(CHORD_STORAGE_KEY);
+      if (isChordDetectorType(saved)) {
         // Ensure the saved model is available in the current environment
-        return getSafeChordModel(saved as ChordDetectorType);
+        return getSafeChordModel(saved);
       }
     }
     return getDefaultChordModel();
@@ -114,14 +153,22 @@ export const useModelState = (options: UseModelStateOptions = {}): ModelState =>
   // Persist beat detector selection to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('chordmini_beat_detector', beatDetector);
+      try {
+        localStorage.setItem(BEAT_STORAGE_KEY, beatDetector);
+      } catch {
+        // ignore storage errors
+      }
     }
   }, [beatDetector]);
 
   // Persist chord detector selection to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('chordmini_chord_detector', chordDetector);
+      try {
+        localStorage.setItem(CHORD_STORAGE_KEY, chordDetector);
+      } catch {
+        // ignore storage errors
+      }
     }
   }, [chordDetector]);
 

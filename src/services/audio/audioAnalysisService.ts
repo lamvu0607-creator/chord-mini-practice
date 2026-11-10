@@ -11,11 +11,99 @@ import { buildAudioProxyUrl } from '@/utils/audioProxyUrl';
 
 import { detectBeatsFromFile, detectBeatsWithRateLimit } from '@/services/audio/beatDetectionService';
 import { synchronizeChords } from '@/utils/chordSynchronization';
-import { recognizeChordsWithRateLimit } from '@/services/chord-analysis/chordService';
+import {
+  recognizeChordsDetailed,
+  type ChordBeatGrid,
+  type DetailedChordRecognition,
+} from '@/services/chord-analysis/chordService';
 import type { AnalysisResult, BeatInfo, ChordDetectorType, ChordDetectionResult, BeatDetectionBackendResponse } from '@/types/audioAnalysis';
 import { beatGridDebugLog } from '@/utils/debug/beatGridDebug';
+import { audioKeyToKeySignature } from '@/utils/keySignatureUtils';
 
 import { getChordAnalysisWorker } from '@/workers/chordAnalysisClient';
+
+type BeatDetectorChoice = 'auto' | 'beat-this' | 'madmom' | 'beat-transformer';
+
+/**
+ * Beat grid to send with the chord request. Downbeats are included only when the beat
+ * model tracked them (Beat This!, Beat-Transformer); madmom's are fixed slices of the
+ * beats (`downbeat_candidates`), and the meter is chosen later from the chords.
+ */
+export function buildChordBeatGrid(beatResults: BeatDetectionBackendResponse): ChordBeatGrid | null {
+  const beats = (Array.isArray(beatResults.beats) ? beatResults.beats : [])
+    .filter((t) => typeof t === 'number' && Number.isFinite(t) && t >= 0);
+  if (beats.length < 2) return null;
+  const hasTrackedDownbeats = !beatResults.downbeat_candidates
+    && Array.isArray(beatResults.downbeats)
+    && beatResults.downbeats.length > 0;
+  return {
+    beats,
+    downbeats: hasTrackedDownbeats
+      ? (beatResults.downbeats as number[]).filter((t) => typeof t === 'number' && Number.isFinite(t) && t >= 0)
+      : undefined,
+  };
+}
+
+function mapChordRecognitionError(e: unknown): Error {
+  if (e instanceof Error) {
+    if (e.message.includes('Rate limited')) return new Error(`Chord recognition rate limited: ${e.message}`);
+    if (e.message.includes('too large')) return new Error('Audio file is too large for chord recognition. Try a shorter clip.');
+    if (e.message.includes('413')) return new Error('Audio file size exceeds server limits for chord recognition. Please use a smaller file.');
+    if (e.message.includes('timeout')) return new Error('Chord recognition timed out. Try a shorter clip.');
+    return new Error(`Chord recognition failed: ${e.message}`);
+  }
+  return new Error('Chord recognition failed with unknown error');
+}
+
+/**
+ * Chord recognition aligned to the beat grid. If the request with beats fails (for
+ * instance an older backend that rejects the extra fields), retry once without them.
+ */
+async function recognizeChordsForAnalysis(
+  audioFile: File,
+  chordDetector: ChordDetectorType,
+  beatGrid: ChordBeatGrid | null
+): Promise<DetailedChordRecognition> {
+  let result: DetailedChordRecognition;
+  try {
+    try {
+      result = await recognizeChordsDetailed(audioFile, chordDetector, beatGrid);
+    } catch (firstError) {
+      if (!beatGrid) throw firstError;
+      console.warn('Chord recognition with beat grid failed, retrying without it:', firstError);
+      result = await recognizeChordsDetailed(audioFile, chordDetector, null);
+    }
+  } catch (e) {
+    console.error('Error in chord recognition:', e);
+    throw mapChordRecognitionError(e);
+  }
+  const chords = result.chords.filter((c: ChordDetectionResult) => c && typeof c.start === 'number' && typeof c.end === 'number'
+    && !isNaN(c.start) && !isNaN(c.end) && c.start >= 0 && c.end >= 0 && c.start < c.end && c.end <= 3600);
+  return { ...result, chords };
+}
+
+/**
+ * Map chords onto beats. Beat-synchronous chords already start on beats, so the
+ * downbeat snap in synchronizeChords (meant for frame-level onsets that lag the
+ * downbeat) must not move them: downbeats are withheld in that case.
+ */
+async function synchronizeForAnalysis(
+  chordResults: ChordDetectionResult[],
+  beats: BeatInfo[],
+  downbeats: number[] | undefined,
+  decoding: DetailedChordRecognition['decoding']
+): Promise<{ chord: string; beatIndex: number }[]> {
+  const snapDownbeats = decoding === 'beat-sync' ? undefined : downbeats;
+  try {
+    const worker = getChordAnalysisWorker();
+    if (worker) {
+      return await worker.synchronizeChords(chordResults, beats, snapDownbeats);
+    }
+  } catch (e) {
+    console.warn('Worker sync failed, using main thread fallback:', e);
+  }
+  return synchronizeChords(chordResults, beats, snapDownbeats) as { chord: string; beatIndex: number }[];
+}
 
 function toBeatInfo(beatResults: BeatDetectionBackendResponse): BeatInfo[] {
   const beats: BeatInfo[] = [];
@@ -165,8 +253,8 @@ async function fetchFileFromUrl(url: string, videoId?: string): Promise<File> {
 
 export async function analyzeAudioWithRateLimit(
   audioInput: File | AudioBuffer | string,
-  beatDetector: 'auto' | 'madmom' | 'beat-transformer' = 'beat-transformer',
-  chordDetector: ChordDetectorType = 'chord-cnn-lstm',
+  beatDetector: BeatDetectorChoice = 'beat-this',
+  chordDetector: ChordDetectorType = 'btc-cl',
   videoId?: string
 ): Promise<AnalysisResult> {
 
@@ -199,54 +287,33 @@ export async function analyzeAudioWithRateLimit(
     throw new Error(analysisDurationLimitReason);
   }
 
-  // PERFORMANCE OPTIMIZATION: Parallelize beat detection and chord recognition
-  // These operations are independent and can run simultaneously, reducing total processing time.
-  const [beatResults, chordResults] = await Promise.all([
-    // Beat detection (rate limited path)
-    (async (): Promise<BeatDetectionBackendResponse> => {
-      try {
-        const results = await detectBeatsWithRateLimit(audioFile, beatDetector);
+  // Beats first, then chords decoded on that beat grid (chord changes land on beats,
+  // preferably downbeats, and the backend returns a key estimated from the audio).
+  let beatResults: BeatDetectionBackendResponse;
+  try {
+    const results = await detectBeatsWithRateLimit(audioFile, beatDetector);
 
-        if (!results || !results.beats) throw new Error('Beat detection failed: missing beats data');
-        if (!Array.isArray(results.beats)) throw new Error('Invalid beat detection results: beats is not an array');
-        if (results.beats.length === 0) throw new Error('No beats detected in the audio. The audio may be too quiet, too short, or not contain rhythmic content.');
-        // filter invalid
-        results.beats = results.beats.filter((t: number) => typeof t === 'number' && !isNaN(t) && t >= 0 && t <= 3600);
-        if (results.beats.length === 0) throw new Error('All detected beats have invalid timestamps');
-        return results;
-      } catch (e) {
-        console.error('Error in beat detection with rate limiting:', e);
-        if (e instanceof Error) {
-          if (e.message.includes('Rate limited')) throw new Error(`Beat detection rate limited: ${e.message}`);
-          if (e.message.includes('too large')) throw new Error('Audio file is too large for beat detection. Try a shorter clip or the madmom detector.');
-          if (e.message.includes('413')) throw new Error('Audio file size exceeds server limits. Please use a smaller file or try the madmom detector.');
-          if (e.message.includes('timeout')) throw new Error('Beat detection timed out. Try a shorter clip or the madmom detector.');
-          throw new Error(`Beat detection failed: ${e.message}`);
-        }
-        throw new Error(`Beat detection failed: ${String(e) || 'Unknown error'}`);
-      }
-    })(),
+    if (!results || !results.beats) throw new Error('Beat detection failed: missing beats data');
+    if (!Array.isArray(results.beats)) throw new Error('Invalid beat detection results: beats is not an array');
+    if (results.beats.length === 0) throw new Error('No beats detected in the audio. The audio may be too quiet, too short, or not contain rhythmic content.');
+    // filter invalid
+    results.beats = results.beats.filter((t: number) => typeof t === 'number' && !isNaN(t) && t >= 0 && t <= 3600);
+    if (results.beats.length === 0) throw new Error('All detected beats have invalid timestamps');
+    beatResults = results;
+  } catch (e) {
+    console.error('Error in beat detection with rate limiting:', e);
+    if (e instanceof Error) {
+      if (e.message.includes('Rate limited')) throw new Error(`Beat detection rate limited: ${e.message}`);
+      if (e.message.includes('too large')) throw new Error('Audio file is too large for beat detection. Try a shorter clip or the madmom detector.');
+      if (e.message.includes('413')) throw new Error('Audio file size exceeds server limits. Please use a smaller file or try the madmom detector.');
+      if (e.message.includes('timeout')) throw new Error('Beat detection timed out. Try a shorter clip or the madmom detector.');
+      throw new Error(`Beat detection failed: ${e.message}`);
+    }
+    throw new Error(`Beat detection failed: ${String(e) || 'Unknown error'}`);
+  }
 
-    // Chord recognition (rate limited path)
-    (async (): Promise<ChordDetectionResult[]> => {
-      try {
-        let results = await recognizeChordsWithRateLimit(audioFile, chordDetector);
-        // filter invalid chords
-        results = results.filter(c => c && typeof c.start === 'number' && typeof c.end === 'number' && !isNaN(c.start) && !isNaN(c.end) && c.start >= 0 && c.end >= 0 && c.start < c.end && c.end <= 3600);
-        return results;
-      } catch (e) {
-        console.error('Error in chord recognition with rate limiting:', e);
-        if (e instanceof Error) {
-          if (e.message.includes('Rate limited')) throw new Error(`Chord recognition rate limited: ${e.message}`);
-          if (e.message.includes('too large')) throw new Error('Audio file is too large for chord recognition. Try a shorter clip.');
-          if (e.message.includes('413')) throw new Error('Audio file size exceeds server limits for chord recognition. Please use a smaller file.');
-          if (e.message.includes('timeout')) throw new Error('Chord recognition timed out. Try a shorter clip.');
-          throw new Error(`Chord recognition failed: ${e.message}`);
-        }
-        throw new Error('Chord recognition failed with unknown error');
-      }
-    })()
-  ]);
+  const chordRecognition = await recognizeChordsForAnalysis(audioFile, chordDetector, buildChordBeatGrid(beatResults));
+  const chordResults = chordRecognition.chords;
 
   // Auto-select downbeats (3/4 vs 4/4) if candidates provided (Madmom)
   try {
@@ -315,18 +382,7 @@ export async function analyzeAudioWithRateLimit(
   const beats = toBeatInfo(beatResults);
 
   // Synchronize
-  let synchronizedChords: { chord: string; beatIndex: number }[];
-  try {
-    const worker = getChordAnalysisWorker();
-    if (worker) {
-      synchronizedChords = await worker.synchronizeChords(chordResults, beats, beatResults.downbeats);
-    } else {
-      synchronizedChords = synchronizeChords(chordResults, beats, beatResults.downbeats) as { chord: string; beatIndex: number }[];
-    }
-  } catch (e) {
-    console.warn('Worker sync failed, using main thread fallback:', e);
-    synchronizedChords = synchronizeChords(chordResults, beats, beatResults.downbeats) as { chord: string; beatIndex: number }[];
-  }
+  let synchronizedChords = await synchronizeForAnalysis(chordResults, beats, beatResults.downbeats, chordRecognition.decoding);
   synchronizedChords = synchronizedChords.filter((sc) => sc && typeof sc.beatIndex === 'number' && !isNaN(sc.beatIndex) && sc.beatIndex >= 0 && sc.beatIndex < beats.length && typeof (sc as { chord?: string }).chord === 'string');
 
   const reportedBeatModel = (beatResults as unknown as { model?: string }).model;
@@ -340,6 +396,9 @@ export async function analyzeAudioWithRateLimit(
     beatModel: effectiveBeatModel,
     chordModel: chordDetector,
     audioDuration,
+    audioKey: audioKeyToKeySignature(chordRecognition.key),
+    audioKeyConfidence: chordRecognition.keyConfidence,
+    chordDecoding: chordRecognition.decoding,
     beatDetectionResult: {
       time_signature: typeof beatResults.time_signature === 'number' ? beatResults.time_signature : undefined,
       bpm: beatResults.bpm
@@ -351,8 +410,8 @@ export async function analyzeAudioWithRateLimit(
 
 export async function analyzeAudio(
   audioInput: AudioBuffer | string,
-  beatDetector: 'auto' | 'madmom' | 'beat-transformer' = 'beat-transformer',
-  chordDetector: ChordDetectorType = 'chord-cnn-lstm',
+  beatDetector: BeatDetectorChoice = 'beat-this',
+  chordDetector: ChordDetectorType = 'btc-cl',
   videoId?: string
 ): Promise<AnalysisResult> {
 
@@ -405,22 +464,9 @@ export async function analyzeAudio(
 // (beats will be computed after chordResults so we can evaluate candidates with chord context)
 
 
-  // Chords
-  let chordResults: ChordDetectionResult[];
-  try {
-    chordResults = await recognizeChordsWithRateLimit(audioFile, chordDetector);
-    // filter invalid chords
-    chordResults = chordResults.filter(c => c && typeof c.start === 'number' && typeof c.end === 'number' && !isNaN(c.start) && !isNaN(c.end) && c.start >= 0 && c.end >= 0 && c.start < c.end && c.end <= 3600);
-  } catch (e) {
-    console.error('Error in chord recognition:', e);
-    if (e instanceof Error) {
-      if (e.message.includes('too large')) throw new Error('Audio file is too large for chord recognition. Try a shorter clip.');
-      if (e.message.includes('413')) throw new Error('Audio file size exceeds server limits for chord recognition. Please use a smaller file.');
-      if (e.message.includes('timeout')) throw new Error('Chord recognition timed out. Try a shorter clip.');
-      throw new Error(`Chord recognition failed: ${e.message}`);
-    }
-    throw new Error('Chord recognition failed with unknown error');
-  }
+  // Chords, decoded on the beat grid
+  const chordRecognition = await recognizeChordsForAnalysis(audioFile, chordDetector, buildChordBeatGrid(beatResults));
+  const chordResults = chordRecognition.chords;
 
   // Auto-select downbeats (3/4 vs 4/4) if candidates provided (Madmom)
   try {
@@ -489,18 +535,7 @@ export async function analyzeAudio(
   const beats = toBeatInfo(beatResults);
 
   // Synchronize
-  let synchronizedChords: { chord: string; beatIndex: number }[];
-  try {
-    const worker = getChordAnalysisWorker();
-    if (worker) {
-      synchronizedChords = await worker.synchronizeChords(chordResults, beats, beatResults.downbeats);
-    } else {
-      synchronizedChords = synchronizeChords(chordResults, beats, beatResults.downbeats) as { chord: string; beatIndex: number }[];
-    }
-  } catch (e) {
-    console.warn('Worker sync failed, using main thread fallback:', e);
-    synchronizedChords = synchronizeChords(chordResults, beats, beatResults.downbeats) as { chord: string; beatIndex: number }[];
-  }
+  const synchronizedChords = await synchronizeForAnalysis(chordResults, beats, beatResults.downbeats, chordRecognition.decoding);
 
   const reportedBeatModel = (beatResults as unknown as { model?: string }).model;
   const effectiveBeatModel = reportedBeatModel || beatDetector;
@@ -513,6 +548,9 @@ export async function analyzeAudio(
     beatModel: effectiveBeatModel,
     chordModel: chordDetector,
     audioDuration,
+    audioKey: audioKeyToKeySignature(chordRecognition.key),
+    audioKeyConfidence: chordRecognition.keyConfidence,
+    chordDecoding: chordRecognition.decoding,
     beatDetectionResult: {
       time_signature: typeof beatResults.time_signature === 'number' ? beatResults.time_signature : undefined,
       bpm: beatResults.bpm

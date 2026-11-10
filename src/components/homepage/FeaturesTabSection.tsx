@@ -89,8 +89,8 @@ const TAB_CONTENT: Record<string, FeatureTabContent> = {
     title: 'Chords & Beats',
     description: 'A beat-aligned chord grid that follows the song as it plays.',
     features: [
-      { text: 'Chord recognition with BTC models, beat tracking with Beat Transformer or madmom', color: 'blue' },
-      { text: 'Automatic time signature and estimated key', color: 'blue' },
+      { text: 'Beat and downbeat tracking with Beat This!, chord recognition with BTC CL decoded on the beat grid', color: 'blue' },
+      { text: 'Automatic time signature, and a key estimated from the audio', color: 'blue' },
       { text: 'Click any beat to jump there, and loop a section to practice it', color: 'blue' },
       { text: 'Metronome, pitch shift and chord playback', color: 'blue' },
       { text: 'Roman numerals, key changes and enharmonic corrections via Gemini', color: 'blue', optional: true },

@@ -13,8 +13,8 @@ export type { AnalysisResult, ChordDetectorType, ChordDetectionResult } from '@/
 
 export async function analyzeAudioWithRateLimit(
   audioInput: File | AudioBuffer | string,
-  beatDetector: 'auto' | 'madmom' | 'beat-transformer' = 'beat-transformer',
-  chordDetector: ChordDetectorType = 'chord-cnn-lstm',
+  beatDetector: 'auto' | 'beat-this' | 'madmom' | 'beat-transformer' = 'beat-this',
+  chordDetector: ChordDetectorType = 'btc-cl',
   videoId?: string
 ): Promise<AnalysisResult> {
   return analyzeAudioWithRateLimitService(audioInput, beatDetector, chordDetector, videoId);
@@ -22,8 +22,8 @@ export async function analyzeAudioWithRateLimit(
 
 export async function analyzeAudio(
   audioInput: AudioBuffer | string,
-  beatDetector: 'auto' | 'madmom' | 'beat-transformer' = 'beat-transformer',
-  chordDetector: ChordDetectorType = 'chord-cnn-lstm',
+  beatDetector: 'auto' | 'beat-this' | 'madmom' | 'beat-transformer' = 'beat-this',
+  chordDetector: ChordDetectorType = 'btc-cl',
   videoId?: string
 ): Promise<AnalysisResult> {
   return analyzeAudioService(audioInput, beatDetector, chordDetector, videoId);

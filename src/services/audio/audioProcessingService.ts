@@ -231,6 +231,9 @@ export class AudioProcessingService {
           beatModel: cachedData.beatModel,
           chordModel: cachedData.chordModel,
           audioDuration: cachedData.audioDuration,
+          audioKey: cachedData.audioKey ?? null,
+          audioKeyConfidence: cachedData.audioKeyConfidence ?? null,
+          chordDecoding: cachedData.chordDecoding ?? null,
           beatDetectionResult: {
             time_signature: cachedData.timeSignature ?? undefined,
             bpm: cachedData.bpm ?? undefined,
@@ -240,7 +243,7 @@ export class AudioProcessingService {
       }
 
       // Perform analysis with rate limiting
-      const analysisResults = await analyzeAudioWithRateLimit(audioUrl, beatDetector as 'auto' | 'madmom' | 'beat-transformer', chordDetector as ChordDetectorType, videoId);
+      const analysisResults = await analyzeAudioWithRateLimit(audioUrl, beatDetector as 'auto' | 'beat-this' | 'madmom' | 'beat-transformer', chordDetector as ChordDetectorType, videoId);
       const normalizedAnalysisResults = {
         ...analysisResults,
         beatModel: analysisResults.beatModel || beatDetector,
@@ -265,6 +268,9 @@ export class AudioProcessingService {
         bpm: normalizedAnalysisResults.beatDetectionResult?.bpm,
         beatShift: normalizedAnalysisResults.beatDetectionResult?.beatShift,
         audioDuration: normalizedAnalysisResults.audioDuration,
+        audioKey: normalizedAnalysisResults.audioKey ?? null,
+        audioKeyConfidence: normalizedAnalysisResults.audioKeyConfidence ?? null,
+        chordDecoding: normalizedAnalysisResults.chordDecoding ?? null,
         usageCount: 0,
         timestamp: new Date()
       };

@@ -9,11 +9,12 @@ import {
   filterBeatModels,
   getAvailableBeatModels,
   getBeatModelDescription,
+  getDefaultBeatModel,
   getSafeBeatModel,
   isDevelopmentEnvironment,
 } from '@/utils/modelFiltering';
 
-type ModelType = 'madmom' | 'beat-transformer';
+type ModelType = 'beat-this' | 'madmom' | 'beat-transformer';
 
 interface HeroUIBeatModelSelectorProps {
   onChange: (model: ModelType) => void;
@@ -31,7 +32,7 @@ interface ModelOption {
 
 const HeroUIBeatModelSelector = ({
   onChange,
-  defaultValue = 'madmom',
+  defaultValue = getDefaultBeatModel(),
   className = '',
   disabled = false,
 }: HeroUIBeatModelSelectorProps) => {
@@ -63,6 +64,13 @@ const HeroUIBeatModelSelector = ({
   };
 
   const modelOptions = useMemo((): ModelOption[] => [
+    {
+      id: 'beat-this',
+      name: modelInfo?.model_info?.['beat-this']?.name || 'Beat This!',
+      description: modelInfo?.model_info?.['beat-this']?.description ||
+                  getBeatModelDescription('beat-this'),
+      available: modelInfo?.beat_this_available ?? true
+    },
     {
       id: 'beat-transformer',
       name: modelInfo?.model_info?.['beat-transformer']?.name || 'Beat-Transformer',
@@ -118,6 +126,12 @@ const HeroUIBeatModelSelector = ({
 
   const getModelIcon = (modelId: ModelType) => {
     switch (modelId) {
+      case 'beat-this':
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+          </svg>
+        );
       case 'beat-transformer':
         return (
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">

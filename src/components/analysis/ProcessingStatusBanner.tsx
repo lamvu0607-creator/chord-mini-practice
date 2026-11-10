@@ -9,6 +9,7 @@ import { getAudioDurationFromUrl } from '@/utils/audioDurationUtils';
 
 // Processing time ratios (processing time as fraction of audio duration)
 const PROCESSING_RATIOS: Record<string, number> = {
+  'beat-this': 0.1,
   'madmom': 0.3,
   'beat-transformer': 0.45,
   'auto': 0.3,
@@ -49,7 +50,7 @@ interface ProcessingStatusBannerProps {
   fromCache?: boolean;
   fromPersistentCache?: boolean;
   videoId?: string;
-  beatDetector?: 'madmom' | 'beat-transformer' | 'auto';
+  beatDetector?: 'beat-this' | 'madmom' | 'beat-transformer' | 'auto';
 }
 
 const ProcessingStatusBanner: React.FC<ProcessingStatusBannerProps> = React.memo(({
@@ -57,7 +58,7 @@ const ProcessingStatusBanner: React.FC<ProcessingStatusBannerProps> = React.memo
   fromCache = false,
   fromPersistentCache = false,
   videoId,
-  beatDetector = 'madmom',
+  beatDetector = 'beat-this',
 }) => {
   const { stage, statusMessage, getFormattedElapsedTime } = useProcessing();
   const chordToastKeyRef = useRef<string | null>(null);

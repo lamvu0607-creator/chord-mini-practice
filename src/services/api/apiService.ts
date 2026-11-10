@@ -342,7 +342,8 @@ class ApiService {
       formData.append('chord_dict', options.chordDict);
     }
 
-    const endpoint = options?.model === 'btc-sl' ? '/api/recognize-chords-btc-sl' :
+    const endpoint = options?.model === 'btc-cl' ? '/api/recognize-chords-btc-cl' :
+                    options?.model === 'btc-sl' ? '/api/recognize-chords-btc-sl' :
                     options?.model === 'btc-pl' ? '/api/recognize-chords-btc-pl' :
                     '/api/recognize-chords';
 

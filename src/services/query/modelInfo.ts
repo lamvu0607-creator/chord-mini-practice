@@ -14,6 +14,9 @@ export interface ModelInfoPayload {
   success?: boolean;
   beat_model?: string;
   chord_model?: string;
+  default_beat_model?: string;
+  available_beat_models?: string[];
+  beat_this_available?: boolean;
   beat_transformer_available?: boolean;
   madmom_available?: boolean;
   beat_model_info?: Record<string, ModelInfoEntry>;
@@ -38,11 +41,21 @@ export async function fetchModelInfoPayload(): Promise<ModelInfoPayload> {
 export function buildBeatModelInfoResult(data: ModelInfoPayload): ModelInfoResult {
   return {
     success: true,
-    default_model: data.beat_model || 'beat-transformer',
-    available_models: [data.beat_model, data.chord_model].filter(Boolean) as string[],
+    // The backend sends default_beat_model; beat_model is the older field name
+    default_model: data.default_beat_model || data.beat_model || 'beat-this',
+    available_models: data.available_beat_models
+      ?? ([data.beat_model, data.chord_model].filter(Boolean) as string[]),
+    beat_this_available: data.beat_this_available ?? false,
     beat_transformer_available: data.beat_transformer_available || data.beat_model === 'Beat-Transformer',
-    madmom_available: data.madmom_available || true,
+    madmom_available: data.madmom_available ?? true,
     model_info: {
+      'beat-this': {
+        name: data.beat_model_info?.['beat-this']?.name || 'Beat This!',
+        description: data.beat_model_info?.['beat-this']?.description ||
+          'Transformer beat and downbeat tracker (ISMIR 2024), no source separation',
+        performance: data.beat_model_info?.['beat-this']?.performance || 'Highest accuracy, fast on GPU',
+        uses_spleeter: data.beat_model_info?.['beat-this']?.uses_spleeter ?? false,
+      },
       'beat-transformer': {
         name: data.beat_model_info?.['beat-transformer']?.name || 'Beat-Transformer',
         description: data.beat_model_info?.['beat-transformer']?.description ||

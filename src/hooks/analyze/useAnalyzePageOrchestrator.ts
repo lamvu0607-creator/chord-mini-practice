@@ -18,8 +18,8 @@ import { LyricsData } from '@/types/musicAiTypes';
 import { useCachedLyricsQuery } from '@/hooks/query/useCachedLyricsQuery';
 import { isUploadSourceId } from '@/utils/uploadSourceId';
 
-type BeatDetectorType = 'auto' | 'madmom' | 'beat-transformer';
-type ChordDetectorType = 'chord-cnn-lstm' | 'btc-sl' | 'btc-pl';
+type BeatDetectorType = 'auto' | 'beat-this' | 'madmom' | 'beat-transformer';
+type ChordDetectorType = 'btc-cl' | 'btc-sl' | 'btc-pl' | 'chord-cnn-lstm';
 
 type SequenceCorrections = {
   originalSequence: string[];
@@ -973,8 +973,12 @@ export function useAnalyzePageOrchestrator({
           syncRomanNumeralData(cachedRomanNumerals);
         }
 
+        // Key estimated from the audio by the chord model (BTC); deterministic, so it is the
+        // primary key whenever present. Gemini then only adds modulation, spelling fixes and
+        // Roman numerals, anchored to it.
+        const audioKey = analysisResults?.audioKey ?? null;
         const heuristicKeySignature = !hasCachedKeySignature
-          ? estimateKeySignatureFromChords(chordData.map((entry) => entry.chord)).keySignature
+          ? audioKey ?? estimateKeySignatureFromChords(chordData.map((entry) => entry.chord)).keySignature
           : null;
 
         const canReuseCachedDetection =
@@ -997,13 +1001,11 @@ export function useAnalyzePageOrchestrator({
         const romanNumeralChordData = chordData;
 
         const { detectKey } = await import('@/services/audio/keyDetectionService');
-        const result = await detectKey(romanNumeralChordData, true, false, includeRomanNumeralsInDetection);
+        const result = await detectKey(romanNumeralChordData, true, false, includeRomanNumeralsInDetection, audioKey);
+        const primaryKey = audioKey
+          ?? (result.primaryKey && result.primaryKey !== 'Unknown' ? result.primaryKey : null);
 
-        syncKeySignature(
-          result.primaryKey && result.primaryKey !== 'Unknown'
-            ? result.primaryKey
-            : heuristicKeySignature
-        );
+        syncKeySignature(primaryKey ?? heuristicKeySignature);
 
         const nextResultSequenceCorrections = withRomanNumerals(result.sequenceCorrections ?? null, result.romanNumerals || null);
         const incomingChordCorrections = result.corrections || null;
@@ -1027,7 +1029,7 @@ export function useAnalyzePageOrchestrator({
 
         syncRomanNumeralData(result.romanNumerals || null);
 
-        if (result.primaryKey && result.primaryKey !== 'Unknown' && !result.fromHeuristicFallback) {
+        if (primaryKey && (audioKey || !result.fromHeuristicFallback)) {
           const cachedTranscription = await loadTranscriptionSnapshot(beatDetector, chordDetector);
           if (cachedTranscription) {
             const updateSucceeded = await updateTranscriptionEnrichment(
@@ -1035,7 +1037,7 @@ export function useAnalyzePageOrchestrator({
               beatDetector,
               chordDetector,
               {
-                keySignature: result.primaryKey,
+                keySignature: primaryKey,
                 keyModulation: result.modulation,
                 chordCorrections: effectiveChordCorrections,
                 sequenceCorrections: effectiveSequenceCorrections,
@@ -1048,7 +1050,7 @@ export function useAnalyzePageOrchestrator({
             if (updateSucceeded) {
               setTranscriptionSnapshot({
                 ...cachedTranscription,
-                keySignature: result.primaryKey,
+                keySignature: primaryKey,
                 keyModulation: result.modulation,
                 chordCorrections: effectiveChordCorrections,
                 sequenceCorrections: effectiveSequenceCorrections,

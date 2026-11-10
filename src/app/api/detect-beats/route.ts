@@ -81,7 +81,8 @@ export async function POST(request: NextRequest) {
 
     // Forward the request to the backend with extended timeout
     console.log(`📡 Making fetch request to Python backend...`);
-    const requestedDetector = (formData.get('detector') as string) || 'madmom';
+    const requestedDetector = (formData.get('detector') as string) || process.env.NEXT_PUBLIC_DEFAULT_BEAT_MODEL || 'beat-this';
+    if (!formData.get('detector')) formData.set('detector', requestedDetector);
     let response = await fetch(targetUrl, {
       method: 'POST',
       body: formData,
@@ -98,10 +99,13 @@ export async function POST(request: NextRequest) {
       let errorText = await response.text();
       console.error(`❌ Backend beat detection failed: ${response.status} ${response.statusText} - ${errorText}`);
 
-      // Retry with madmom if Beat-Transformer checkpoint is unavailable
+      // Retry with madmom if Beat-Transformer's checkpoint is unavailable, or if the backend
+      // does not know / cannot load Beat This!
       const isCheckpointError = errorText.includes("Can't load save_path") || errorText.includes('Beat Transformer is not available');
-      if (requestedDetector === 'beat-transformer' && isCheckpointError) {
-        console.warn('⚠️ Beat-Transformer checkpoint unavailable. Retrying with madmom...');
+      const isBeatThisUnavailable = requestedDetector === 'beat-this'
+        && (response.status === 400 || errorText.includes('Beat This! is not available'));
+      if ((requestedDetector === 'beat-transformer' && isCheckpointError) || isBeatThisUnavailable) {
+        console.warn(`⚠️ ${requestedDetector} unavailable. Retrying with madmom...`);
         const fd = new FormData();
         for (const [k, v] of formData.entries()) {
           if (k === 'detector') continue;

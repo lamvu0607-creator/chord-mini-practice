@@ -70,10 +70,10 @@ export async function GET() {
               description: "Model information",
               example: {
                 success: true,
-                available_beat_models: ["beat-transformer", "madmom"],
-                available_chord_models: ["chord-cnn-lstm", "btc-sl", "btc-pl"],
-                default_beat_model: "beat-transformer",
-                default_chord_model: "chord-cnn-lstm"
+                available_beat_models: ["beat-this", "madmom", "beat-transformer"],
+                available_chord_models: ["btc-cl", "btc-sl"],
+                default_beat_model: "beat-this",
+                default_chord_model: "btc-cl"
               }
             }
           }
@@ -85,7 +85,7 @@ export async function GET() {
           description: "Analyzes audio file and returns beat timestamps, BPM, and time signature",
           parameters: {
             file: "Audio file (multipart form)",
-            model: "beat-transformer or madmom (optional)"
+            detector: "beat-this (default), madmom or beat-transformer (optional)"
           },
           responses: {
             "200": {
@@ -128,19 +128,21 @@ export async function GET() {
           }
         },
         {
-          path: "/api/recognize-chords-btc-sl",
+          path: "/api/recognize-chords-btc-cl",
           method: "POST",
-          summary: "Recognize chords in audio (BTC Supervised Learning)",
-          description: "Analyzes audio file using BTC SL model with 170 chord vocabulary",
+          summary: "Recognize chords in audio (BTC CL, default)",
+          description: "BTC trained with pseudo-labels then continual learning, 170 chord vocabulary. With beats/downbeats, chords are decoded per beat and the response includes an estimated key.",
           parameters: {
-            file: "Audio file (multipart form)"
+            file: "Audio file (multipart form)",
+            beats: "JSON array of beat times in seconds (optional)",
+            downbeats: "JSON array of downbeat times in seconds (optional)"
           }
         },
         {
-          path: "/api/recognize-chords-btc-pl",
+          path: "/api/recognize-chords-btc-sl",
           method: "POST",
-          summary: "Recognize chords in audio (BTC Pseudo-Label)",
-          description: "Analyzes audio file using BTC PL model with 170 chord vocabulary",
+          summary: "Recognize chords in audio (original BTC)",
+          description: "Original BTC model (ISMIR 2019) with 170 chord vocabulary; accepts the same optional beats/downbeats",
           parameters: {
             file: "Audio file (multipart form)"
           }

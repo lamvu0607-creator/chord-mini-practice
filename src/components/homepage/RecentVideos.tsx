@@ -266,8 +266,8 @@ export default function RecentVideos({ fullPage = false }: {
                 title: video.title && video.title !== `Video ${video.videoId}` ? video.title : null,
                 channel: video.channelTitle || null,
                 thumbnail: isRealThumbnailUrl(video.thumbnailUrl) ? video.thumbnailUrl : null,
-                beatModel: (video.beatModel as 'madmom' | 'beat-transformer' | null) || null,
-                chordModel: (video.chordModel as 'chord-cnn-lstm' | 'btc-sl' | 'btc-pl' | null) || null,
+                beatModel: (video.beatModel as 'beat-this' | 'madmom' | 'beat-transformer' | null) || null,
+                chordModel: (video.chordModel as 'btc-cl' | 'btc-sl' | 'btc-pl' | 'chord-cnn-lstm' | null) || null,
               })}
               isPressable
               className="group hover:scale-[1.02] transition-all duration-200 bg-content1 dark:bg-white/[0.06] border border-divider dark:border-white/10 hover:border-primary/50 dark:hover:border-primary/50 hover:shadow-lg"

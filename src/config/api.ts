@@ -35,6 +35,7 @@ export const API_ROUTES = {
 
   // ML services - proxy to Python backend
   RECOGNIZE_CHORDS: '/api/recognize-chords',
+  RECOGNIZE_CHORDS_BTC_CL: '/api/recognize-chords-btc-cl',
   RECOGNIZE_CHORDS_BTC_PL: '/api/recognize-chords-btc-pl',
   RECOGNIZE_CHORDS_BTC_SL: '/api/recognize-chords-btc-sl',
 

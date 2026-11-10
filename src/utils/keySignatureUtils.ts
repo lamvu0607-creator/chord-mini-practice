@@ -190,3 +190,15 @@ export function buildSearchableKeys(keySignature?: string | null): string[] {
     ),
   );
 }
+
+/**
+ * Convert a key from the chord backend ("A:minor", "Db:major") into the app's display
+ * form ("A minor", "C# major" / "Db major" per canonical spelling). Returns null for
+ * missing or unparseable input.
+ */
+export function audioKeyToKeySignature(audioKey?: string | null): string | null {
+  if (!audioKey) return null;
+  const spaced = audioKey.trim().replace(':', ' ');
+  if (!parseKeySignature(spaced)) return null;
+  return canonicalizeKeySignature(spaced);
+}
