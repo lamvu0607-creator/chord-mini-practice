@@ -1,6 +1,14 @@
 export const GRID_ALIGNMENT_CONFIG = {
   enableLocalCompaction: true,
   localCompactionBeatModel: 'madmom',
+  /** Beat models whose downbeats are tracked well enough to place bar lines directly */
+  trackedDownbeatBeatModels: ['beat-this'],
+  trackedDownbeats: {
+    /** Max distance (s) between a downbeat and the beat it is matched to */
+    matchToleranceSeconds: 0.07,
+    /** Share of consecutive downbeats that must be exactly one bar apart (in beats) */
+    minConsistentBarShare: 0.6,
+  },
   silentChordValues: ['', 'N', 'N/C', 'N.C.', 'NC'],
   shortIntroAlignment: {
     maxChordChangePenalty: 2,

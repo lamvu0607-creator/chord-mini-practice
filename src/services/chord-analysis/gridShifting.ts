@@ -243,11 +243,20 @@ function normalizeCombinedLeadingOffset(params: {
   };
 }
 
+/**
+ * Leading padding (beats before the first detected beat) and visual shift so that bar
+ * lines fall on downbeats.
+ *
+ * With ``downbeatBeatIndex`` (index of a tracked downbeat in the beat list, e.g. from
+ * Beat This!) the shift places that beat at the start of a bar. Otherwise the shift is
+ * guessed from where chords change (calculateOptimalShift).
+ */
 export function calculatePaddingAndShift(
   firstDetectedBeatTime: number,
   bpm: number,
   timeSignature: number,
-  chords: string[] = []
+  chords: string[] = [],
+  downbeatBeatIndex: number | null = null
 ): { paddingCount: number; shiftCount: number; totalPaddingCount: number } {
   let paddingCount = 0;
 
@@ -266,7 +275,11 @@ export function calculatePaddingAndShift(
     }
   }
 
-  const shiftCount = chords.length > 0
+  const hasTrackedDownbeat = downbeatBeatIndex !== null && Number.isInteger(downbeatBeatIndex)
+    && downbeatBeatIndex >= 0 && timeSignature > 0;
+  const shiftCount = hasTrackedDownbeat
+    ? (timeSignature - ((paddingCount + (downbeatBeatIndex as number)) % timeSignature)) % timeSignature
+    : chords.length > 0
     ? calculateOptimalShift(chords, timeSignature, paddingCount)
     : (() => {
         const beatPositionInMeasure = (paddingCount % timeSignature) + 1;

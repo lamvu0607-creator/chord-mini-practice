@@ -69,6 +69,45 @@ function extractFirstDetectedBeat(analysisResults: GridAnalysisResult): number {
   return getBeatTime(firstBeat) ?? 0;
 }
 
+/**
+ * Index (in ``beatTimes``) of the first tracked downbeat, when the beat model reports real
+ * downbeats that agree with the bar length. Returns null otherwise (no downbeats, a model
+ * whose downbeats are guesses, or downbeat spacing that does not match ``timeSignature``),
+ * in which case the bar offset is inferred from chord changes.
+ */
+export function findTrackedDownbeatIndex(
+  analysisResults: GridAnalysisResult,
+  beatTimes: number[],
+  timeSignature: number
+): number | null {
+  const config = GRID_ALIGNMENT_CONFIG.trackedDownbeats;
+  const beatModel = analysisResults.beatModel ?? '';
+  if (!(GRID_ALIGNMENT_CONFIG.trackedDownbeatBeatModels as readonly string[]).includes(beatModel)) return null;
+  const downbeats = (analysisResults.downbeats ?? []).filter((t) => typeof t === 'number' && Number.isFinite(t));
+  if (downbeats.length < 2 || beatTimes.length < 2 || timeSignature < 2) return null;
+
+  const matched: number[] = [];
+  let cursor = 0;
+  for (const downbeat of downbeats) {
+    while (cursor + 1 < beatTimes.length
+      && Math.abs(beatTimes[cursor + 1] - downbeat) <= Math.abs(beatTimes[cursor] - downbeat)) {
+      cursor += 1;
+    }
+    if (Math.abs(beatTimes[cursor] - downbeat) <= config.matchToleranceSeconds
+      && matched[matched.length - 1] !== cursor) {
+      matched.push(cursor);
+    }
+  }
+  if (matched.length < 2) return null;
+
+  let consistent = 0;
+  for (let i = 1; i < matched.length; i++) {
+    if (matched[i] - matched[i - 1] === timeSignature) consistent += 1;
+  }
+  if (consistent / (matched.length - 1) < config.minConsistentBarShare) return null;
+  return matched[0];
+}
+
 function countLeadingSilentChords(chords: string[]): number {
   let count = 0;
   while (count < chords.length) {
@@ -341,7 +380,8 @@ export function getChordGridData(analysisResults: GridAnalysisResult | null): Ch
     firstDetectedBeat,
     bpm,
     alignmentTimeSignature,
-    regularChords
+    regularChords,
+    findTrackedDownbeatIndex(analysisResults, regularBeats, alignmentTimeSignature)
   );
 
   const safePaddingCount = Math.max(0, Number.isFinite(paddingCount) ? Math.floor(paddingCount) : 0);
