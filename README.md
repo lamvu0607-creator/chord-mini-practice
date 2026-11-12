@@ -1,6 +1,6 @@
-# ChordMini
+# Chord Overlord
 
-ChordMini is a Next.js music-analysis application with Python services for beat,
+Chord Overlord is a Next.js music-analysis application with Python services for beat,
 chord, melody, lyrics, and song-structure processing. Application data is stored
 locally: structured results and jobs use SQLite, while audio uses the host
 filesystem.

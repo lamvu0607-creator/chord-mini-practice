@@ -22,7 +22,7 @@ export async function GET(_request: NextRequest) {
     // - Artist name
     // - Key signature
     // - BPM
-    // - ChordMini branding
+    // - Chord Overlord branding
     // - Chord progression preview
     
     // For now, return the static logo
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
               opacity: 0.8,
             }}
           >
-            ChordMini
+            Chord Overlord
           </div>
           
           <div

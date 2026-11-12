@@ -64,8 +64,8 @@ export function useMediaSession({
   useEffect(() => {
     if (!supported || !enabled || typeof MediaMetadata === 'undefined') return;
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: title || 'ChordMini',
-      artist: artist || 'ChordMini',
+      title: title || 'Chord Overlord',
+      artist: artist || 'Chord Overlord',
       artwork: artworkUrl ? [{ src: artworkUrl, sizes: '480x360', type: 'image/jpeg' }, ...DEFAULT_ARTWORK] : DEFAULT_ARTWORK,
     });
   }, [artist, artworkUrl, enabled, supported, title]);

@@ -58,8 +58,8 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(getFrontendBaseUrl()),
   title: {
-    default: 'ChordMini - Chord Recognition and Beat Tracking with LLM',
-    template: '%s | ChordMini'
+    default: 'Chord Overlord - Chord Recognition and Beat Tracking with LLM',
+    template: '%s | Chord Overlord'
   },
   description: 'Advanced music analysis platform with AI-powered chord recognition, beat detection, and synchronized lyrics. Analyze YouTube videos and audio files to discover chord progressions, beats, and musical structure.',
   keywords: [
@@ -83,7 +83,7 @@ export const metadata: Metadata = {
     }
   ],
   creator: 'lamvu0607',
-  publisher: 'ChordMini',
+  publisher: 'Chord Overlord',
   category: 'Music Technology',
   classification: 'Open Source Software',
   robots: {
@@ -110,32 +110,32 @@ export const metadata: Metadata = {
     apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
   },
   manifest: '/site.webmanifest',
-  applicationName: 'ChordMini',
+  applicationName: 'Chord Overlord',
   // Opened from the home screen, iOS shows the app without Safari's bars.
   appleWebApp: {
     capable: true,
-    title: 'ChordMini',
+    title: 'Chord Overlord',
     statusBarStyle: 'default',
   },
   openGraph: {
     type: 'website',
     locale: 'en_US',
     url: 'https://chordmini.me',
-    siteName: 'ChordMini',
-    title: 'ChordMini - Chord Recognition and Beat Tracking with LLM',
+    siteName: 'Chord Overlord',
+    title: 'Chord Overlord - Chord Recognition and Beat Tracking with LLM',
     description: 'Advanced music analysis platform with AI-powered chord recognition, beat detection, and synchronized lyrics.',
     images: [
       {
         url: '/chordMiniLogo.webp',
         width: 1200,
         height: 630,
-        alt: 'ChordMini - Music Analysis Platform',
+        alt: 'Chord Overlord - Music Analysis Platform',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'ChordMini - Chord Recognition and Beat Tracking with LLM',
+    title: 'Chord Overlord - Chord Recognition and Beat Tracking with LLM',
     description: 'Advanced music analysis platform with AI-powered chord recognition, beat detection, and synchronized lyrics.',
     images: ['/chordMiniLogo.webp'],
   },

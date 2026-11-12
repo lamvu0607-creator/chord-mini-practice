@@ -25,7 +25,7 @@ test.describe('install to home screen', () => {
     const touchIcon = await page.locator('link[rel="apple-touch-icon"]').first().getAttribute('href');
     expect(touchIcon).toMatch(/\.png/);
     expect((await request.get(touchIcon!)).status()).toBe(200);
-    await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute('content', 'ChordMini');
+    await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute('content', 'Chord Overlord');
     await expect(page.locator('meta[name="mobile-web-app-capable"], meta[name="apple-mobile-web-app-capable"]').first()).toHaveAttribute('content', 'yes');
   });
 });

@@ -513,7 +513,7 @@ export function useSheetMusicModel({
   const musicXmlOptions = useMemo(() => ({
     bpm: detectedBpm || undefined,
     timeSignature,
-    title: 'ChordMini Lead Sheet',
+    title: 'Chord Overlord Lead Sheet',
     keySignature: sheetMusicDisplayKeySignature,
     lyrics: gridLyrics?.lyrics,
   }), [detectedBpm, sheetMusicDisplayKeySignature, timeSignature, gridLyrics]);
@@ -671,7 +671,7 @@ export function useSheetMusicModel({
             pickupBeatCount: exportedSheetMusicPickupBeatCount,
             bpm: detectedBpm || undefined,
             timeSignature,
-            title: 'ChordMini Piano Visualizer Score',
+            title: 'Chord Overlord Piano Visualizer Score',
             keySignature: sheetMusicDisplayKeySignature,
             keySections: sheetMusicKeySections,
             signalAnalysis,

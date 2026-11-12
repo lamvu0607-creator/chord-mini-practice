@@ -98,12 +98,12 @@ export async function generateAnalyzeMetadata(videoId: string): Promise<Metadata
   
   // Generate title and description
   const title = videoInfo?.title 
-    ? `${videoInfo.title} - Chord Analysis | ChordMini`
-    : `Music Analysis ${videoId} | ChordMini`;
+    ? `${videoInfo.title} - Chord Analysis | Chord Overlord`
+    : `Music Analysis ${videoId} | Chord Overlord`;
     
   const description = videoInfo?.title
-    ? `AI-powered chord recognition and beat detection analysis of "${videoInfo.title}". Discover chord progressions, beats, and musical structure with ChordMini's advanced music analysis tools.`
-    : `AI-powered music analysis for video ${videoId}. Discover chord progressions, beats, and musical structure with ChordMini's advanced analysis tools.`;
+    ? `AI-powered chord recognition and beat detection analysis of "${videoInfo.title}". Discover chord progressions, beats, and musical structure with Chord Overlord's advanced music analysis tools.`
+    : `AI-powered music analysis for video ${videoId}. Discover chord progressions, beats, and musical structure with Chord Overlord's advanced analysis tools.`;
 
   // Generate keywords
   const keywords = [
@@ -135,7 +135,7 @@ export async function generateAnalyzeMetadata(videoId: string): Promise<Metadata
       title,
       description,
       url: pageUrl,
-      siteName: 'ChordMini',
+      siteName: 'Chord Overlord',
       images: [
         {
           url: ogImageUrl,

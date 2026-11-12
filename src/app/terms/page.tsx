@@ -28,11 +28,11 @@ const TermsPage: React.FC = () => {
           </h2>
           <div className="space-y-4 text-gray-700 dark:text-gray-300">
             <p>
-              Welcome to ChordMini, a self-hosted music analysis application.
+              Welcome to Chord Overlord, a self-hosted music analysis application.
               These Terms of Service govern your use of our AI-powered chord recognition platform.
             </p>
             <p>
-              By using ChordMini, you agree to these terms. Please read them carefully.
+              By using Chord Overlord, you agree to these terms. Please read them carefully.
             </p>
           </div>
         </div>
@@ -48,7 +48,7 @@ const TermsPage: React.FC = () => {
                 Important Notice
               </h3>
               <p>
-                ChordMini is provided as a research tool for educational and academic purposes.
+                Chord Overlord is provided as a research tool for educational and academic purposes.
                 It is not intended for commercial use or production environments.
               </p>
             </div>
@@ -71,7 +71,7 @@ const TermsPage: React.FC = () => {
                 You May:
               </h3>
               <ul className="space-y-2 text-gray-700 dark:text-gray-300">
-                <li>• Use ChordMini for personal music analysis and learning</li>
+                <li>• Use Chord Overlord for personal music analysis and learning</li>
                 <li>• Analyze publicly available YouTube videos</li>
                 <li>• Upload your own audio files for analysis</li>
                 <li>• Share results for educational or research purposes</li>
@@ -99,7 +99,7 @@ const TermsPage: React.FC = () => {
           </h2>
           <div className="space-y-4 text-gray-700 dark:text-gray-300">
             <ul className="space-y-3">
-              <li>• ChordMini&apos;s source code and algorithms are owned by the research team</li>
+              <li>• Chord Overlord&apos;s source code and algorithms are owned by the research team</li>
               <li>• You retain ownership of any audio content you upload</li>
               <li>• Analysis results (chord progressions, beat data) are provided for your use</li>
               <li>• Third-party content (YouTube videos, lyrics) remains owned by original creators</li>
@@ -119,7 +119,7 @@ const TermsPage: React.FC = () => {
                 Service Availability
               </h3>
               <p>
-                ChordMini is provided &quot;as is&quot; without warranties. As a research project,
+                Chord Overlord is provided &quot;as is&quot; without warranties. As a research project,
                 service availability and accuracy are not guaranteed.
               </p>
             </div>
@@ -139,7 +139,7 @@ const TermsPage: React.FC = () => {
           </h2>
           <div className="space-y-4 text-gray-700 dark:text-gray-300">
             <p>
-              By using ChordMini, you acknowledge that:
+              By using Chord Overlord, you acknowledge that:
             </p>
             <ul className="space-y-2">
               <li>• Your usage data may be collected for research purposes</li>
@@ -161,7 +161,7 @@ const TermsPage: React.FC = () => {
               Significant changes will be communicated through the platform.
             </p>
             <p>
-              Continued use of ChordMini after changes constitutes acceptance of the updated terms.
+              Continued use of Chord Overlord after changes constitutes acceptance of the updated terms.
             </p>
           </div>
         </div>

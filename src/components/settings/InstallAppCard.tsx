@@ -21,7 +21,7 @@ const STEPS: Record<Exclude<InstallPlatform, 'prompt'>, { title: string; steps: 
     steps: [
       <>Tap <ShareIcon /> <strong>Share</strong> in the Safari toolbar.</>,
       <>Scroll down and tap <strong>Add to Home Screen</strong>.</>,
-      <>Tap <strong>Add</strong>. ChordMini appears on your home screen.</>,
+      <>Tap <strong>Add</strong>. Chord Overlord appears on your home screen.</>,
     ],
   },
   'ios-other': {
@@ -42,7 +42,7 @@ const STEPS: Record<Exclude<InstallPlatform, 'prompt'>, { title: string; steps: 
   },
 };
 
-/** Install ChordMini to the home screen: the browser's own dialog where there is one, steps otherwise. */
+/** Install Chord Overlord to the home screen: the browser's own dialog where there is one, steps otherwise. */
 export default function InstallAppCard() {
   const { ready, isInstalled, platform, promptInstall } = useInstallPrompt();
   const [showSteps, setShowSteps] = useState(false);
@@ -55,11 +55,11 @@ export default function InstallAppCard() {
     <section className="mb-6 flex items-center gap-4 rounded-xl border border-gray-200 bg-content1 p-4 dark:border-gray-700">
       <Image src="/icon-192.png" alt="" width={48} height={48} className="h-12 w-12 flex-shrink-0 rounded-xl" />
       <div className="min-w-0 flex-1">
-        <h2 className="text-base font-semibold text-foreground">ChordMini app</h2>
+        <h2 className="text-base font-semibold text-foreground">Chord Overlord app</h2>
         <p className="text-sm text-default-500">
           {isInstalled
             ? 'Installed. Open it from your home screen.'
-            : 'Add ChordMini to your home screen and open it like an app.'}
+            : 'Add Chord Overlord to your home screen and open it like an app.'}
         </p>
       </div>
       {isInstalled ? (

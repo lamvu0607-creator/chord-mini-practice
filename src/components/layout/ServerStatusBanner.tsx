@@ -8,7 +8,7 @@ const REQUEST_TIMEOUT_MS = 12_000;
 /** One slow or failed check is not enough: the backend can be busy with a long job. */
 const FAILURES_BEFORE_NOTICE = 2;
 
-export const SERVER_OFF_MESSAGE = 'The ChordMini server is off right now. Please contact Lâm Vũ.';
+export const SERVER_OFF_MESSAGE = 'The Chord Overlord server is off right now. Please contact Lâm Vũ.';
 
 type CheckResult = 'up' | 'down' | 'unknown';
 

@@ -1,6 +1,6 @@
 {
-  "name": "ChordMini",
-  "short_name": "ChordMini",
+  "name": "Chord Overlord",
+  "short_name": "Chord Overlord",
   "description": "Chords, beats, melody and stems for any song",
   "id": "/songs",
   "start_url": "/songs",

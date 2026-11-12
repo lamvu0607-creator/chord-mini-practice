@@ -127,7 +127,7 @@ function NewHomePageContentInner() {
             <div className="space-y-8 flex flex-col">
               {/* Title - Centered */}
               <div ref={titleRef} className="text-center">
-                <AnimatedTitle text="Chord Mini" className="mb-3" />
+                <AnimatedTitle text="Chord Overlord" className="mb-3" />
                 <div className="min-h-[2rem] flex items-center justify-center mt-2">
                   <motion.p
                     initial={{ opacity: 0 }}

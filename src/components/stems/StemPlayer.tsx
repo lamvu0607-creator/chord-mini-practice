@@ -77,7 +77,7 @@ const StemPlayer: React.FC<StemPlayerProps> = ({ stemSet }) => {
   useMediaSession({
     enabled: Boolean(engine),
     title: stemSet.title || stemSet.videoId || 'Stems',
-    artist: 'ChordMini stems',
+    artist: 'Chord Overlord stems',
     artworkUrl: stemSet.videoId ? `https://i.ytimg.com/vi/${stemSet.videoId}/hqdefault.jpg` : undefined,
     isPlaying,
     currentTime,

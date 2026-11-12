@@ -63,7 +63,7 @@ export function exportPianoVisualizerScoreToMusicXml(input: PianoVisualizerScore
   const score = buildNotationScore({
     bpm,
     timeSignature,
-    title: input.title?.trim() || 'ChordMini Piano Visualizer Score',
+    title: input.title?.trim() || 'Chord Overlord Piano Visualizer Score',
     keySignature: input.keySignature,
     keySections: input.keySections,
     chordEvents: input.chordEvents,

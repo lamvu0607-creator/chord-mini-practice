@@ -119,12 +119,12 @@ describe('musicXmlExport lead sheet', () => {
     ], [], {
       bpm: 120,
       timeSignature: 4,
-      title: 'ChordMini Lead Sheet',
+      title: 'Chord Overlord Lead Sheet',
     });
 
     expect(xml).toContain('<score-partwise version="3.1">');
     expect(xml).toContain('<part-name>Melody</part-name>');
-    expect(xml).toContain('<work-title>ChordMini Lead Sheet</work-title>');
+    expect(xml).toContain('<work-title>Chord Overlord Lead Sheet</work-title>');
     expect(xml).toContain('<step>C</step>');
     expect(xml).toContain('<step>D</step>');
   });

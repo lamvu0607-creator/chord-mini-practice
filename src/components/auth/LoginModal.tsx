@@ -81,7 +81,7 @@ export default function LoginModal() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-foreground">
-                    {isMandatoryLogin ? 'Sign-in required' : 'Sign in to ChordMini'}
+                    {isMandatoryLogin ? 'Sign-in required' : 'Sign in to Chord Overlord'}
                   </h3>
                   <p className="text-xs text-default-500 font-normal">
                     {isMandatoryLogin ? 'Anonymous trial used up' : 'Use the username and PIN you were given'}

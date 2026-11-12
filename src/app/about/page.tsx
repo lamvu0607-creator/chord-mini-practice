@@ -19,7 +19,7 @@ const AboutPage: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            About ChordMini
+            About Chord Overlord
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
             AI-powered chord recognition and music analysis platform for musicians, researchers, and music enthusiasts.
@@ -120,7 +120,7 @@ const AboutPage: React.FC = () => {
           </h2>
           <div className="space-y-6 text-gray-700 dark:text-white">
             <p>
-              ChordMini is built upon the excellent work of many open-source projects and services.
+              Chord Overlord is built upon the excellent work of many open-source projects and services.
               We gratefully acknowledge the following third-party libraries and services:
             </p>
 

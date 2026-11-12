@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-const MESSAGE = 'The ChordMini server is off right now. Please contact Lâm Vũ.';
+const MESSAGE = 'The Chord Overlord server is off right now. Please contact Lâm Vũ.';
 
 test.describe('server is off', () => {
   test.setTimeout(60_000);
@@ -37,7 +37,7 @@ test.describe('server is off', () => {
 
     await context.setOffline(true);
     await page.goto('/stems').catch(() => undefined);
-    await expect(page.getByRole('heading', { name: 'The ChordMini server is off' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'The Chord Overlord server is off' })).toBeVisible();
     await expect(page.getByText('The server is off right now. Please contact Lâm Vũ.')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
     await context.setOffline(false);

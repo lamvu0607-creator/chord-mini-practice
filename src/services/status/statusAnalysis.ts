@@ -12,7 +12,7 @@ function buildPrompt(report: PublicStatusReport): string {
     `- ${service.label}: ${service.status}, uptime ${service.uptimePct}%, checks ${service.totalChecks}, failed ${service.failedChecks}, degraded ${service.degradedChecks}`
   )).join('\n');
 
-  return `You are writing a concise public status-page incident summary for ChordMini.
+  return `You are writing a concise public status-page incident summary for Chord Overlord.
 
 Input is sanitized probe data for one reporting day. Do not mention URLs, secrets, stack traces, request headers, raw responses, or internal implementation details.
 

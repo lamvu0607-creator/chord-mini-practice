@@ -262,7 +262,7 @@ export default function StatusDashboard({
             <div>
               <div className="flex items-center gap-3 text-gray-800 dark:text-gray-100">
                 <FiActivity className="h-7 w-7" />
-                <h1 className="text-3xl font-semibold">ChordMini Status</h1>
+                <h1 className="text-3xl font-semibold">Chord Overlord Status</h1>
               </div>
               <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                 Public service health from sanitized server-side probes.

@@ -167,7 +167,7 @@ const Navigation: React.FC<NavigationProps> = ({ className = '', showStickySearc
               {/* Light theme logo - hidden in dark mode */}
               <Image
                 src="/chordMiniLogo.webp"
-                alt="ChordMini Logo"
+                alt="Chord Overlord Logo"
                 width={40}
                 height={40}
                 sizes="40px"
@@ -177,15 +177,15 @@ const Navigation: React.FC<NavigationProps> = ({ className = '', showStickySearc
               {/* Dark theme logo - hidden in light mode */}
               <Image
                 src="/chordMiniLogo-dark.webp"
-                alt="ChordMini Logo"
+                alt="Chord Overlord Logo"
                 width={40}
                 height={40}
                 sizes="40px"
                 className="mr-2 rounded-lg hidden transition-all duration-200 group-hover:scale-105 dark:block dark:opacity-60 dark:group-hover:opacity-85"
                 style={{ width: '40px', height: '40px' }}
               />
-              <h1 className="text-xl font-nunito font-extrabold text-foreground transition-colors duration-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 tracking-tight">
-                ChordMini
+              <h1 className="text-xl font-nunito font-extrabold text-foreground transition-colors duration-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 tracking-tight whitespace-nowrap">
+                Chord Overlord
               </h1>
             </Link>
           </NavbarBrand>

@@ -190,7 +190,7 @@ export default function SettingsPage() {
 
           {/* The phone tab bar has no room for these. */}
           <div className="mt-6 flex flex-col divide-y divide-divider rounded-xl border border-gray-200 dark:border-gray-700 md:hidden">
-            {[{ href: '/games', label: 'Games' }, { href: '/docs', label: 'API Docs' }, { href: '/', label: 'About ChordMini' }].map((link) => (
+            {[{ href: '/games', label: 'Games' }, { href: '/docs', label: 'API Docs' }, { href: '/', label: 'About Chord Overlord' }].map((link) => (
               <Link key={link.href} href={link.href} className="flex min-h-11 items-center px-4 text-sm font-medium text-foreground">
                 {link.label}
               </Link>
