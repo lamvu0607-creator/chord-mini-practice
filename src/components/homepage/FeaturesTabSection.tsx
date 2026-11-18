@@ -706,11 +706,6 @@ export default function FeaturesTabSection() {
             </div>
           </Tab>
         </Tabs>
-
-        <p className="mt-10 text-center text-sm text-gray-600 dark:text-gray-400">
-          Waiting on an analysis? Practice theory, ear training and guitar shapes in{' '}
-          <Link href="/games" className="font-medium text-blue-600 hover:underline dark:text-blue-400">Games</Link>.
-        </p>
       </div>
     </section>
   );
