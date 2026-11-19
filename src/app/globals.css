@@ -600,6 +600,11 @@
    for crisp white lines and readable finger numbers.
    ====================================================== */
 
+/* GuitarChordDiagram draws its own, larger fret label (e.g. "4fr") */
+.chord-diagram-container.has-fret-label svg text[font-size="0.25rem"] {
+  display: none;
+}
+
 /* Neck grid lines & nut */
 .dark .chord-diagram-container svg path[stroke="#444"] {
   stroke: #ffffff !important;

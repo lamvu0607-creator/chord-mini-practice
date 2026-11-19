@@ -4,6 +4,7 @@ import React, { useRef, useMemo, useState, useEffect, useCallback } from 'react'
 import type { ChordEvent } from '@/utils/chordToMidi';
 import { ChordCell, type ChordCellProps } from '@/components/chord-analysis/ChordCell';
 import { useRomanNumerals } from '@/stores/uiStore';
+import { useSweepLineScroll } from '@/hooks/ui/useSweepLineScroll';
 
 import { GridLyricText, type BeatGridTimedLyrics } from '@/components/chord-analysis/GridLyricsRow';
 
@@ -43,9 +44,6 @@ const SWEEP_LINE_FRACTION = 0.2;
 // Gap between chord cells (matches ChordGrid's gap-0.5 = 2px)
 const CELL_GAP = 2;
 const MIN_TIMELINE_BEAT_WIDTH = 36;
-const SOFT_SYNC_DRIFT_THRESHOLD = 0.05;
-const HARD_SYNC_DRIFT_THRESHOLD = 0.24;
-const DRIFT_BLEND_FACTOR = 0.35;
 const MIN_TIMELINE_OVERSCAN_PX = 240;
 
 function getEffectiveTimelineBeats(timeSignature: number): number {
@@ -61,8 +59,20 @@ export function getUniformTimelineBeatWidth(
   pixelsPerSecond: number,
   timeSignature: number,
 ): number {
-  const intervals = chordEvents
-    .map((event) => event.endTime - event.startTime)
+  return getUniformBeatWidthFromIntervals(
+    chordEvents.map((event) => event.endTime - event.startTime),
+    pixelsPerSecond,
+    timeSignature,
+  );
+}
+
+/** Same rule as getUniformTimelineBeatWidth, from raw beat durations in seconds. */
+export function getUniformBeatWidthFromIntervals(
+  beatDurations: number[],
+  pixelsPerSecond: number,
+  timeSignature: number,
+): number {
+  const intervals = beatDurations
     .filter((duration) => duration > 0)
     .sort((a, b) => a - b);
 
@@ -120,7 +130,7 @@ const FLAT_TO_SHARP: Record<string, string> = {
  * Normalize a chord name so enharmonic equivalents (C#m vs Dbm) compare equal.
  * Applies the given accidental preference to both root and bass notes.
  */
-function normalizeChordName(
+export function normalizeChordName(
   chord: string,
   pref: 'sharp' | 'flat' | null | undefined,
 ): string {
@@ -170,16 +180,6 @@ export const ScrollingChordStrip = React.memo<ScrollingChordStripProps>(({
   const stripInnerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(800);
 
-  // ── RAF interpolation refs ────────────────────────────────────────────────
-  const rafRef = useRef<number>(0);
-  const isPlayingRef = useRef(isPlaying);
-  const playbackBaseRef = useRef({ wallTime: 0, audioTime: currentTime });
-  const ppsRef = useRef(pixelsPerSecond);
-  const sweepRef = useRef(0);
-
-  // Time-to-normalized-X mapping ref (updated by useMemo, read by RAF)
-  const timeToNormalizedXRef = useRef<(time: number) => number>((t) => t * pixelsPerSecond);
-
   // Read roman numeral toggle from UI store
   const { showRomanNumerals } = useRomanNumerals();
 
@@ -200,74 +200,6 @@ export const ScrollingChordStrip = React.memo<ScrollingChordStripProps>(({
 
   // Sweep line x position
   const sweepLineX = containerWidth * SWEEP_LINE_FRACTION;
-
-  // Keep refs current so the RAF closure always uses the latest values
-  // without restarting the loop.
-  useEffect(() => { isPlayingRef.current = isPlaying; });
-  useEffect(() => { ppsRef.current = pixelsPerSecond; }, [pixelsPerSecond]);
-  useEffect(() => { sweepRef.current = sweepLineX; }, [sweepLineX]);
-
-  // ── Sync interpolation anchor on every parent currentTime update ──────────
-  useEffect(() => {
-    if (isPlaying) {
-      const now = performance.now() / 1000;
-      const projectedTime = playbackBaseRef.current.audioTime + (now - playbackBaseRef.current.wallTime);
-      const drift = currentTime - projectedTime;
-
-      if (Math.abs(drift) >= SOFT_SYNC_DRIFT_THRESHOLD) {
-        const correctedTime = Math.abs(drift) >= HARD_SYNC_DRIFT_THRESHOLD
-          ? currentTime
-          : projectedTime + drift * DRIFT_BLEND_FACTOR;
-
-        playbackBaseRef.current = {
-          wallTime: now,
-          audioTime: correctedTime,
-        };
-      }
-    } else {
-      playbackBaseRef.current = {
-        wallTime: performance.now() / 1000,
-        audioTime: currentTime,
-      };
-    }
-    // When paused, immediately position the strip
-    if (!isPlaying && stripInnerRef.current) {
-      const normalizedX = timeToNormalizedXRef.current(currentTime);
-      stripInnerRef.current.style.transform =
-        `translateX(${-normalizedX + sweepRef.current}px)`;
-    }
-  }, [currentTime, isPlaying]);
-
-  // ── RAF loop: smooth 60 fps scrolling during playback ─────────────────────
-  useEffect(() => {
-    if (!isPlaying) {
-      cancelAnimationFrame(rafRef.current);
-      return;
-    }
-
-    // Anchor from current props
-    playbackBaseRef.current = {
-      wallTime: performance.now() / 1000,
-      audioTime: currentTime,
-    };
-
-    const animate = () => {
-      if (!isPlayingRef.current) return;
-      const now = performance.now() / 1000;
-      const elapsed = now - playbackBaseRef.current.wallTime;
-      const interpolatedTime = playbackBaseRef.current.audioTime + elapsed;
-      const sweep = sweepRef.current;
-      const normalizedX = timeToNormalizedXRef.current(interpolatedTime);
-      if (stripInnerRef.current) {
-        stripInnerRef.current.style.transform =
-          `translateX(${-normalizedX + sweep}px)`;
-      }
-      rafRef.current = requestAnimationFrame(animate);
-    };
-
-    rafRef.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [isPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pre-compute chord box positions, show-label flags, and measure separators
   // Uses UNIFORM cell widths (median beat interval) so cells don't shrink/grow.
@@ -385,8 +317,12 @@ export const ScrollingChordStrip = React.memo<ScrollingChordStripProps>(({
     };
   }, [chordEvents, pixelsPerSecond, timeSignature, accidentalPreference]);
 
-  // Sync the mapping function to a ref so the RAF closure always uses the latest version
-  useEffect(() => { timeToNormalizedXRef.current = timeToNormalizedX; }, [timeToNormalizedX]);
+  useSweepLineScroll(stripInnerRef, {
+    currentTime,
+    isPlaying,
+    sweepLineX,
+    timeToX: timeToNormalizedX,
+  });
 
   const visibleRange = useMemo(
     () => getTimelineVisibleRange(

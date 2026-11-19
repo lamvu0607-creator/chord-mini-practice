@@ -244,24 +244,47 @@ const GuitarChordDiagramComponent: React.FC<GuitarChordDiagramProps> = ({
     return '';
   };
 
+  // react-chords draws the "4fr" label at a fixed 4 viewBox units (about 5px in a
+  // 100px diagram). Hide it and draw a readable label at the first fret instead.
+  const showFretLabel = chordForDiagram.baseFret > 1;
+  const viewBoxScale = width / 80; // the library's viewBox is 80 units wide
+  const fretLabelFontSize = Math.max(10, Math.round(width * 0.085));
+
   return (
     <div className={`flex flex-col items-center ${className}`}>
-      {/* Chord diagram - transparent, sits directly on parent background */}
-      <div
-        className="chord-diagram-container relative overflow-hidden transition-all duration-200 rounded-lg"
-        style={{
-          width: `${width}px`,
-          height: `${height}px`,
-          ...focusedDiagramStyle,
-        }}
-      >
-        <div className="chord-diagram-svg">
-          <Chord
-            chord={chordForDiagram}
-            instrument={GUITAR_INSTRUMENT}
-            lite={lite}
-          />
+      <div className="relative">
+        {/* Chord diagram - transparent, sits directly on parent background */}
+        <div
+          className={`chord-diagram-container relative overflow-hidden transition-all duration-200 rounded-lg ${showFretLabel ? 'has-fret-label' : ''}`}
+          style={{
+            width: `${width}px`,
+            height: `${height}px`,
+            ...focusedDiagramStyle,
+          }}
+        >
+          <div className="chord-diagram-svg">
+            <Chord
+              chord={chordForDiagram}
+              instrument={GUITAR_INSTRUMENT}
+              lite={lite}
+            />
+          </div>
         </div>
+        {showFretLabel && (
+          <span
+            className="pointer-events-none absolute whitespace-nowrap font-semibold leading-none text-gray-700 dark:text-gray-100"
+            style={{
+              // Right edge just left of the neck (and of a first-fret barre); centred on fret 1.
+              right: `calc(100% - ${(8.5 * viewBoxScale).toFixed(1)}px)`,
+              top: `${(19 * viewBoxScale).toFixed(1)}px`,
+              transform: 'translateY(-50%)',
+              fontSize: `${fretLabelFontSize}px`,
+            }}
+          >
+            {chordForDiagram.baseFret}
+            <span className="text-[0.75em] font-medium">fr</span>
+          </span>
+        )}
       </div>
 
       {/* Chord name */}

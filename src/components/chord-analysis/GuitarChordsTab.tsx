@@ -6,15 +6,18 @@ import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AnalysisResult } from '@/services/chord-analysis/chordRecognitionService';
 import { chordMappingService } from '@/services/chord-analysis/chordMappingService';
-import { ChordGridContainer } from '@/components/chord-analysis/ChordGridContainer';
+import { GuitarChordTimeline } from '@/components/chord-analysis/GuitarChordTimeline';
+import { GuitarNowNextPanel } from '@/components/chord-analysis/GuitarNowNextPanel';
 import type { BeatGridTimedLyrics } from '@/components/chord-analysis/GridLyricsRow';
-import { useAnalysisResults, useShowCorrectedChords, useChordCorrections } from '@/stores/analysisStore';
+import { useAnalysisResults, useShowCorrectedChords, useChordCorrections, useKeySignature, useIsDetectingKey } from '@/stores/analysisStore';
 import { useCurrentBeatIndex, useCurrentTime, useIsPlaying } from '@/stores/playbackStore';
 import {
   useGuitarCapoFret,
   useGuitarSelectedPositions,
   useSetGuitarCapoFret,
   useSetGuitarSelectedPosition,
+  useIsPitchShiftEnabled,
+  useSimplifyChords,
   useTargetKey,
   useUIStore,
 } from '@/stores/uiStore';
@@ -29,9 +32,10 @@ import { useResolvedChordDisplayData } from '@/hooks/chord-analysis/useResolvedC
 import { useSharedAudioDynamics } from '@/hooks/audio/useSharedAudioDynamics';
 import { useGuitarOnlyPlayback } from '@/hooks/chord-playback/useGuitarOnlyPlayback';
 import { useViewportSnapshot } from '@/hooks/ui/useViewportSnapshot';
-import ScrollableTabContainer from '@/components/chord-analysis/ScrollableTabContainer';
 import CapoNeckPreview from '@/components/chord-analysis/CapoNeckPreview';
 import AppTooltip from '@/components/common/AppTooltip';
+import { FiChevronDown, FiVolume2, FiVolumeX } from 'react-icons/fi';
+import { safeLocalStorage } from '@/utils/browserStorage';
 import GuitarTablature from '@/components/chord-analysis/GuitarTablature';
 
 
@@ -69,26 +73,6 @@ interface ChordGridData {
   }>;
 }
 
-interface ProcessedChordData {
-  soundingNameByIndex: Map<number, string>;
-  soundingNameByShape: Map<string, string>;
-}
-
-interface UniqueChordProgressionItem {
-  chord: string;
-  startIndex: number;
-  timestamp: number;
-}
-
-interface DiagramConfig {
-  size: 'small' | 'medium' | 'large';
-  diagramWidth: number;
-  diagramHeight: number;
-  cellWidth: number;
-  marginX: number;
-  labelClass: string;
-}
-
 interface GuitarChordsTabProps {
   analysisResults?: AnalysisResult | null;
   chordGridData: ChordGridData;
@@ -124,11 +108,7 @@ interface GuitarChordsTabProps {
   plainLyrics?: string | null;
 }
 
-const itemTransition = {
-  type: "tween",
-  duration: 0.8,
-  ease: "easeInOut"
-} as const;
+const GUITAR_SOUND_STORAGE_KEY = 'guitarTab.guitarSound';
 
 function GuitarPlaybackBridge({
   playbackChordEvents,
@@ -203,141 +183,33 @@ function GuitarTablaturePlaybackView({
   );
 }
 
-function AnimatedChordDiagramView({
-  progression,
-  windowWidth,
-  diagramConfig,
-  chordDataCache,
-  chordPositions,
-  processedChordData,
-  handlePositionChange,
-  capoFret,
-  capoLabelMode,
-}: {
-  progression: UniqueChordProgressionItem[];
-  windowWidth: number;
-  diagramConfig: DiagramConfig;
-  chordDataCache: Map<string, ChordData | null>;
-  chordPositions: Record<string, number>;
-  processedChordData: ProcessedChordData;
-  handlePositionChange: (chordName: string, positionIndex: number) => void;
-  capoFret: number;
-  capoLabelMode: 'shape' | 'sound';
-}) {
-  const currentBeatIndex = useCurrentBeatIndex();
-
-  const currentChordInProgressionIndex = useMemo(() => {
-    if (progression.length === 0) return 0;
-
-    const foundIndex = progression.findIndex((chordInfo, index) => (
-      currentBeatIndex >= chordInfo.startIndex
-      && (index + 1 === progression.length || currentBeatIndex < progression[index + 1].startIndex)
-    ));
-
-    return foundIndex === -1 ? 0 : foundIndex;
-  }, [progression, currentBeatIndex]);
-
-  const visibleChordRange = useMemo(() => {
-    if (progression.length === 0) return [];
-    const getVisibleCount = () => {
-      if (windowWidth >= 1280) return 7;
-      if (windowWidth >= 1024) return 5;
-      if (windowWidth >= 768) return 3;
-      if (windowWidth >= 640) return 2;
-      return 1;
-    };
-    const getFocusOffset = (count: number) => {
-      if (count >= 7) return 2;
-      if (count >= 3) return 1;
-      return 0;
-    };
-    const visibleCount = getVisibleCount();
-    const focusOffset = getFocusOffset(visibleCount);
-    let startIndex = Math.max(0, currentChordInProgressionIndex - focusOffset);
-    const endIndex = Math.min(progression.length, startIndex + visibleCount);
-    if (endIndex - startIndex < visibleCount) {
-      startIndex = Math.max(0, endIndex - visibleCount);
-    }
-    return progression.slice(startIndex, endIndex).map((chordInfo) => ({
-      ...chordInfo,
-      isCurrent: chordInfo.startIndex === progression[currentChordInProgressionIndex].startIndex,
-    }));
-  }, [progression, currentChordInProgressionIndex, windowWidth]);
-
-  return (
-    <div className="animated-chord-view relative overflow-visible">
-      <div className="flex justify-center items-start py-1" style={{ minHeight: Math.max(diagramConfig.diagramHeight + 50, 100) }}>
-        <AnimatePresence initial={false}>
-          {visibleChordRange.map((chordInfo) => {
-            return (
-              <motion.div
-                layout
-                key={`guitar-chord-${chordInfo.startIndex}`}
-                initial={false}
-                animate={{
-                  opacity: chordInfo.isCurrent ? 1 : 0.6,
-                  scale: 1,
-                  filter: `blur(${chordInfo.isCurrent ? 0 : 1}px)`,
-                  zIndex: chordInfo.isCurrent ? 10 : 1
-                }}
-                exit={{ opacity: 0.6 }}
-                transition={itemTransition}
-                className="flex-shrink-0 relative rounded-lg will-change-transform"
-                style={{
-                  width: `${diagramConfig.cellWidth}px`,
-                  margin: `0 ${diagramConfig.marginX}px`,
-                }}
-              >
-                <GuitarChordDiagram
-                  chordData={chordDataCache.get(chordInfo.chord) || null}
-                  positionIndex={chordPositions[chordInfo.chord] || 0}
-                  size={diagramConfig.size}
-                  customWidth={diagramConfig.diagramWidth}
-                  customHeight={diagramConfig.diagramHeight}
-                  showChordName={true}
-                  displayName={chordInfo.chord}
-                  soundingChordName={
-                    processedChordData.soundingNameByIndex.get(chordInfo.startIndex)
-                    || processedChordData.soundingNameByShape.get(chordInfo.chord)
-                  }
-                  isFocused={chordInfo.isCurrent}
-                  showPositionSelector={chordInfo.isCurrent}
-                  onPositionChange={(positionIndex) => handlePositionChange(chordInfo.chord, positionIndex)}
-                  capoFret={capoFret}
-                  capoLabelMode={capoLabelMode}
-                  showRomanNumerals={false}
-                  romanNumeral=""
-                  labelClassName={diagramConfig.labelClass}
-                />
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-      </div>
-    </div>
-  );
-}
-
 export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
   analysisResults,
   chordGridData,
   className = '',
   keySignature,
   isDetectingKey,
-  isChatbotOpen = false,
-  isLyricsPanelOpen = false,
-  isUploadPage = false,
   showCorrectedChords,
   chordCorrections,
   sequenceCorrections = null,
   isChordPlaybackEnabled = false,
   audioUrl = null,
   gridLyrics = null,
-  plainLyrics = null,
 }) => {
   const targetKey = useTargetKey();
+  const isPitchShiftEnabled = useIsPitchShiftEnabled();
+  const storeKeySignature = useKeySignature();
+  const storeIsDetectingKey = useIsDetectingKey();
 
   const [viewMode, setViewMode] = useState<'animated' | 'summary' | 'tab'>('animated');
+  // Strum-along guitar is opt-in; the choice is remembered per browser.
+  const [isGuitarSoundOn, setIsGuitarSoundOn] = useState(() => {
+    try {
+      return safeLocalStorage().getItem(GUITAR_SOUND_STORAGE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
   const [chordDataCache, setChordDataCache] = useState<Map<string, ChordData | null>>(new Map());
   const [isLoadingChords, setIsLoadingChords] = useState<boolean>(false);
 
@@ -346,9 +218,11 @@ export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
   const chordPositions = useGuitarSelectedPositions();
   const setSharedCapoFret = useSetGuitarCapoFret();
   const setSharedChordPosition = useSetGuitarSelectedPosition();
-  // Capo label mode: 'shape' shows the chord shape name, 'sound' shows the sounding chord name
-  const [capoLabelMode, setCapoLabelMode] = useState<'shape' | 'sound'>('shape');
+  // Basic / Advanced chords: the same global switch as the Simplify button in the utility bar
+  const simplifyChords = useSimplifyChords();
+  const setSimplifyChords = useUIStore((state) => state.setSimplifyChords);
   const [isCapoPreviewOpen, setIsCapoPreviewOpen] = useState(false);
+  const [isCompactControlsOpen, setIsCompactControlsOpen] = useState(false);
   const hasUserAdjustedCapoRef = useRef(false);
   const capoSuggestionSignatureRef = useRef('');
   const capoPreviewCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -376,15 +250,8 @@ export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
     return calculateTargetKey(baseKey, -capoFret);
   }, [capoFret, keySignature, targetKey]);
 
-  // Responsive diagram sizing for animated view - diagram dimensions scale with screen
-  const diagramConfig = useMemo(() => {
-    if (windowWidth >= 1536) return { size: 'large' as const, diagramWidth: 125, diagramHeight: 160, cellWidth: 140, marginX: 10, labelClass: '' };
-    if (windowWidth >= 1280) return { size: 'large' as const, diagramWidth: 115, diagramHeight: 147, cellWidth: 130, marginX: 8, labelClass: '' };
-    if (windowWidth >= 1024) return { size: 'medium' as const, diagramWidth: 100, diagramHeight: 128, cellWidth: 115, marginX: 7, labelClass: '' };
-    if (windowWidth >= 768) return { size: 'medium' as const, diagramWidth: 90, diagramHeight: 115, cellWidth: 105, marginX: 6, labelClass: '' };
-    if (windowWidth >= 640) return { size: 'small' as const, diagramWidth: 78, diagramHeight: 100, cellWidth: 92, marginX: 5, labelClass: 'text-xs leading-tight' };
-    return { size: 'small' as const, diagramWidth: 70, diagramHeight: 90, cellWidth: 82, marginX: 4, labelClass: 'text-xs leading-tight' };
-  }, [windowWidth]);
+  const isCompactHeader = windowWidth < 640;
+  const nowDiagramWidth = windowWidth >= 1024 ? 160 : windowWidth >= 640 ? 140 : 128;
 
   // Handle chord position changes
   const handlePositionChange = useCallback((chordName: string, positionIndex: number) => {
@@ -671,6 +538,20 @@ export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
     return uniqueProgression;
   }, [processedChordData.entries, resolvedChordGridData]);
 
+  // Timeline labels use the same shape names as the diagrams, so they always match.
+  const timelineChords = useMemo(
+    () => processedChordData.entries.map((entry) => (entry.shape === 'N.C.' ? '' : entry.shape)),
+    [processedChordData.entries],
+  );
+
+  const getSoundingNameForProgressionItem = useCallback(
+    (item: { chord: string; startIndex: number }) => (
+      processedChordData.soundingNameByIndex.get(item.startIndex)
+      || processedChordData.soundingNameByShape.get(item.chord)
+    ),
+    [processedChordData],
+  );
+
   if (!mergedAnalysisResults) {
     return (
       <div className={`flex items-center justify-center p-8 bg-white dark:bg-content-bg rounded-lg shadow-card ${className}`}>
@@ -679,13 +560,204 @@ export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
     );
   }
 
+  const toggleGuitarSound = () => {
+    setIsGuitarSoundOn((on) => {
+      const next = !on;
+      try { safeLocalStorage().setItem(GUITAR_SOUND_STORAGE_KEY, next ? '1' : '0'); } catch { /* storage unavailable */ }
+      return next;
+    });
+  };
+
+  // Song facts shown beside the timeline title (same tags as the chord grid header).
+  const headerKeySignature = (keySignature !== undefined ? keySignature : storeKeySignature) || undefined;
+  const headerIsDetectingKey = isDetectingKey ?? storeIsDetectingKey;
+  let displayKey = headerKeySignature;
+  if (isPitchShiftEnabled && targetKey && headerKeySignature) {
+    const quality = headerKeySignature.match(/s+(major|minor)$/i)?.[1];
+    displayKey = quality ? `${targetKey} ${quality}` : targetKey;
+  }
+  const headerTagClassName = 'rounded-lg border px-2 py-0.5 text-xs font-medium sm:px-3 sm:py-1 sm:text-sm';
+
   const segmentedControlClassName = 'flex space-x-1 rounded-full bg-white/75 p-1 shadow-sm backdrop-blur dark:bg-gray-800/50';
   const activeSegmentClassName = 'bg-slate-900 text-white shadow-sm dark:bg-gray-900';
   const inactiveSegmentClassName = 'text-gray-700 hover:bg-black/5 dark:text-gray-200 dark:hover:bg-white/10';
   const capoControlClassName = 'flex items-center rounded-full bg-white/75 shadow-sm backdrop-blur dark:bg-gray-800/50';
+  const segmentButtonClassName = 'min-h-11 rounded-md px-2.5 py-1 text-xs font-medium transition-colors md:min-h-0 sm:px-3 sm:py-1.5 sm:text-sm';
+  const timeSignatureLabel = timeSignature === 6 ? '6/8' : `${timeSignature}/4`;
+  const formattedDisplayKey = displayKey ? displayKey.replace(/b/g, '♭').replace(/#/g, '♯') : null;
+
+  const chordDetailControl = (
+    <div className="flex items-center gap-1.5">
+      <span className="whitespace-nowrap text-xs font-medium text-gray-700 dark:text-gray-300 sm:text-sm">Chords:</span>
+      <div className={segmentedControlClassName} role="group" aria-label="Chord detail">
+        <AppTooltip content="Major and minor chords only">
+          <button
+            type="button"
+            aria-pressed={simplifyChords}
+            onClick={() => setSimplifyChords(true)}
+            className={`${segmentButtonClassName} ${simplifyChords ? activeSegmentClassName : inactiveSegmentClassName}`}
+          >
+            Basic
+          </button>
+        </AppTooltip>
+        <AppTooltip content="Every chord as detected, with 7ths and extensions">
+          <button
+            type="button"
+            aria-pressed={!simplifyChords}
+            onClick={() => setSimplifyChords(false)}
+            className={`${segmentButtonClassName} ${!simplifyChords ? activeSegmentClassName : inactiveSegmentClassName}`}
+          >
+            Advanced
+          </button>
+        </AppTooltip>
+      </div>
+    </div>
+  );
+
+  const capoControl = (
+    <div
+      className="relative flex items-center gap-2"
+      onMouseEnter={openCapoPreview}
+      onMouseLeave={scheduleCapoPreviewClose}
+      onFocus={openCapoPreview}
+      onBlur={handleCapoPreviewBlur}
+    >
+      <div className="flex items-center gap-1.5">
+        <label htmlFor="capo-input" className="whitespace-nowrap text-xs font-medium text-gray-700 dark:text-gray-300 sm:text-sm">
+          Capo:
+        </label>
+        <div className={capoControlClassName}>
+          <button
+            onClick={() => setCapoFret(prev => Math.max(0, prev - 1))}
+            disabled={capoFret === 0}
+            className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold md:h-8 md:w-7 text-gray-600 transition-colors hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-200 dark:hover:bg-white/10"
+            aria-label="Decrease capo fret"
+          >
+            −
+          </button>
+          <input
+            id="capo-input"
+            type="number"
+            min={0}
+            max={12}
+            value={capoFret}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val) && val >= 0 && val <= 12) setCapoFret(val);
+            }}
+            className="w-8 h-11 md:h-8 text-center text-sm font-medium bg-transparent border-0 focus:outline-none focus:ring-0 text-gray-800 dark:text-gray-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            aria-label="Capo fret position"
+          />
+          <button
+            onClick={() => setCapoFret(prev => Math.min(12, prev + 1))}
+            disabled={capoFret === 12}
+            className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold md:h-8 md:w-7 text-gray-600 transition-colors hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-200 dark:hover:bg-white/10"
+            aria-label="Increase capo fret"
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {isCapoPreviewOpen && (
+          <>
+            <div
+              aria-hidden="true"
+              className={`absolute top-full z-30 h-3 w-[min(22rem,calc(100vw-2rem))] ${isCompactHeader ? 'right-0' : 'left-0 sm:left-auto sm:right-0'}`}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className={`absolute top-[calc(100%+0.25rem)] z-40 w-[min(22rem,calc(100vw-2rem))] ${isCompactHeader ? 'right-0' : 'left-0 sm:left-auto sm:right-0'}`}
+              onMouseEnter={openCapoPreview}
+              onMouseLeave={scheduleCapoPreviewClose}
+            >
+              <CapoNeckPreview
+                capoFret={capoFret}
+                suggestedCapoFret={suggestedCapo?.capoFret ?? null}
+                onCapoFretChange={(fret) => setCapoFret(fret)}
+              />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+
+  const guitarSoundButton = (
+    <AppTooltip content={isChordPlaybackEnabled
+      ? 'Chord playback is on, so the instrument mixer plays the chords'
+      : isGuitarSoundOn ? 'Mute the guitar that strums along' : 'Strum the chords on guitar during playback'}
+    >
+      <button
+        type="button"
+        aria-pressed={isGuitarSoundOn}
+        aria-label="Guitar sound"
+        onClick={toggleGuitarSound}
+        className={`flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium shadow-sm transition-colors md:min-h-0 sm:py-1.5 sm:text-sm ${isGuitarSoundOn ? activeSegmentClassName : `bg-white/75 backdrop-blur dark:bg-gray-800/50 ${inactiveSegmentClassName}`}`}
+      >
+        {isGuitarSoundOn ? <FiVolume2 aria-hidden="true" className="h-4 w-4" /> : <FiVolumeX aria-hidden="true" className="h-4 w-4" />}
+        Guitar
+      </button>
+    </AppTooltip>
+  );
+
+  const viewModeControl = (
+    <div className="flex items-center gap-1.5">
+      <span className="text-xs font-medium text-gray-700 dark:text-gray-300 sm:text-sm">View:</span>
+      <div className={segmentedControlClassName}>
+        <button onClick={() => setViewMode('animated')} className={`${segmentButtonClassName} ${viewMode === 'animated' ? activeSegmentClassName : inactiveSegmentClassName}`}>Animated</button>
+        <button onClick={() => setViewMode('summary')} className={`${segmentButtonClassName} ${viewMode === 'summary' ? activeSegmentClassName : inactiveSegmentClassName}`}>Summary</button>
+        <button onClick={() => setViewMode('tab')} className={`${segmentButtonClassName} ${viewMode === 'tab' ? activeSegmentClassName : inactiveSegmentClassName}`}>Tab</button>
+      </div>
+    </div>
+  );
+
+  // Phone: one summary row (song facts + capo), the other controls fold away below it.
+  const compactSongFacts = [
+    headerIsDetectingKey ? 'Detecting key...' : formattedDisplayKey,
+    timeSignatureLabel,
+    detectedBpm ? `${Math.round(detectedBpm)} BPM` : null,
+  ].filter(Boolean).join(' · ');
+
+  const compactHeader = (
+    <div className="rounded-xl bg-white/75 shadow-sm backdrop-blur dark:bg-gray-800/50">
+      <div className="flex items-center gap-1 pl-3 pr-1">
+        <button
+          type="button"
+          aria-expanded={isCompactControlsOpen}
+          aria-controls="guitar-tab-options"
+          onClick={() => setIsCompactControlsOpen((open) => !open)}
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-1.5 text-left text-xs text-gray-700 dark:text-gray-300"
+        >
+          <span className="truncate">{compactSongFacts}</span>
+          <FiChevronDown
+            aria-hidden="true"
+            className={`h-4 w-4 shrink-0 transition-transform ${isCompactControlsOpen ? 'rotate-180' : ''}`}
+          />
+          <span className="sr-only">{isCompactControlsOpen ? 'Hide display options' : 'Show display options'}</span>
+        </button>
+        {capoControl}
+      </div>
+      {isCompactControlsOpen && (
+        <div
+          id="guitar-tab-options"
+          className="flex flex-wrap items-center gap-2 border-t border-gray-200/70 px-2 py-2 dark:border-gray-700/70"
+        >
+          {chordDetailControl}
+          {guitarSoundButton}
+          {viewModeControl}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className={`guitar-chords-tab space-y-2 sm:space-y-3 ${className}`}>
+      {isGuitarSoundOn && (
       <GuitarPlaybackBridge
         playbackChordEvents={playbackChordEvents}
         isChordPlaybackEnabled={isChordPlaybackEnabled}
@@ -695,128 +767,51 @@ export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
         guitarVoicing={guitarVoicing}
         targetKey={targetKey}
       />
+      )}
 
       {/* Chord Timeline Section */}
       <div className="chord-grid-section space-y-2">
-        <div className="mb-2 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="text-base font-medium text-gray-700 dark:text-gray-300 sm:text-lg">Chord Timeline</h3>
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
-            {/* Shape/Sound label toggle - appears to the left so capo stays in place beside view */}
-            {capoFret > 0 && (
-              <>
-                <div className="flex items-center gap-1.5">
-                  <span className="whitespace-nowrap text-xs font-medium text-gray-700 dark:text-gray-300 sm:text-sm">Label:</span>
-                  <div className={segmentedControlClassName}>
-                    <AppTooltip content="Show chord shape name (what you play)">
-                      <button
-                        onClick={() => setCapoLabelMode('shape')}
-                        className={`min-h-11 px-3 py-1 text-xs font-medium rounded-md transition-colors md:min-h-0 md:px-2 ${capoLabelMode === 'shape' ? activeSegmentClassName : inactiveSegmentClassName}`}
-                      >
-                        Shape
-                      </button>
-                    </AppTooltip>
-                    <AppTooltip content="Show sounding chord name (what you hear)">
-                      <button
-                        onClick={() => setCapoLabelMode('sound')}
-                        className={`min-h-11 px-3 py-1 text-xs font-medium rounded-md transition-colors md:min-h-0 md:px-2 ${capoLabelMode === 'sound' ? activeSegmentClassName : inactiveSegmentClassName}`}
-                      >
-                        Sound
-                      </button>
-                    </AppTooltip>
-                  </div>
-                </div>
-                <div className="hidden h-6 w-px bg-gray-300 dark:bg-gray-600 sm:block" />
-              </>
+        {isCompactHeader ? compactHeader : (
+        <div className="mb-2 flex flex-row items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <h3 className="mr-1 text-base font-medium text-gray-700 dark:text-gray-300 sm:text-lg">Chord Timeline</h3>
+            <span className={`${headerTagClassName} border-blue-300/60 bg-blue-500/10 text-blue-800 dark:border-blue-400/35 dark:bg-blue-800/40 dark:text-blue-50`}>
+              Time: {timeSignatureLabel}
+            </span>
+            {detectedBpm ? (
+              <span className={`${headerTagClassName} border-amber-300/60 bg-amber-500/10 text-amber-800 dark:border-amber-400/35 dark:bg-amber-800/40 dark:text-amber-50`}>
+                Tempo: {Math.round(detectedBpm)} BPM
+              </span>
+            ) : null}
+            {formattedDisplayKey && (
+              <span className={`${headerTagClassName} border-green-300/60 bg-green-500/10 text-green-800 dark:border-green-400/35 dark:bg-green-800/40 dark:text-green-50`}>
+                Key: {formattedDisplayKey}
+              </span>
             )}
-
-            {/* Capo control */}
-            <div
-              className="relative flex items-center gap-2"
-              onMouseEnter={openCapoPreview}
-              onMouseLeave={scheduleCapoPreviewClose}
-              onFocus={openCapoPreview}
-              onBlur={handleCapoPreviewBlur}
-            >
-              <div className="flex items-center gap-1.5">
-                <label htmlFor="capo-input" className="whitespace-nowrap text-xs font-medium text-gray-700 dark:text-gray-300 sm:text-sm">
-                  Capo:
-                </label>
-                <div className={capoControlClassName}>
-                  <button
-                    onClick={() => setCapoFret(prev => Math.max(0, prev - 1))}
-                    disabled={capoFret === 0}
-                    className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold md:h-8 md:w-7 text-gray-600 transition-colors hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-200 dark:hover:bg-white/10"
-                    aria-label="Decrease capo fret"
-                  >
-                    −
-                  </button>
-                  <input
-                    id="capo-input"
-                    type="number"
-                    min={0}
-                    max={12}
-                    value={capoFret}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value, 10);
-                      if (!isNaN(val) && val >= 0 && val <= 12) setCapoFret(val);
-                    }}
-                    className="w-8 h-11 md:h-8 text-center text-sm font-medium bg-transparent border-0 focus:outline-none focus:ring-0 text-gray-800 dark:text-gray-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    aria-label="Capo fret position"
-                  />
-                  <button
-                    onClick={() => setCapoFret(prev => Math.min(12, prev + 1))}
-                    disabled={capoFret === 12}
-                    className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold md:h-8 md:w-7 text-gray-600 transition-colors hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-200 dark:hover:bg-white/10"
-                    aria-label="Increase capo fret"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              <AnimatePresence>
-                {isCapoPreviewOpen && (
-                  <>
-                    <div
-                      aria-hidden="true"
-                      className="absolute left-0 top-full z-30 h-3 w-[min(22rem,calc(100vw-2rem))] sm:left-auto sm:right-0"
-                    />
-                    <motion.div
-                      initial={{ opacity: 0, y: -6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.18, ease: 'easeOut' }}
-                      className="absolute left-0 top-[calc(100%+0.25rem)] z-40 w-[min(22rem,calc(100vw-2rem))] sm:left-auto sm:right-0"
-                      onMouseEnter={openCapoPreview}
-                      onMouseLeave={scheduleCapoPreviewClose}
-                    >
-                      <CapoNeckPreview
-                        capoFret={capoFret}
-                        suggestedCapoFret={suggestedCapo?.capoFret ?? null}
-                        onCapoFretChange={(fret) => setCapoFret(fret)}
-                      />
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Divider */}
-            <div className="hidden h-6 w-px bg-gray-300 dark:bg-gray-600 sm:block" />
-
-            {/* View mode toggle */}
-            <span className="text-xs font-medium text-gray-700 dark:text-gray-300 sm:text-sm">View:</span>
-            <div className={segmentedControlClassName}>
-              <button onClick={() => setViewMode('animated')} className={`min-h-11 rounded-md px-2.5 py-1 text-xs font-medium transition-colors md:min-h-0 sm:px-3 sm:py-1.5 sm:text-sm ${viewMode === 'animated' ? activeSegmentClassName : inactiveSegmentClassName}`}>Animated</button>
-              <button onClick={() => setViewMode('summary')} className={`min-h-11 rounded-md px-2.5 py-1 text-xs font-medium transition-colors md:min-h-0 sm:px-3 sm:py-1.5 sm:text-sm ${viewMode === 'summary' ? activeSegmentClassName : inactiveSegmentClassName}`}>Summary</button>
-              <button onClick={() => setViewMode('tab')} className={`min-h-11 rounded-md px-2.5 py-1 text-xs font-medium transition-colors md:min-h-0 sm:px-3 sm:py-1.5 sm:text-sm ${viewMode === 'tab' ? activeSegmentClassName : inactiveSegmentClassName}`}>Tab</button>
-            </div>
+            {headerIsDetectingKey && (
+              <span className={`${headerTagClassName} border-blue-300/55 bg-blue-500/12 text-blue-800 dark:border-blue-300/35 dark:bg-blue-300/16 dark:text-white`}>
+                Detecting key...
+              </span>
+            )}
+          </div>
+          <div className="flex w-auto flex-wrap items-center gap-3">
+            {chordDetailControl}
+            <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
+            {capoControl}
+            <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
+            {guitarSoundButton}
+            <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
+            {viewModeControl}
           </div>
         </div>
+        )}
         {viewMode !== 'tab' && (
-          <ScrollableTabContainer heightClass="h-[8.5rem] sm:h-32 md:h-40 lg:h-48">
-            <ChordGridContainer {...{ analysisResults, chordGridData, keySignature, isDetectingKey, isChatbotOpen, isLyricsPanelOpen, isUploadPage, showCorrectedChords, chordCorrections, sequenceCorrections, gridLyrics, plainLyrics }} />
-          </ScrollableTabContainer>
+          <GuitarChordTimeline
+            chords={timelineChords}
+            beatTimes={resolvedChordGridData?.beats ?? []}
+            timeSignature={timeSignature}
+            gridLyrics={gridLyrics}
+          />
         )}
       </div>
 
@@ -840,16 +835,14 @@ export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
             gridLyrics={gridLyrics}
           />
         ) : !isLoadingChords && viewMode === 'animated' ? (
-          <AnimatedChordDiagramView
+          <GuitarNowNextPanel
             progression={getUniqueChordProgressionForGuitarDiagrams}
-            windowWidth={windowWidth}
-            diagramConfig={diagramConfig}
             chordDataCache={chordDataCache}
             chordPositions={chordPositions}
-            processedChordData={processedChordData}
-            handlePositionChange={handlePositionChange}
+            getSoundingName={getSoundingNameForProgressionItem}
+            onPositionChange={handlePositionChange}
             capoFret={capoFret}
-            capoLabelMode={capoLabelMode}
+            diagramWidth={nowDiagramWidth}
           />
         ) : !isLoadingChords && (
           <div className="summary-chord-view relative p-4 sm:p-6">
@@ -869,7 +862,7 @@ export const GuitarChordsTab: React.FC<GuitarChordsTabProps> = ({
                     showPositionSelector={true}
                     onPositionChange={(positionIndex) => handlePositionChange(name, positionIndex)}
                     capoFret={capoFret}
-                    capoLabelMode={capoLabelMode}
+                    capoLabelMode="shape"
                     showRomanNumerals={false}
                     romanNumeral=""
                   />

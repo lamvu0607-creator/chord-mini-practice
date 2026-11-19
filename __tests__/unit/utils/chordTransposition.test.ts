@@ -229,3 +229,21 @@ describe('chordTransposition utilities', () => {
     });
   });
 });
+
+describe('transposeChord with Harte labels', () => {
+  it('keeps a half-diminished quality when moving the root (capo shape)', () => {
+    expect(transposeChord('E:hdim7', -3, 'D minor')).toBe('C#:hdim7');
+  });
+
+  it('keeps the quality and a degree bass as they are', () => {
+    expect(transposeChord('A:min7/b3', 2, 'B minor')).toBe('B:min7/b3');
+    expect(transposeChord('C:dim7', 1, 'C# major')).toBe('C#:dim7');
+  });
+
+  it('gives a capo shape that still maps to an m7b5 diagram', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { chordMappingService } = require('@/services/chord-analysis/chordMappingService');
+    const shape = transposeChord('E:hdim7', -3, 'D minor');
+    expect(chordMappingService.getPreferredDiagramChordName(shape)).toBe('C#m7b5');
+  });
+});

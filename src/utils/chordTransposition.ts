@@ -204,6 +204,14 @@ export function transposeChord(
     return originalChord;
   }
 
+  // Harte labels from the models ("E:hdim7", "A:min7/b3"): move only the root.
+  // The quality and a degree bass are relative to the root, so they stay as is.
+  // Parsing them as plain names would read "hdim7" as "dim" and drop the ø.
+  const harteMatch = originalChord.match(/^([A-G][#b]?):(.+)$/);
+  if (harteMatch) {
+    return `${transposeNote(harteMatch[1], semitones, targetKey)}:${harteMatch[2]}`;
+  }
+
   // Parse the chord
   const parsed = parseChordNotation(originalChord);
   // const preserveDegreeSymbol = originalChord.includes('°');
